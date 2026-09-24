@@ -1,0 +1,74 @@
+{
+  // ============================================================
+  // ШКОЛЬНЫЙ ХАБ — правила Firebase Realtime Database
+  // ============================================================
+  // Как применить:
+  //   Firebase Console -> Realtime Database -> «Правила» -> вставить этот JSON -> Опубликовать
+  //
+  // Ключевые моменты:
+  //  - чтение данных (города/школы/классы/чат) доступно всем;
+  //  - писать в чат может только авторизованный (auth != null), не забаненный
+  //    и не находящийся в муте (проверка по users/{auth.uid});
+  //  - пользователь меняет в своём профиле только nick/class (+ createdAt 1 раз);
+  //    banned/mutedUntil доступны ТОЛЬКО администраторам из ветки /admins;
+  //  - правку содержимого (расписание/домашка/объявления/города/школы/классы)
+  //    разрешено только UID из ветки /admins.
+  "rules": {
+    "cities": {
+      ".read": true,
+      "$city": {
+        ".read": true,
+        ".write": "root.child('admins/' + auth.uid).val() === true",
+        "$school": {
+          ".read": true,
+          ".write": "root.child('admins/' + auth.uid).val() === true",
+          "$class": {
+            ".read": true,
+            ".write": "root.child('admins/' + auth.uid).val() === true",
+            "schedule":      { ".write": "root.child('admins/' + auth.uid).val() === true" },
+            "homework":      { ".write": "root.child('admins/' + auth.uid).val() === true" },
+            "announcements": { ".write": "root.child('admins/' + auth.uid).val() === true" },
+            "ban":           { ".write": "root.child('admins/' + auth.uid).val() === true" },
+            "chat": {
+              ".read": "true",
+              ".write": "auth != null && !root.child('users/' + auth.uid + '/banned').val() && ( !root.child('users/' + auth.uid + '/mutedUntil').val() || root.child('users/' + auth.uid + '/mutedUntil').val() < now )"
+            }
+          }
+        }
+      }
+    },
+
+    // Профили пользователей: users/{uid}
+    "users": {
+      ".read": true,
+      "$uid": {
+        ".read": true,
+        // Владелец пишет только свои nick/class (и createdAt один раз);
+        // banned/mutedUntil меняет только администратор из /admins
+        ".write": "false",
+        "nick":       { ".write": "auth != null && $uid === auth.uid" },
+        "class":      { ".write": "auth != null && $uid === auth.uid" },
+        "createdAt":  { ".write": "auth != null && $uid === auth.uid && !data.exists()" },
+        "banned":     { ".write": "root.child('admins/' + auth.uid).val() === true" },
+        "mutedUntil": { ".write": "root.child('admins/' + auth.uid).val() === true" }
+      }
+    },
+
+    // Администраторы: /admins/{uid} = true
+    // UID добавляются вручную (Firebase Console), в приложении не редактируются
+    "admins": {
+      ".read": true,
+      ".write": "false"
+    },
+
+    // Присутствие (онлайн) и уникальные пользователи — только для авторизованных
+    "online":        { ".read": "auth != null", ".write": "auth != null" },
+    "unique":        { ".read": "auth != null", ".write": "auth != null" },
+
+    // Помеченные автофильтром сообщения (раздел «Интересное»)
+    "flagged_messages": {
+      ".read": true,
+      ".write": "auth != null"
+    }
+  }
+}

@@ -1,0 +1,2161 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Школьный Хаб</title>
+  <meta name="description" content="Расписание, домашние задания, объявления и чат класса.">
+  <meta name="theme-color" content="#0f172a">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon-192.png">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+  <!-- Tailwind CSS через CDN (все стили) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    /* Минимальные кастомные анимации (Tailwind CDN не умеет keyframes) */
+    @keyframes toast-in { from { transform: translateY(-16px); opacity: 0; } to { transform: none; opacity: 1; } }
+    @keyframes fade-up  { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    .toast-in { animation: toast-in .25s ease-out; }
+    .fade-up  { animation: fade-up .25s ease-out; }
+
+    /* Запрет выделения текста и подсветки тапа на "жестовых" элементах */
+    .no-select {
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+    .hold { opacity: .6; transform: scale(.98); }
+
+    /* Тонкий скроллбар для чата */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 9999px; }
+
+    /* Отступ для зоны "чёлки" iPhone */
+    .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+    .pt-safe { padding-top: env(safe-area-inset-top); }
+
+    /* Высота списка сообщений (с фолбэком для старых браузеров) */
+    .chat-scroll { height: calc(100vh - 300px); height: calc(100dvh - 290px); }
+  </style>
+</head>
+
+<body class="bg-slate-950 text-slate-100 antialiased min-h-screen">
+
+  <!-- ======================= TOAST (уведомление вверху экрана) ======================= -->
+  <div id="toast" class="hidden fixed top-3 left-3 right-3 z-[70] rounded-xl bg-amber-400 text-slate-950 shadow-2xl px-4 py-3 flex items-center gap-3 text-sm toast-in max-w-md mx-auto">
+    <svg class="shrink-0 w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.9 5h13.8a2 2 0 001.78-3L13.78 4.9a2 2 0 00-3.56 0L4.12 18a2 2 0 001.78 3z"/>
+    </svg>
+    <div class="flex-1 min-w-0">
+      <div class="font-extrabold">Завтра контрольная!</div>
+      <div id="toast-text" class="truncate opacity-80 font-medium"></div>
+    </div>
+    <button id="toast-close" class="shrink-0 w-7 h-7 rounded-full bg-slate-950/10 flex items-center justify-center font-bold" aria-label="Закрыть">✕</button>
+  </div>
+
+  <!-- ======================= ЭКРАН ВХОДА (пошаговый выбор) ======================= -->
+  <div id="auth-screen" class="min-h-screen flex flex-col">
+    <!-- 5 тапов по логотипу или долгое нажатие на заголовок открывают админ-панель -->
+    <header class="px-5 pt-safe pt-14 pb-6 text-center">
+      <div id="auth-logo" class="no-select mx-auto w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-900/40">
+        <svg class="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.25c-1.8-1.3-4.6-1.75-7.75-1.25v12.5c3.15-.5 5.95-.05 7.75 1.25 1.8-1.3 4.6-1.75 7.75-1.25V5c-3.15-.5-5.95-.05-7.75 1.25z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.25v12.5"/>
+        </svg>
+      </div>
+      <h1 id="auth-title" class="no-select text-2xl font-extrabold mt-3">Школьный Хаб</h1>
+      <p class="text-slate-400 text-sm mt-1">Расписание, домашка, объявления и чат класса</p>
+    </header>
+
+    <div class="flex-1 px-4 pb-6 w-full max-w-md mx-auto">
+      <!-- Шапка шага выбора -->
+      <div class="flex items-center gap-3 mb-4">
+        <button id="back-btn" class="hidden h-10 w-10 shrink-0 rounded-full bg-slate-800 flex items-center justify-center hover:bg-slate-700" aria-label="Назад">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+          </svg>
+        </button>
+        <h2 id="select-title" class="text-lg font-bold"></h2>
+      </div>
+      <div id="select-status" class="text-xs text-slate-500 mb-3"></div>
+      <div id="select-list" class="grid gap-2"></div>
+    </div>
+  </div>
+
+  <!-- ======================= ГЛАВНЫЙ ЭКРАН ======================= -->
+  <div id="main-screen" class="hidden min-h-screen flex flex-col">
+    <!-- Шапка + вкладки (приклеена вверху) -->
+    <div class="sticky top-0 z-30 bg-slate-950/90 backdrop-blur border-b border-slate-800 pt-safe">
+      <div class="w-full max-w-md mx-auto">
+        <div class="flex items-center gap-3 px-4 pt-2 pb-2">
+          <!-- Логотип: 5 тапов открывают админ-панель -->
+          <div id="logo" class="no-select shrink-0 h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center cursor-pointer">
+            <svg class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.25c-1.8-1.3-4.6-1.75-7.75-1.25v12.5c3.15-.5 5.95-.05 7.75 1.25 1.8-1.3 4.6-1.75 7.75-1.25V5c-3.15-.5-5.95-.05-7.75 1.25z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.25v12.5"/>
+            </svg>
+          </div>
+          <!-- Заголовок: долгое нажатие 3 секунды открывает админ-панель -->
+          <button id="header-title" class="no-select flex-1 text-left leading-tight cursor-pointer transition-transform duration-200">
+            <span id="header-text" class="block font-bold text-sm truncate">Находка, Школа №4, 7А</span>
+            <span class="block text-[11px] text-slate-400">Твой класс</span>
+          </button>
+          <button id="change-btn" class="shrink-0 px-3 py-2 rounded-lg bg-slate-800 text-xs font-semibold hover:bg-slate-700 active:scale-95 transition">
+            Сменить
+          </button>
+        </div>
+
+        <!-- Вкладки -->
+        <nav class="flex gap-1 px-3 pb-2">
+          <button data-tab="schedule" class="tab-btn flex-1 flex flex-col items-center gap-0.5 py-2 rounded-lg text-[11px] font-semibold text-slate-400">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3M4 8h16M5 5h14a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1V6a1 1 0 011-1z"/>
+            </svg>
+            <span>Расписание</span>
+          </button>
+          <button data-tab="homework" class="tab-btn flex-1 flex flex-col items-center gap-0.5 py-2 rounded-lg text-[11px] font-semibold text-slate-400">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6M7 4h10a2 2 0 012 2v14l-3-2-3 2-3-2-3 2V6a2 2 0 012-2z"/>
+            </svg>
+            <span>Домашка</span>
+          </button>
+          <button data-tab="announcements" class="tab-btn flex-1 flex flex-col items-center gap-0.5 py-2 rounded-lg text-[11px] font-semibold text-slate-400">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 9a5 5 0 010 6M19.5 6a9 9 0 010 12M8 11h.01M8 15h-1a3 3 0 01-3-3v0a3 3 0 013-3h1v6zm10.5-6a9 9 0 010 12"/>
+            </svg>
+            <span>Объявл.</span>
+          </button>
+          <button data-tab="chat" class="tab-btn flex-1 flex flex-col items-center gap-0.5 py-2 rounded-lg text-[11px] font-semibold text-slate-400">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.4-4 8-9 8-1 0-2-.15-2.9-.4L4 21l1.5-3.9A7.8 7.8 0 013 12c0-4.4 4-8 9-8s9 3.6 9 8z"/>
+            </svg>
+            <span>Чат</span>
+          </button>
+          <button id="tab-settings-btn" data-tab="settings"
+                  class="tab-btn hidden flex-1 flex-col items-center gap-0.5 py-2 rounded-lg text-[11px] font-semibold text-slate-400">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M10.3 4.3 11 3a1 1 0 0 1 2 0l.7 1.3a1 1 0 0 0 .9.5l1.5-.1a1 1 0 0 1 1 1l.1 1.5c0 .4.2.7.5.9l1.3.7a1 1 0 0 1 0 2l-1.3.7a1 1 0 0 0-.5.9l.1 1.5a1 1 0 0 1-1 1l-1.5-.1a1 1 0 0 0-.9.5L13 21a1 1 0 0 1-2 0l-.7-1.3a1 1 0 0 0-.9-.5l-1.5.1a1 1 0 0 1-1-1l-.1-1.5a1 1 0 0 0-.5-.9l-1.3-.7a1 1 0 0 1 0-2l1.3-.7a1 1 0 0 0 .5-.9L6.5 9a1 1 0 0 1 1-1L9 8.1c.4 0 .7-.2.9-.5l.7-1.3z"/>
+              <circle cx="12" cy="12" r="2.6"/>
+            </svg>
+            <span>Настройки</span>
+          </button>
+        </nav>
+      </div>
+    </div>
+
+    <!-- Контент вкладок -->
+    <main class="flex-1 w-full max-w-md mx-auto px-4 py-4 pb-safe">
+      <section id="tab-schedule" class="tab space-y-4"></section>
+      <section id="tab-homework" class="tab hidden space-y-3"></section>
+      <section id="tab-announcements" class="tab hidden space-y-3"></section>
+      <section id="tab-chat" class="tab hidden flex flex-col">
+        <div class="flex items-center justify-between mb-2">
+          <p class="text-xs text-slate-400">Ты в чате как <button id="chat-nick" class="font-bold text-indigo-400 underline decoration-dotted">—</button></p>
+        </div>
+        <div id="chat-messages" class="chat-scroll space-y-3 overflow-y-auto pr-1"></div>
+        <form id="chat-form" class="flex gap-2 mt-3 pt-3 border-t border-slate-800 bg-slate-950/90 backdrop-blur">
+          <input id="chat-input" type="text" maxlength="500" autocomplete="off"
+                 placeholder="Сообщение…"
+                 class="flex-1 min-w-0 rounded-xl bg-slate-800 border border-slate-700 px-4 py-2.5 text-sm placeholder-slate-500 outline-none focus:border-indigo-500 transition">
+          <button type="submit" class="shrink-0 h-11 w-11 rounded-xl bg-indigo-600 flex items-center justify-center hover:bg-indigo-500 active:scale-95 transition" aria-label="Отправить">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9-7-9-7v14zm0 0V5"/>
+            </svg>
+          </button>
+        </form>
+      </section>
+      <section id="tab-settings" class="tab hidden space-y-4"></section>
+    </main>
+  </div>
+
+  <!-- ======================= МОДАЛКА НИКА ======================= -->
+  <div id="nick-modal" class="hidden fixed inset-0 z-[60] items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+    <div class="w-full max-w-sm rounded-2xl bg-slate-900 border border-slate-800 p-5 shadow-2xl">
+      <h3 class="text-lg font-bold">Как тебя зовут?</h3>
+      <p class="text-sm text-slate-400 mt-1">Ник будет виден одноклассникам в чате.</p>
+      <input id="nick-input" type="text" maxlength="30" autocomplete="nickname"
+             placeholder="Введите ник"
+             class="mt-4 w-full rounded-xl bg-slate-800 border border-slate-700 px-4 py-2.5 text-sm placeholder-slate-500 outline-none focus:border-indigo-500 transition">
+      <p id="nick-error" class="hidden text-xs text-rose-400 mt-2"></p>
+      <button id="nick-save" class="mt-4 w-full rounded-xl bg-indigo-600 py-3 text-sm font-bold hover:bg-indigo-500 active:scale-[.98] transition">
+        Сохранить
+      </button>
+    </div>
+  </div>
+
+  <!-- ======================= АДМИН-ПАНЕЛЬ ======================= -->
+  <div id="admin-panel" class="hidden fixed inset-0 z-40">
+    <div id="admin-overlay" class="absolute inset-0 bg-black/60"></div>
+    <div class="absolute inset-x-0 bottom-0 top-8 bg-slate-900 rounded-t-3xl border-t border-slate-700 flex flex-col">
+      <div class="flex items-center justify-between px-5 pt-4 pb-3 border-b border-slate-800">
+        <div class="flex items-center gap-2">
+          <svg class="w-5 h-5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+          </svg>
+          <h2 class="font-extrabold">Админ-панель</h2>
+        </div>
+        <button id="admin-close" class="h-9 w-9 rounded-full bg-slate-800 flex items-center justify-center font-bold hover:bg-slate-700" aria-label="Закрыть">✕</button>
+      </div>
+
+      <nav id="admin-nav" class="grid grid-cols-6 gap-0.5 px-2 py-3 border-b border-slate-800">
+        <button data-apage="cities"  class="apage-btn py-2 rounded-lg text-[11px] font-semibold bg-slate-800 text-white">Города</button>
+        <button data-apage="schools" class="apage-btn py-2 rounded-lg text-[11px] font-semibold text-slate-400">Школы</button>
+        <button data-apage="classes" class="apage-btn py-2 rounded-lg text-[11px] font-semibold text-slate-400">Классы</button>
+        <button data-apage="content" class="apage-btn py-2 rounded-lg text-[11px] font-semibold text-slate-400">Данные</button>
+        <button data-apage="people"  class="apage-btn py-2 rounded-lg text-[11px] font-semibold text-slate-400">Люди и чат</button>
+        <button data-apage="stats"   class="apage-btn py-2 rounded-lg text-[11px] font-semibold text-slate-400">Статистика</button>
+      </nav>
+
+      <div id="admin-body" class="flex-1 overflow-y-auto p-4"></div>
+    </div>
+  </div>
+
+  <!-- Модалка входа в режим администратора -->
+  <div id="pass-modal" class="hidden fixed inset-0 z-40">
+    <div id="pass-overlay" class="absolute inset-0 bg-black/60"></div>
+    <div class="absolute inset-x-0 bottom-0 rounded-t-3xl border-t border-slate-700 bg-slate-900 p-5 flex flex-col gap-4">
+      <div>
+        <h3 class="font-extrabold text-base">Вход для администратора</h3>
+        <p class="text-xs text-slate-500 mt-1">Введите пароль, чтобы получить вкладку «Настройки».</p>
+      </div>
+      <input id="pass-input" type="password" placeholder="Пароль администратора"
+             class="w-full rounded-xl bg-slate-800 border border-slate-700 px-4 py-2.5 text-sm placeholder-slate-500 outline-none focus:border-indigo-500 transition"
+             autocomplete="current-password">
+      <div class="flex gap-2">
+        <button id="pass-btn" class="flex-1 rounded-xl bg-indigo-600 hover:bg-indigo-500 py-2.5 text-sm font-bold">Войти</button>
+        <button id="pass-cancel" class="rounded-xl bg-slate-800 hover:bg-slate-700 px-4 py-2.5 text-sm font-semibold">Отмена</button>
+      </div>
+      <p id="pass-hint" class="text-[11px] text-slate-500"></p>
+    </div>
+  </div>
+
+  <!-- Просмотр чата (режим чтения, последние 50 сообщений) -->
+  <div id="view-modal" class="hidden fixed inset-0 z-40">
+    <div id="view-overlay" class="absolute inset-0 bg-black/60"></div>
+    <div class="absolute inset-x-0 bottom-0 top-10 bg-slate-900 rounded-t-3xl border-t border-slate-700 flex flex-col">
+      <div class="flex items-center justify-between px-5 pt-4 pb-3 border-b border-slate-800">
+        <h3 id="view-title" class="font-extrabold text-sm pr-3 truncate">Чат класса</h3>
+        <button id="view-close" class="h-9 w-9 rounded-full bg-slate-800 flex items-center justify-center font-bold hover:bg-slate-700" aria-label="Закрыть">✕</button>
+      </div>
+      <div id="view-body" class="flex-1 overflow-y-auto p-4 space-y-2"></div>
+    </div>
+  </div>
+
+  <noscript><p class="p-5 text-center text-slate-400">Для работы приложения включите JavaScript.</p></noscript>
+
+  <!-- ======================= Скрипты ======================= -->
+  <!-- Конфиг Firebase заполняется в firebase-config.js (индекс v2 — для сброса старого кэша PWA) -->
+  <script src="firebase-config.js?v=2"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <!-- Модули: анонимная авторизация (UID) и модерация (бан/мут по UID) -->
+  <script src="auth.js?v=8"></script>
+  <script src="moderation.js?v=8"></script>
+
+  <script>
+  'use strict';
+
+  /* ============================================================
+     ШКОЛЬНЫЙ ХАБ — логика приложения
+     ============================================================ */
+
+  /* ---------- Конфиг и инициализация Firebase ---------- */
+  let app, db;
+
+  // Читаем конфиг из firebase-config.js.
+  // Поддерживаем оба варианта: window.firebaseConfig и глобальный const firebaseConfig
+  // (const на верхнем уровне НЕ создаёт свойство window).
+  function getConfig() {
+    if (window.firebaseConfig) return window.firebaseConfig;
+    if (typeof firebaseConfig !== 'undefined') return firebaseConfig;
+    return null;
+  }
+
+  // Проверяем, заполнил ли пользователь конфиг в firebase-config.js
+  function isConfigured() {
+    const c = getConfig();
+    return !!(c && c.apiKey && c.databaseURL && !String(c.apiKey).startsWith('YOUR_'));
+  }
+
+  function initFirebase() {
+    if (app || !isConfigured()) return;
+    app = firebase.initializeApp(getConfig());
+    db = firebase.database();
+  }
+
+  /* ---------- Вспомогательные функции ---------- */
+  const $  = (sel) => document.querySelector(sel);
+  const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+
+  // Ключи localStorage
+  const LS = {
+    sel: 'sh_selection',   // выбранные город/школа/класс
+    nick: 'sh_nick',       // ник пользователя
+    seen: 'sh_seen_ann',   // ключи объявлений, для которых уже показали toast
+  };
+
+  // Неделя: индексы JS getDay(): 0 = воскресенье
+  const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+  const DAY_NAMES = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
+
+  // Состояние приложения
+  const state = {
+    sel: {},               // { cid, cname, sid, sname, clid, clname }
+    step: 1,               // шаг экрана входа
+  };
+
+  // Админ-состояние
+  const admin = {
+    city: null,     // выбранный город (ключ)
+    school: null,   // выбранная школа (ключ)
+    cls: null,      // выбранный класс (ключ)
+    ctype: 'schedule', // вкладка "содержимого": schedule | homework | announcements
+    annKey: null,      // ключ объявления в режиме редактирования
+    annDate: null,     // createdAt редактируемого объявления
+    page: 'cities',
+    authorized: sessionStorage.getItem('sh_admin_auth') === '1', // вход по паролю за сессию
+  };
+
+  // Рефы с активными слушателями
+  let authRefs = [];   // экран входа
+  let mainRefs = [];   // главный экран
+  let adminRefs = [];  // админ-панель
+
+  const offRefs = (arr) => arr.forEach((r) => r.off());
+  const addRef = (arr, ref) => { arr.push(ref); return ref; };
+
+  function nick() { return localStorage.getItem(LS.nick) || ''; }
+  function setNick(n) { localStorage.setItem(LS.nick, n); }
+
+  // Синхронизация профиля users/{uid}: ник и класс (класс берём из выбранного).
+  // Вызывается после входа, смены ника и выбора класса.
+  function ensureProfile() {
+    if (!window.HubAuth || !HubAuth.uid) return;
+    const s = state.sel;
+    return HubAuth.syncProfile({
+      nick: nick() || 'Ученик',
+      class: (s && s.clname) ? s.clname : null,
+    }).catch(() => {});
+  }
+
+  // SHA-256 (hex) для пароля админки. crypto.subtle работает на https и localhost.
+  // Есть запасной хеш для других случаев; при проверке принимаем любой из них.
+  function sHashFb(str) {
+    let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+    for (let i = 0; i < str.length; i++) {
+      const ch = str.charCodeAt(i);
+      h1 = Math.imul(h1 ^ ch, 2654435761);
+      h2 = Math.imul(h2 ^ ch, 1597334677);
+    }
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    return ((h2 >>> 0).toString(16).padStart(8, '0')) + ((h1 >>> 0).toString(16).padStart(8, '0'));
+  }
+  function sha256(str) {
+    const enc = new TextEncoder().encode(str);
+    if (window.crypto && crypto.subtle && crypto.subtle.digest) {
+      return crypto.subtle.digest('SHA-256', enc)
+        .then((buf) => Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join(''));
+    }
+    return Promise.resolve(sHashFb(str));
+  }
+
+  /* ---------- Статистика и фильтр сообщений ---------- */
+
+  // device_id: генерируется один раз и хранится в localStorage
+  function deviceId() {
+    let id = localStorage.getItem('sh_device');
+    if (!id) {
+      id = (window.crypto && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : ('d_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10));
+      localStorage.setItem('sh_device', id);
+    }
+    return id;
+  }
+
+  // Онлайн-присутствие: пишем online/{device_id}: TIMESTAMP, обновляем каждые 30 сек.
+  // Один раз на устройство регистрируем его в unique/{device_id} (счётчик уникальных).
+  function startPresence() {
+    const id = deviceId();
+    const beacon = () => db.ref('/online/' + id).set(firebase.database.ServerValue.TIMESTAMP);
+    beacon();
+    setInterval(beacon, 30000);
+    if (!localStorage.getItem('sh_registered')) {
+      db.ref('/unique/' + id).once('value', (snap) => {
+        if (!snap.exists()) {
+          db.ref('/unique/' + id).set(firebase.database.ServerValue.TIMESTAMP);
+          localStorage.setItem('sh_registered', '1');
+        }
+      });
+    }
+  }
+
+  // Простой фильтр по спискам слов (без ИИ). Возвращает категории нарушений.
+  const BAD_WORDS = {
+    'мат': ['хуй', 'хуя', 'хую', 'хуем', 'хуи', 'пизд', 'бля', 'блять', 'ебал', 'ебан', 'ебаш', 'ебать', 'выеб', 'наеб', 'сука', 'суки', 'мудак', 'муда', 'мразь', 'уёбок', 'уёбищ', 'ёб'],
+    'оскорбление': ['лох', 'лошара', 'чмо', 'дебил', 'идиот', 'тупой', 'тупая', 'шлюха', 'пидор', 'пидр', 'гандон', 'козёл', 'козел', 'овца', 'сволочь', 'тварь', 'гнида', 'редиска'],
+    'угроза': ['убью', 'придушу', 'задушу', 'найду тебя', 'порву', 'сломаю тебе', 'побью', 'изобью', 'порежу', 'закопаю'],
+  };
+  // Сообщение проверяется как подстрока (регистр не важен)
+  function checkMessage(text) {
+    const t = ' ' + String(text).toLowerCase() + ' ';
+    const hits = [];
+    Object.keys(BAD_WORDS).forEach((cat) => {
+      if (BAD_WORDS[cat].some((w) => t.includes(w))) hits.push(cat);
+    });
+    return hits; // например ['мат', 'угроза']
+  }
+
+  /* ---------- Пути в БД ---------- */
+  const P = {
+    cities: () => '/cities',
+    schools: (cid) => `/cities/${cid}/schools`,
+    classes: (cid, sid) => `/cities/${cid}/schools/${sid}/classes`,
+    classNode: (cid, sid, clid) => `/cities/${cid}/schools/${sid}/classes/${clid}`,
+  };
+
+  // Путь к текущему классу (для главного экрана)
+  function curClassPath() {
+    const s = state.sel;
+    return P.classNode(s.cid, s.sid, s.clid);
+  }
+
+  // Преобразование snapshot в массив { key, ...val }
+  // ВАЖНО: идём через snap.val(), а не snap.forEach(): forEach иногда отдаёт только часть
+  // дочерних узлов (виден 1 класс из 12), а val() всегда содержит полный набор.
+  function snapArr(snap) {
+    const arr = [];
+    const v = snap && snap.val();
+    if (v && typeof v === 'object') {
+      Object.keys(v).forEach((k) => {
+        const it = v[k];
+        if (it && typeof it === 'object') arr.push(Object.assign({ key: k }, it));
+      });
+    }
+    return arr;
+  }
+
+  // Мини-треска (иконка "нет данных")
+  function emptyNote(text) {
+    return `<div class="text-center py-10 text-slate-500 text-sm fade-up"><p>${text}</p></div>`;
+  }
+  function spinner() {
+    return `<div class="text-center py-10 text-slate-500 text-sm">Загрузка…</div>`;
+  }
+
+  // Форматирование даты/времени
+  function fmtDate(ts) {
+    if (!ts) return '';
+    const d = new Date(ts);
+    const p = (n) => String(n).padStart(2, '0');
+    return `${p(d.getDate())}.${p(d.getMonth() + 1)}, ${p(d.getHours())}:${p(d.getMinutes())}`;
+  }
+
+  /* ============================================================
+     TOAST УВЕДОМЛЕНИЯ
+     ============================================================ */
+  let toastTimer = null;
+  function showToast(text) {
+    $('#toast-text').textContent = text;
+    const t = $('#toast');
+    t.classList.remove('hidden');
+    t.classList.remove('toast-in');
+    void t.offsetWidth; // перезапуск анимации
+    t.classList.add('toast-in');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(hideToast, 7000);
+  }
+  function hideToast() {
+    $('#toast').classList.add('hidden');
+    clearTimeout(toastTimer);
+  }
+
+  /* ============================================================
+     ПОДТВЕРЖДЕНИЕ ДЕЙСТВИЙ (вместо window.confirm)
+     window.confirm() в установленном PWA/WebView может не работать,
+     поэтому показываем своё окно-диалог.
+     ============================================================ */
+  function askConfirm(text, onYes) {
+    if (!text || typeof onYes !== 'function') return;
+    let el = document.getElementById('confirm-box');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'confirm-box';
+      el.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(2,6,23,.78);display:flex;align-items:center;justify-content:center;padding:16px;';
+      el.innerHTML = `
+        <div class="w-full max-w-sm rounded-2xl bg-slate-900 border border-slate-700 p-5 space-y-4 shadow-2xl">
+          <p class="text-sm text-slate-200 leading-snug"></p>
+          <div class="flex gap-2">
+            <button data-ac="no" class="flex-1 rounded-xl bg-slate-700 hover:bg-slate-600 px-4 py-2.5 text-sm font-semibold text-white">Отмена</button>
+            <button data-ac="yes" class="flex-1 rounded-xl bg-rose-600 hover:bg-rose-500 px-4 py-2.5 text-sm font-semibold text-white">Удалить</button>
+          </div>
+        </div>`;
+      el.addEventListener('click', (e) => {
+        const b = e.target.closest('button[data-ac]');
+        if (!b) return;
+        const doYes = b.dataset.ac === 'yes';
+        const cb = el.__cb;
+        el.remove();
+        if (doYes && cb) cb();
+      });
+      document.body.appendChild(el);
+    } else {
+      document.body.appendChild(el);
+    }
+    el.querySelector('p').textContent = text;
+    el.__cb = onYes;
+  }
+
+  /* ============================================================
+     ЭКРАН ВХОДА — пошаговый выбор города / школы / класса
+     ============================================================ */
+  function detachAuth() { offRefs(authRefs); authRefs = []; }
+
+  function setStepView(title, status) {
+    $('#select-title').textContent = title;
+    $('#select-status').textContent = status || '';
+    $('#back-btn').classList.toggle('hidden', state.step === 1);
+  }
+
+  // Кнопка-элемент списка выбора
+  function choiceBtn(item) {
+    return `
+      <button data-key="${item.key}"
+        class="choice w-full flex items-center justify-between gap-3 rounded-xl bg-slate-900 border border-slate-800 px-4 py-4 text-left hover:border-indigo-500/60 active:scale-[.98] transition fade-up">
+        <span class="flex-1 min-w-0">
+          <span class="block font-semibold truncate">${item.name || 'Без названия'}</span>
+        </span>
+        <svg class="w-5 h-5 shrink-0 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+        </svg>
+      </button>`;
+  }
+
+  function renderList(items, emptyText, onCb) {
+    const list = $('#select-list');
+    if (!items.length) { list.innerHTML = emptyNote(emptyText); return; }
+    list.innerHTML = items.map(choiceBtn).join('');
+    list.querySelectorAll('.choice').forEach((b) => {
+      b.addEventListener('click', () => onCb(b.dataset.key, items.find((i) => i.key === b.dataset.key)));
+    });
+  }
+
+  // Шаг 1. Города из cities/
+  function loadCities() {
+    detachAuth();
+    state.step = 1;
+    setStepView('Выберите город', '');
+    $('#select-list').innerHTML = spinner();
+
+    addRef(authRefs, db.ref(P.cities())).once('value', (snap) => {
+      const cities = snapArr(snap);
+      state.sel.cid = state.sel.cname = state.sel.sid = state.sel.sname = state.sel.clid = state.sel.clname = null;
+      renderList(cities, 'Пока нет городов. Добавьте первый город в админ-панели (зажмите заголовок).', (key, it) => {
+        state.sel.cid = key; state.sel.cname = it.name;
+        loadSchools();
+      });
+    });
+  }
+
+  // Шаг 2. Школы в выбранном городе
+  function loadSchools() {
+    detachAuth();
+    state.step = 2;
+    setStepView('Выберите школу', state.sel.cname ? `Город: ${state.sel.cname}` : '');
+    $('#select-list').innerHTML = spinner();
+
+    addRef(authRefs, db.ref(P.schools(state.sel.cid))).once('value', (snap) => {
+      const schools = snapArr(snap);
+      state.sel.sid = state.sel.sname = state.sel.clid = state.sel.clname = null;
+      renderList(schools, 'Школ в этом городе пока нет.', (key, it) => {
+        state.sel.sid = key; state.sel.sname = it.name;
+        loadClasses();
+      });
+    });
+  }
+
+  // Шаг 3. Классы в выбранной школе
+  function loadClasses() {
+    detachAuth();
+    state.step = 3;
+    setStepView('Выберите класс', `${state.sel.cname} · ${state.sel.sname}`);
+    $('#select-list').innerHTML = spinner();
+
+    addRef(authRefs, db.ref(P.classes(state.sel.cid, state.sel.sid))).once('value', (snap) => {
+      const classes = snapArr(snap);
+      state.sel.clid = state.sel.clname = null;
+      renderList(classes, 'Классов в школе пока нет.', (key, it) => {
+        state.sel.clid = key; state.sel.clname = it.name;
+        saveSelection();
+        showMainScreen();
+      });
+    });
+  }
+
+  // Сохраняем выбор в localStorage, чтобы при следующем заходе открывался класс сразу
+  function saveSelection() {
+    localStorage.setItem(LS.sel, JSON.stringify(state.sel));
+  }
+  function loadSelection() {
+    try { state.sel = JSON.parse(localStorage.getItem(LS.sel)) || {}; } catch (e) { state.sel = {}; }
+  }
+
+  // Кнопка «Сменить» — сброс выбора и выход на экран входа
+  function resetSelection() {
+    detachMain();
+    state.sel = { cid: null, cname: null, sid: null, sname: null, clid: null, clname: null };
+    saveSelection();
+    showAuth();
+  }
+
+  // Кнопка «Назад» на экране выбора
+  function onBack() {
+    if (state.step === 3) loadSchools();
+    else if (state.step === 2) loadCities();
+  }
+
+  function showAuth() {
+    $('#auth-screen').classList.remove('hidden');
+    $('#main-screen').classList.add('hidden');
+    if (!isConfigured()) {
+      const c = getConfig();
+      let why = 'не загрузился файл firebase-config.js';
+      if (c) {
+        if (!c.apiKey) why = 'в конфиге нет apiKey';
+        else if (String(c.apiKey).startsWith('YOUR_')) why = 'apiKey остался заглушкой (YOUR_...)';
+        if (!c.databaseURL) why += ', нет databaseURL';
+      }
+      $('#select-list').innerHTML = emptyNote(
+        `Файл firebase-config.js: ${why}.<br>Проверьте конфиг и обновите страницу (Ctrl+F5).`
+      );
+      return;
+    }
+    loadCities();
+  }
+
+  /* ============================================================
+     ГЛАВНЫЙ ЭКРАН
+     ============================================================ */
+  function detachMain() { offRefs(mainRefs); mainRefs = []; clearChatPoll(); }
+
+  // Обновляем подзаголовок и убираем прослушку "своего" прошлого класса
+  function showMainScreen() {
+    const s = state.sel;
+    $('#header-text').textContent = `${s.cname}, ${s.sname}, ${s.clname}`;
+    $('#auth-screen').classList.add('hidden');
+    $('#main-screen').classList.remove('hidden');
+    showSettingsTab(admin.authorized); // вкладка «Настройки» видна только администратору
+    switchTab('schedule');
+    loadMainData();
+    askNickIfNeeded();
+    $('#chat-nick').textContent = nick() || 'Ученик';
+    ensureProfile(); // профиль: ник + класс (при наличии авторизации)
+  }
+
+  // Подписки на данные текущего класса
+  function loadMainData() {
+    detachMain();
+    const root = db.ref(curClassPath());
+
+    // Расписание
+    addRef(mainRefs, root.child('schedule')).on('value', renderSchedule);
+    // Домашка
+    addRef(mainRefs, root.child('homework')).on('value', renderHomework);
+    // Объявления (лента)
+    addRef(mainRefs, root.child('announcements')).on('value', renderAnnouncements);
+    // Объявления (только новые — для toast)
+    addRef(mainRefs, root.child('announcements')).on('child_added', onNewAnnouncement);
+    // Чат
+    addRef(mainRefs, root.child('chat')).on('child_added', onChatMessage);
+    addRef(mainRefs, root.child('chat')).on('child_removed', (snap) => forgetMsg(snap.key));
+    // Чат: гарантированная полная отрисовка + страховочный поллинг (on-события ненадёжны)
+    refreshChat();
+    startChatPoll();
+  }
+
+  /* ---------- Уведомление: «Завтра контрольная» ---------- */
+  let seenSet = new Set();
+  function initSeen() {
+    try { seenSet = new Set(JSON.parse(localStorage.getItem(LS.seen) || '[]')); } catch (e) { seenSet = new Set(); }
+  }
+  function persistSeen() {
+    try { localStorage.setItem(LS.seen, JSON.stringify(Array.from(seenSet))); } catch (e) {}
+  }
+  const CTRL_RE = /завтра\s+контрольн/iu;
+
+  function onNewAnnouncement(snap) {
+    const a = snap.val();
+    if (!a || !a.text) return;
+    const already = seenSet.has(snap.key);
+    seenSet.add(snap.key);
+    persistSeen();
+    // Уведомление показываем только для НОВЫХ записей со словом «Завтра контрольная»
+    if (!already && CTRL_RE.test(a.text)) showToast(a.text);
+  }
+
+  /* ---------- Вкладки ---------- */
+  function switchTab(name) {
+    $$('.tab-btn').forEach((b) => {
+      const active = b.dataset.tab === name;
+      b.classList.toggle('text-indigo-400', active);
+      b.classList.toggle('bg-indigo-500/10', active);
+      b.classList.toggle('text-slate-400', !active);
+    });
+    $$('.tab').forEach((sec) => sec.classList.add('hidden'));
+    const target = $('#tab-' + name);
+    target.classList.remove('hidden');
+    target.querySelectorAll('.fade-up').forEach((el) => el.classList.add('fade-up'));
+    if (name === 'chat') refreshChat();
+    if (name === 'settings') renderSettingsTab();
+  }
+
+  /* ---------- Расписание: сегодня и завтра ---------- */
+  function renderSchedule(snap) {
+    const data = snap.val() || {};
+    const todayIdx = new Date().getDay();
+    const tomorrowIdx = (todayIdx + 1) % 7;
+    const days = [
+      { key: DAY_KEYS[todayIdx], title: 'Сегодня', dayName: DAY_NAMES[todayIdx] },
+      { key: DAY_KEYS[tomorrowIdx], title: 'Завтра', dayName: DAY_NAMES[tomorrowIdx] },
+    ];
+    const el = $('#tab-schedule');
+    el.innerHTML = days.map((d) => {
+      const lessons = Array.isArray(data[d.key]) ? data[d.key] : [];
+      const inner = lessons.length
+        ? lessons.map((l, i) => `
+            <li class="flex items-center gap-3 px-1">
+              <span class="shrink-0 w-7 h-7 rounded-full bg-indigo-500/15 text-indigo-400 text-xs font-bold flex items-center justify-center">${i + 1}</span>
+              <span class="flex-1 text-sm">${l}</span>
+            </li>`).join('')
+        : '<li class="text-sm text-slate-500 px-1">Уроков нет 😌</li>';
+      return `
+        <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
+          <h3 class="font-bold text-sm mb-3">${d.title} · ${d.dayName}</h3>
+          <ul class="space-y-2.5">${inner}</ul>
+        </div>`;
+    }).join('');
+  }
+
+  /* ---------- Домашка ---------- */
+  function renderHomework(snap) {
+    const hw = snap.val() || {};
+    const entries = Object.entries(hw).sort((a, b) => a[0].localeCompare(b[0], 'ru'));
+    const el = $('#tab-homework');
+    if (!entries.length) {
+      el.innerHTML = emptyNote('Домашки нет 🎉');
+      return;
+    }
+    el.innerHTML = entries.map(([subj, task]) => `
+      <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
+        <div class="flex items-center gap-2 mb-1.5">
+          <span class="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
+          <h4 class="font-bold text-sm">${subj}</h4>
+        </div>
+        <p class="text-sm text-slate-300 whitespace-pre-wrap break-words">${task || '—'}</p>
+      </div>`).join('');
+  }
+
+  /* ---------- Объявления ---------- */
+  function renderAnnouncements(snap) {
+    const items = snapArr(snap).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    const el = $('#tab-announcements');
+    if (!items.length) {
+      el.innerHTML = emptyNote('Объявлений пока нет');
+      return;
+    }
+    // Подсветка объявлений про контрольную
+    el.innerHTML = items.map((a) => {
+      const isCtrl = CTRL_RE.test(a.text || '');
+      return `
+        <div class="rounded-2xl p-4 border fade-up ${isCtrl ? 'bg-amber-500/10 border-amber-500/40' : 'bg-slate-900 border-slate-800'}">
+          <p class="text-sm whitespace-pre-wrap break-words ${isCtrl ? 'text-amber-200 font-semibold' : 'text-slate-200'}">${a.text}</p>
+          <p class="text-[11px] text-slate-500 mt-2">${fmtDate(a.createdAt)}</p>
+        </div>`;
+    }).join('');
+  }
+
+  /* ---------- Чат: реального времени через Firebase ---------- */
+  const nickColor = (n) => {
+    const hue = (n.split('').reduce((a, c) => a + c.charCodeAt(0), 0) * 37) % 360;
+    return `hsl(${hue},70%,70%)`;
+  };
+
+  // Вставка сообщения по времени (а не в конец): иначе опоздавшие события
+  // притворяются самыми свежими и вызывают иллюзию дубликатов.
+  function nodeTime(el) { return parseInt(el.getAttribute('data-time') || '0', 10) || 0; }
+  function insertSorted(div) {
+    const box = $('#chat-messages');
+    const t = nodeTime(div);
+    const kids = box.children;
+    let i = kids.length - 1;
+    while (i >= 0 && nodeTime(kids[i]) > t) i--;
+    if (i < 0) box.insertBefore(div, box.firstChild);
+    else if (i < kids.length - 1) box.insertBefore(div, kids[i].nextSibling);
+    else box.appendChild(div);
+  }
+
+  function onChatMessage(snap) {
+    const m = snap.val();
+    if (!m || !m.text) return;
+    const key = snap.key;
+    const box = $('#chat-messages');
+    if (box.querySelector('[data-msg="' + key + '"]')) return; // уже нарисовано (поллинг/перерисовка)
+    const me = nick();
+    const mname = m.nick || m.name || 'Ученик';
+    const div = document.createElement('div');
+    const mine = mname === me;
+    const canDel = admin.authorized && altMode(); // альт-менедж: удаление любых сообщений
+    div.className = `flex ${mine ? 'justify-end' : 'justify-start'} fade-up`;
+    div.setAttribute('data-msg', key);
+    div.setAttribute('data-time', String(m.time || 0));
+    div.innerHTML = `
+      <div class="${mine ? 'bg-indigo-600' : 'bg-slate-800'} rounded-2xl px-3.5 py-2 max-w-[80%]">
+        <div class="flex items-center gap-2 mb-0.5">
+          <div class="text-[11px] font-bold" style="color:${mine ? '#c7d2fe' : nickColor(mname)}">${mname}</div>
+          ${canDel ? `<button class="msg-del text-[10px] opacity-70 hover:opacity-100 px-1 -mr-1 rounded ${mine ? 'text-indigo-200' : 'text-slate-300'}" title="Удалить">✕</button>` : ''}
+        </div>
+        <p class="text-sm break-words whitespace-pre-wrap">${m.text}</p>
+        <div class="text-[10px] opacity-60 mt-1 text-right">${fmtDate(m.time || Date.now())}</div>
+      </div>`;
+    insertSorted(div);
+    chatMaxCount = Math.max(chatMaxCount, box.querySelectorAll('[data-msg]').length);
+    scrollChat();
+  }
+
+  // Максимум когда-либо отрисованных сообщений. Используется, чтобы не
+  //  "ужать" чат до частичного снапшота (once('value') иногда приходит неполным).
+  let chatMaxCount = 0;
+  let chatFetchBusy = false;
+
+  // Полная пересборка чата из полного снапшота
+  function renderChat(items) {
+    const box = $('#chat-messages');
+    if (items.length < chatMaxCount) return false; // частичный снапшот — не перерисовываем меньше
+    box.innerHTML = '';
+    chatMaxCount = Math.max(chatMaxCount, items.length);
+    items
+      .sort((a, b) => (a.time || 0) - (b.time || 0))
+      .forEach((m) => onChatMessage({ key: m.key, val: () => m }));
+    if (!$('#tab-chat').classList.contains('hidden')) scrollChat();
+    return true;
+  }
+
+  // Пересборка чата (например, после смены альт-менедж режима).
+  //  ЗАЩИТА от частичных снапшотов:
+  //   1) если снапшот меньше уже отрисованного — переспрашиваем (до 3 попыток);
+  //   2) после первой отрисовки через 1.2с делаем контрольный запрос: если в нём
+  //      больше сообщений — перерисовываем (чатик "подрастает", но не ужимается).
+  function refreshChat(tries) {
+    if (chatFetchBusy) { setTimeout(() => refreshChat(tries || 0), 800); return; }
+    chatFetchBusy = true;
+    const path = curClassPath();
+    db.ref(path + '/chat').once('value', (snap) => {
+      chatFetchBusy = false;
+      if (curClassPath() !== path || renderChat(snapArr(snap))) return;
+      if ((tries || 0) < 3) setTimeout(() => refreshChat((tries || 0) + 1), 1500);
+    }, (err) => {
+      chatFetchBusy = false;
+      showToast('Ошибка чата: ' + (err && err.message ? err.message : err));
+    });
+    // Контрольный запрос: ловим случай, когда сам первый снапшот был частичным
+    setTimeout(() => {
+      if (curClassPath() !== path || chatFetchBusy) return;
+      chatFetchBusy = true;
+      db.ref(path + '/chat').once('value', (snap) => {
+        chatFetchBusy = false;
+        if (curClassPath() !== path) return;
+        const v = snapArr(snap);
+        if (v.length > chatMaxCount) renderChat(v);
+      });
+    }, 1200);
+  }
+
+  let chatPollTimer = null;
+  function startChatPoll() { clearChatPoll(); chatPollTimer = setInterval(pollChat, 12000); }
+  function clearChatPoll() { if (chatPollTimer) { clearInterval(chatPollTimer); chatPollTimer = null; } }
+
+  // Страховка: если живые события не пришли, сверим полные снапшоты раз в 12 сек.
+  //  «Растём» (новые сообщения) и аккуратно лечим одиночные удаления:
+  //  ужимать чат до частичного снапшота нельзя.
+  function pollChat() {
+    const tab = $('#tab-chat');
+    if (!tab || tab.classList.contains('hidden') || chatFetchBusy) return;
+    chatFetchBusy = true;
+    db.ref(curClassPath() + '/chat').once('value', (snap) => {
+      chatFetchBusy = false;
+      const remote = snapArr(snap);
+      const remoteKeys = new Set(remote.map((m) => m.key));
+      const nodes = $('#chat-messages').querySelectorAll('[data-msg]');
+      const localKeys = new Set(Array.from(nodes).map((n) => n.dataset.msg));
+      const hasNew = [...remoteKeys].some((k) => !localKeys.has(k));
+      if (hasNew && remote.length >= chatMaxCount) { renderChat(remote); return; }
+      // Одиночное удаление (нет новых ключей, в БД ровно на один меньше)
+      if (!hasNew && remoteKeys.size === localKeys.size - 1) {
+        const gone = [...localKeys].find((k) => !remoteKeys.has(k));
+        if (gone) forgetMsg(gone);
+      }
+    });
+  }
+
+  function forgetMsg(key) {
+    const box = $('#chat-messages');
+    const el = box.querySelector('[data-msg="' + key + '"]');
+    if (el) el.remove();
+    chatMaxCount = box.querySelectorAll('[data-msg]').length;
+  }
+
+  function scrollChat() {
+    const box = $('#chat-messages');
+    box.scrollTop = box.scrollHeight;
+  }
+
+  function sendMessage(e) {
+    e.preventDefault();
+    const input = $('#chat-input');
+    const text = input.value.trim();
+    if (!text) return;
+    if (!nick()) { showToast('Сначала задайте ник'); askNickIfNeeded(); return; }
+    if (!HubAuth.uid || !HubAuth.ready) { showToast('Авторизация ещё не готова, попробуйте снова'); return; }
+    const me = nick();
+    // Проверяем бан/мут по UID (сменой ника это не обойти)
+    HubModeration.checkCanSend((err) => {
+      if (err) { showToast(err); return; }
+      ensureProfile();
+      // Автофильтр: мат / оскорбление / угроза. Сообщение НЕ удаляем — помечаем флагом.
+      const reasons = checkMessage(text);
+      const s = state.sel;
+      const msg = { uid: HubAuth.uid, nick: me, text, time: Date.now(), class: (s && s.clname) || '' };
+      if (reasons.length) msg.flagged = true;
+      const cref = db.ref(curClassPath() + '/chat').push(msg);
+      if (reasons.length) {
+        // Отдельно сохраняем в ветку flagged_messages для раздела «Интересное»
+        db.ref('/flagged_messages/' + s.cid + '/' + s.sid + '/' + s.clid + '/' + cref.key)
+          .set({
+            uid: HubAuth.uid,
+            nick: me,
+            text,
+            time: Date.now(),
+            reason: reasons.join(', '),
+            cityName: s.cname,
+            schoolName: s.sname,
+            className: s.clname,
+          })
+          .catch((err2) => showToast('Ошибка: ' + (err2.message || err2)));
+      }
+    });
+    input.value = '';
+    setTimeout(refreshChat, 500); // гарантированный показ своего сообщения
+  }
+
+  /* ---------- Модалка ника ---------- */
+  function askNickIfNeeded() {
+    if (nick()) return;
+    const modal = $('#nick-modal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    setTimeout(() => $('#nick-input').focus(), 100);
+  }
+  function saveNick() {
+    const val = $('#nick-input').value.trim();
+    // Пустое поле → ник «Ученик»
+    setNick(val ? val.slice(0, 30) : 'Ученик');
+    $('#nick-error').classList.add('hidden');
+    closeNickModal();
+    $('#chat-nick').textContent = nick();
+    ensureProfile(); // обновляем nick в профиле users/{uid}
+  }
+  function closeNickModal() {
+    const modal = $('#nick-modal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    $('#nick-error').classList.add('hidden');
+    $('#nick-input').value = '';
+  }
+  // Смена ника из чата
+  function changeNick() {
+    const modal = $('#nick-modal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    $('#nick-input').value = nick();
+    setTimeout(() => $('#nick-input').focus(), 100);
+  }
+
+  /* ============================================================
+     СЕКРЕТНЫЙ ВХОД В РЕЖИМ АДМИНИСТРАТОРА
+     ============================================================ */
+  // Пароль администратора (фиксированный; при желании поменяйте строку ниже)
+  const ADMIN_PASS = '7G_Nkdk_$ch00l_Hub_#2026_xX';
+
+  // Альт-менедж: возможность удалять любые сообщения чата
+  function altMode() { return localStorage.getItem('sh_altadmin') === '1'; }
+  function setAltMode(on) { localStorage.setItem('sh_altadmin', on ? '1' : '0'); }
+
+  // Скрыть/показать вкладку «Настройки»
+  function showSettingsTab(show) {
+    const btn = $('#tab-settings-btn');
+    if (!btn) return;
+    btn.classList.toggle('hidden', !show);
+  }
+
+  function openAdmin() {
+    if (!isConfigured()) { showToast('Сначала заполните firebase-config.js'); return; }
+    offRefs(adminRefs); adminRefs = [];
+    if (admin.authorized) { enableAdminMode(); return; }
+    showPassModal();
+  }
+  function closeAdmin() {
+    offRefs(adminRefs); adminRefs = [];
+    $('#admin-panel').classList.add('hidden');
+  }
+
+  /* ---- Вход по паролю ---- */
+  function showPassModal() {
+    const m = $('#pass-modal');
+    m.classList.remove('hidden');
+    $('#pass-input').value = '';
+    $('#pass-hint').textContent = 'Вход работает только с зарегистрированным паролем.';
+    setTimeout(() => $('#pass-input').focus(), 100);
+  }
+  function closePassModal() {
+    $('#pass-modal').classList.add('hidden');
+  }
+  function tryLogin() {
+    const v = $('#pass-input').value;
+    if (!v) { showToast('Введите пароль'); return; }
+    sha256(v).then((h) => {
+      sha256(ADMIN_PASS).then((h2) => {
+        if (h === h2 || sHashFb(v) === sHashFb(ADMIN_PASS)) {
+          admin.authorized = true;
+          sessionStorage.setItem('sh_admin_auth', '1');
+          closePassModal();
+          enableAdminMode();
+        } else {
+          showToast('Неверный пароль');
+        }
+      });
+    });
+  }
+
+  // Включение режима администратора: появляется вкладка «Настройки»
+  function enableAdminMode() {
+    showSettingsTab(true);
+    showToast('Режим администратора включён');
+    if (!$('#main-screen').classList.contains('hidden')) refreshChat();
+  }
+
+  // Выход из режима администратора
+  function exitAdminMode() {
+    admin.authorized = false;
+    sessionStorage.removeItem('sh_admin_auth');
+    setAltMode(false);
+    showSettingsTab(false);
+    showToast('Режим администратора выключен');
+  }
+
+  /* ---- Вкладка «Настройки» ---- */
+  function updateAltSwitch(on) {
+    const s = $('#alt-slider');
+    if (!s) return;
+    s.classList.toggle('bg-indigo-600', on);
+    s.classList.toggle('bg-slate-700', !on);
+    const k = $('#alt-knob');
+    if (k) k.classList.toggle('translate-x-5', on);
+  }
+  function renderSettingsTab() {
+    const el = $('#tab-settings');
+    const on = altMode();
+    el.innerHTML = `
+      <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <div class="font-bold text-sm">Альт-менедж</div>
+            <p class="text-[11px] text-slate-500 mt-0.5">Возможность удалять свои и чужие сообщения в чате</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer shrink-0">
+            <input id="alt-toggle" type="checkbox" class="sr-only" ${on ? 'checked' : ''}>
+            <span id="alt-slider" class="w-11 h-6 rounded-full ${on ? 'bg-indigo-600' : 'bg-slate-700'} relative transition">
+              <span id="alt-knob" class="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition ${on ? 'translate-x-5' : ''}"></span>
+            </span>
+          </label>
+        </div>
+      </div>
+      <button id="admin-full-btn" class="w-full rounded-xl bg-slate-800 hover:bg-slate-700 py-3 text-sm font-bold fade-up">Полная админ-панель</button>
+      <button id="admin-exit-btn" class="w-full rounded-xl bg-rose-600/80 hover:bg-rose-600 py-3 text-sm font-bold fade-up">Выйти из режима администратора</button>
+      <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
+        <div class="font-bold text-sm">Мой ID (UID)</div>
+        <p class="text-[11px] text-slate-500 mt-0.5 mb-2">Нужен, чтобы добавить себя в ветку admins (правки содержимого и модерация). Это единственный идентификатор аккаунта — бан/мут привязан к нему.</p>
+        <code id="my-uid" class="block text-[11px] break-all bg-slate-800 rounded-lg px-2 py-1.5">${esc(HubAuth.uid || '…')}</code>
+      </div>
+      <p class="text-[11px] text-slate-600 px-1">Полная панель — как раньше: города, школы, классы, данные класса, люди и чат.</p>`;
+
+    $('#alt-toggle').addEventListener('change', (e) => {
+      setAltMode(e.target.checked);
+      updateAltSwitch(e.target.checked);
+      refreshChat();
+      showToast(e.target.checked ? 'Альт-менедж включён' : 'Альт-менедж выключен');
+    });
+    $('#admin-full-btn').addEventListener('click', () => {
+      $('#admin-panel').classList.remove('hidden');
+      renderAdminCore();
+    });
+    $('#admin-exit-btn').addEventListener('click', () => {
+      exitAdminMode();
+      switchTab('schedule');
+    });
+  }
+
+  // Долгое нажатие (3 секунды) — таймер
+  function bindLongPress(el, cb) {
+    let timer = null;
+    const start = () => {
+      timer = setTimeout(() => {
+        timer = null;
+        el.classList.add('hold');
+        cb();
+      }, 3000);
+    };
+    const stop = (e) => {
+      clearTimeout(timer);
+      timer = null;
+      el.classList.remove('hold');
+    };
+    el.addEventListener('pointerdown', start);
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => el.addEventListener(ev, stop));
+  }
+
+  // N тапов по элементу в течение 2 секунд
+  function bindNTaps(el, n, cb) {
+    let count = 0, timer = null;
+    el.addEventListener('click', () => {
+      count++;
+      clearTimeout(timer);
+      timer = setTimeout(() => { count = 0; }, 2000);
+      if (count >= n) { count = 0; cb(); }
+    });
+  }
+
+  /* ============================================================
+     АДМИН-ПАНЕЛЬ: управление данными
+     ============================================================ */
+  // Страницы админки
+  const ADMIN_PAGES = [
+    ['cities', 'Города'],
+    ['schools', 'Школы'],
+    ['classes', 'Классы'],
+    ['content', 'Данные'],
+    ['people', 'Люди и чат'],
+    ['stats', 'Статистика'],
+  ];
+
+  function renderAdminPage(name) {
+    admin.page = name;
+    offRefs(adminRefs); adminRefs = [];
+    $$('.apage-btn').forEach((b) => {
+      const on = b.dataset.apage === name;
+      b.classList.toggle('bg-slate-800', on);
+      b.classList.toggle('text-white', on);
+      b.classList.toggle('text-slate-400', !on);
+    });
+    const body = $('#admin-body');
+    body.innerHTML = '';
+
+    if (name === 'cities') renderAdminCities(body);
+    else if (name === 'schools') renderAdminSchools(body);
+    else if (name === 'classes') renderAdminClasses(body);
+    else if (name === 'content') renderAdminContent(body);
+    else if (name === 'people') renderAdminPeople(body);
+    else if (name === 'stats') renderAdminStats(body);
+  }
+
+  // ---- Общие элементы форм админки ----
+  const aInput = (cls) => `w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-sm placeholder-slate-500 outline-none focus:border-indigo-500 transition ${cls || ''}`;
+  const aBtn = (cls) => `rounded-lg px-3 py-2 text-xs font-bold transition ${cls || 'bg-slate-800 hover:bg-slate-700'}`;
+
+  /* ---- Города ---- */
+  function renderAdminCities(body) {
+    body.innerHTML = `
+      <form id="city-add" class="flex gap-2">
+        <input id="city-name" placeholder="Название города" class="${aInput('flex-1 min-w-0')}">
+        <button class="${aBtn('bg-indigo-600 hover:bg-indigo-500', 'Добавить')}">Добавить</button>
+      </form>
+      <p class="text-xs text-slate-500 mt-2">Изменяйте название прямо в поле и нажимайте «Сохранить».</p>
+      <div id="city-list" class="mt-3 space-y-2"></div>`;
+
+    $('#city-add').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const name = $('#city-name').value.trim();
+      if (!name) return;
+      const target = db.ref(P.cities());
+      target.push({ name })
+        .then(() => showToast('Город добавлен'))
+        .catch((err) => {
+          console.error('Ошибка записи:', err);
+          showToast('Ошибка сохранения: ' + (err && err.message || err));
+        });
+      $('#city-name').value = '';
+    });
+
+    addRef(adminRefs, db.ref(P.cities())).on('value', (snap) => {
+      const cities = snapArr(snap);
+      $('#city-list').innerHTML = cities.length ? cities.map((c) => `
+        <div class="row rounded-xl bg-slate-900 border border-slate-800 p-3 flex flex-col gap-2 sm:flex-row sm:items-center fade-up">
+          <input data-act="cityName" value="${esc(c.name || '')}" placeholder="Название" class="${aInput('flex-1 min-w-0')}">
+          <div class="flex gap-2 shrink-0">
+            <button data-act="citySave" data-key="${esc(c.key)}" class="${aBtn('bg-emerald-600 hover:bg-emerald-500', 'Сохранить')}">Сохранить</button>
+            <button data-act="cityDelete" data-key="${esc(c.key)}" class="${aBtn('bg-rose-600 hover:bg-rose-500', 'Удалить')}">Удалить</button>
+          </div>
+        </div>`).join('') : emptyNote('Городов пока нет');
+    }, (err) => {
+      console.error('Ошибка чтения списка городов:', err);
+      $('#city-list').innerHTML = emptyNote('Не удалось прочитать данные.<br>Проверьте правила Firebase Realtime Database (нужен доступ на чтение и запись).');
+    });
+  }
+
+  /* ---- Школы ---- */
+  function renderAdminSchools(body) {
+    body.innerHTML = `
+      <div class="mb-3">
+        <label class="text-xs text-slate-400 block mb-1">Город</label>
+        <select id="school-city" class="${aInput('w-full')}"></select>
+      </div>
+      <form id="school-add" class="flex gap-2">
+        <input id="school-name" placeholder="Название школы (например, «Школа №4»)" class="${aInput('flex-1 min-w-0')}">
+        <button class="${aBtn('bg-indigo-600 hover:bg-indigo-500', 'Добавить')}">Добавить</button>
+      </form>
+      <p class="text-xs text-slate-500 mt-2">Сначала выберите город.</p>
+      <div id="school-list" class="mt-3 space-y-2"></div>`;
+
+    const fill = () => {
+      const cid = $('#school-city').value;
+      $('#school-list').innerHTML = spinner();
+      offRefs(adminRefs); adminRefs = [];
+
+      addRef(adminRefs, db.ref(P.schools(cid))).on('value', (snap) => {
+        const schools = snapArr(snap);
+        $('#school-list').innerHTML = schools.length ? schools.map((s) => `
+          <div class="row rounded-xl bg-slate-900 border border-slate-800 p-3 flex flex-col gap-2 sm:flex-row sm:items-center fade-up">
+            <input data-act="schoolName" value="${esc(s.name || '')}" class="${aInput('flex-1 min-w-0')}">
+            <div class="flex gap-2 shrink-0">
+              <button data-act="schoolSave" data-key="${esc(s.key)}" class="${aBtn('bg-emerald-600 hover:bg-emerald-500', 'Сохранить')}">Сохранить</button>
+              <button data-act="schoolDelete" data-key="${esc(s.key)}" class="${aBtn('bg-rose-600 hover:bg-rose-500', 'Удалить')}">Удалить</button>
+            </div>
+          </div>`).join('') : emptyNote('Школ в этом городе нет');
+      });
+    };
+
+    // Заполняем список городов
+    addRef(adminRefs, db.ref(P.cities())).on('value', (snap) => {
+      const cities = snapArr(snap);
+      const sel = $('#school-city');
+      const prev = admin.city;
+      sel.innerHTML = '<option value="">— выберите город —</option>' +
+        cities.map((c) => `<option value="${esc(c.key)}">${esc(c.name || '')}</option>`).join('');
+      if (prev && cities.some((c) => c.key === prev)) sel.value = prev;
+      fill();
+    });
+
+    $('#school-city').addEventListener('change', () => { admin.city = $('#school-city').value || null; admin.school = null; fill(); });
+    $('#school-add').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const cid = $('#school-city').value;
+      const name = $('#school-name').value.trim();
+      if (!cid || !name) { showToast('Выберите город и введите название'); return; }
+      db.ref(P.schools(cid)).push({ name }).catch((err) => showToast('Ошибка сохранения: ' + (err.message || err)));
+      $('#school-name').value = '';
+    });
+  }
+
+  /* ---- Классы ---- */
+  function renderAdminClasses(body) {
+    body.innerHTML = `
+      <div class="mb-3">
+        <label class="text-xs text-slate-400 block mb-1">Город</label>
+        <select id="class-city" class="${aInput('w-full')}"></select>
+      </div>
+      <div class="mb-3">
+        <label class="text-xs text-slate-400 block mb-1">Школа</label>
+        <select id="class-school" class="${aInput('w-full')}"></select>
+      </div>
+      <form id="class-add" class="flex gap-2">
+        <input id="class-name" placeholder="Класс (например, 7А)" class="${aInput('flex-1 min-w-0')}">
+        <button class="${aBtn('bg-indigo-600 hover:bg-indigo-500', 'Добавить')}">Добавить</button>
+      </form>
+      <div id="class-count" class="text-xs text-slate-400 font-bold mt-4 mb-1"></div>
+      <div id="class-list" class="space-y-2"></div>`;
+
+    // Рисуем список классов для выбранных города/школы (надёжный разовый запрос)
+    const renderList = () => {
+      const cid = $('#class-city').value;
+      const sid = $('#class-school').value;
+      if (!sid) { $('#class-count').textContent = ''; $('#class-list').innerHTML = emptyNote('Сначала выберите школу'); return; }
+      $('#class-count').textContent = 'Загрузка…';
+      $('#class-list').innerHTML = spinner();
+      db.ref(P.classes(cid, sid)).once('value', (snap) => {
+        const classes = snapArr(snap);
+        $('#class-count').textContent = classes.length ? ('Классы в этой школе: ' + classes.length) : '';
+        $('#class-list').innerHTML = classes.length ? classes.map((c) => `
+          <div class="row rounded-xl bg-slate-900 border border-slate-800 p-3 flex flex-col gap-2 sm:flex-row sm:items-center fade-up">
+            <input data-act="className" value="${esc(c.name || '')}" class="${aInput('flex-1 min-w-0')}">
+            <div class="flex gap-2 shrink-0">
+              <button data-act="classSave" data-key="${esc(c.key)}" class="${aBtn('bg-emerald-600 hover:bg-emerald-500', 'Сохранить')}">Сохранить</button>
+              <button data-act="classDelete" data-key="${esc(c.key)}" class="${aBtn('bg-rose-600 hover:bg-rose-500', 'Удалить')}">Удалить</button>
+            </div>
+          </div>`).join('') : emptyNote('Классов в школе нет');
+      });
+    };
+
+    let loadedCid = null; // город, для которого уже заполнен список школ
+
+    // Наполняем выпадающий список школ выбранного города (только при смене города)
+    const loadSchools = () => {
+      const cid = $('#class-city').value;
+      admin.city = cid || null;
+      admin.school = null;
+      loadedCid = cid || null;
+      const sel = $('#class-school');
+      sel.innerHTML = '<option value="">— выберите школу —</option>';
+      if (!cid) { $('#class-list').innerHTML = emptyNote('Сначала выберите город'); return; }
+      db.ref(P.schools(cid)).once('value', (snap) => {
+        const schools = snapArr(snap);
+        sel.innerHTML = '<option value="">— выберите школу —</option>' +
+          schools.map((s) => `<option value="${esc(s.key)}">${esc(s.name || '')}</option>`).join('');
+        renderList();
+      });
+    };
+
+    // Города (прослушивание: после добавления класса перечитываем СТОЛЬКО ЖЕ список классов,
+    // но НЕ трогаем выбор школы, если город не менялся)
+    addRef(adminRefs, db.ref(P.cities())).on('value', (snap) => {
+      const cities = snapArr(snap);
+      const sel = $('#class-city');
+      sel.innerHTML = '<option value="">— выберите город —</option>' +
+        cities.map((c) => `<option value="${esc(c.key)}">${esc(c.name || '')}</option>`).join('');
+      if (admin.city && cities.some((c) => c.key === admin.city)) sel.value = admin.city;
+      const cid = sel.value;
+      if (!cid) { loadedCid = null; renderList(); return; }
+      if (cid !== loadedCid) loadSchools();
+      else renderList();
+    });
+
+    $('#class-city').addEventListener('change', loadSchools);
+    $('#class-school').addEventListener('change', () => {
+      admin.school = $('#class-school').value || null;
+      renderList();
+    });
+
+    $('#class-add').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const cid = $('#class-city').value, sid = $('#class-school').value;
+      const name = $('#class-name').value.trim();
+      if (!cid || !sid || !name) { showToast('Выберите город и школу, введите класс'); return; }
+      db.ref(P.classes(cid, sid)).push({ name })
+        .then(() => { $('#class-name').value = ''; renderList(); showToast('Класс «' + name + '» добавлен'); })
+        .catch((err) => showToast('Ошибка сохранения: ' + (err.message || err)));
+    });
+  }
+
+  /* ---------- Люди и чат: блокировки и удаление сообщений ---------- */
+  function renderAdminPeople(body) {
+    body.innerHTML = `
+      <p class="text-xs text-slate-500 mb-3">Модерация привязана к аккаунту (UID), а не к нику: бан/мут нельзя обойти сменой ника. Пользователи берутся из ветки users.</p>
+      <div class="space-y-3 mb-4">
+        <div>
+          <label class="text-xs text-slate-400 block mb-1">Город</label>
+          <select id="people-city" class="${aInput('w-full')}"></select>
+        </div>
+        <div>
+          <label class="text-xs text-slate-400 block mb-1">Школа</label>
+          <select id="people-school" class="${aInput('w-full')}"></select>
+        </div>
+        <div>
+          <label class="text-xs text-slate-400 block mb-1">Класс</label>
+          <select id="people-class" class="${aInput('w-full')}"></select>
+        </div>
+      </div>
+      <div id="people-list"></div>`;
+
+    const selCity = $('#people-city'), selSchool = $('#people-school'), selClass = $('#people-class');
+    const list = $('#people-list');
+
+    const loadPeople = () => {
+      const cid = selCity.value, sid = selSchool.value, clid = selClass.value;
+      if (!cid || !sid || !clid) { list.innerHTML = emptyNote('Выберите город, школу и класс'); return; }
+      list.innerHTML = spinner();
+      const node = db.ref(P.classNode(cid, sid, clid));
+      node.child('chat').once('value', (chatSnap) => {
+        const chat = chatSnap.val() || {};
+        // Сообщения: последние 100 по времени
+        const msgs = Object.keys(chat).map((k) => Object.assign({ key: k }, chat[k]))
+          .filter((m) => m && m.text)
+          .sort((a, b) => (b.time || 0) - (a.time || 0))
+          .slice(0, 100);
+        // Имя выбранного класса (фильтрация списка users по полю class)
+        const opt = selClass.selectedOptions && selClass.selectedOptions[0];
+        const clname = (opt && opt.value) ? opt.textContent.trim() : '';
+        // Пользователи берутся из ветки users (привязка к UID, а не к нику)
+        db.ref('/users').once('value', (us) => {
+          const users = [];
+          const uv = us.val() || {};
+          Object.keys(uv).forEach((uid) => {
+            const prof = Object.assign({ uid }, uv[uid] || {});
+            if (clname && prof.class !== clname) return; // только пользователи выбранного класса
+            const cnt = msgs.filter((m) =>
+              (m.uid === uid) || (!m.uid && (m.nick || m.name) === (prof.nick || ''))).length;
+            prof.msgCount = cnt;
+            users.push(prof);
+          });
+          users.sort((a, b) => (b.msgCount || 0) - (a.msgCount || 0));
+
+          list.innerHTML = `
+            <div class="text-xs text-slate-400 font-bold mb-2">Пользователи класса (${esc(String(users.length))})</div>
+            <div class="space-y-2 mb-6">${users.length ? users.map((u) => {
+              const st = HubModeration.statusOf(u);
+              const nme = u.nick || 'Ученик';
+              const isBanned = !!u.banned;
+              const isRestricted = !!u.banned || (u.mutedUntil && Number(u.mutedUntil) > Date.now());
+              return `
+              <div class="rounded-xl bg-slate-900 border border-slate-800 p-3 flex flex-col gap-2 sm:flex-row sm:items-center fade-up ${isBanned ? 'opacity-70' : ''}">
+                <div class="flex-1 min-w-0">
+                  <div class="font-semibold text-sm truncate" style="color:${nickColor(nme)}">${esc(nme)}</div>
+                  <div class="text-[11px] text-slate-500">
+                    <span class="${esc(st.cls)}">${esc(st.label)}</span>
+                    ${u.class ? ' · ' + esc(u.class) : ''} · ${u.msgCount} сообщ.
+                  </div>
+                  <div class="text-[10px] text-slate-600 break-all">${esc(u.uid)}</div>
+                </div>
+                <div class="flex gap-2 shrink-0 flex-wrap">
+                  <button data-act="mute1" data-uid="${esc(u.uid)}" class="${aBtn('bg-amber-600 hover:bg-amber-500')}">Мут 1 час</button>
+                  <button data-act="mute24" data-uid="${esc(u.uid)}" class="${aBtn('bg-amber-600 hover:bg-amber-500')}">Мут 24 часа</button>
+                  <button data-act="banForever" data-uid="${esc(u.uid)}" class="${aBtn('bg-rose-600 hover:bg-rose-500')}">Бан навсегда</button>
+                  ${isRestricted ? `<button data-act="unban" data-uid="${esc(u.uid)}" class="${aBtn('bg-emerald-600 hover:bg-emerald-500')}">Разблокировать</button>` : ''}
+                  <button data-act="purgeUser" data-uid="${esc(u.uid)}" data-nick="${esc(nme)}" class="${aBtn('bg-rose-600/70 hover:bg-rose-500')}">Удалить сообщения</button>
+                </div>
+              </div>`; }).join('') : emptyNote('Пользователей этого класса пока нет')}</div>
+            <div class="text-xs text-slate-400 font-bold mb-2">Последние сообщения (${esc(String(msgs.length))})</div>
+            <div class="space-y-2">${msgs.length ? msgs.map((m) => `
+              <div class="rounded-xl bg-slate-900 border border-slate-800 p-3 fade-up">
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="text-[11px] font-bold" style="color:${nickColor(m.nick || m.name || '?')}">${esc(m.nick || m.name || 'Ученик')}</span>
+                  <span class="text-[10px] text-slate-500">${fmtDate(m.time)}</span>
+                  <button data-act="delMsg" data-key="${esc(m.key)}" class="ml-auto ${aBtn('bg-rose-600/80 hover:bg-rose-500')}">Удалить</button>
+                </div>
+                <p class="text-sm break-words whitespace-pre-wrap">${esc(m.text)}</p>
+              </div>`).join('') : emptyNote('Сообщений нет')}</div>`;
+        }).catch(() => { list.innerHTML = emptyNote('Не удалось загрузить список пользователей'); });
+      });
+    };
+
+    // Города → школы → классы. Сохраняем выбор города/школы/класса между вкладками.
+    const fillSchools = (keepSid) => {
+      selSchool.innerHTML = '<option value="">— школа —</option>';
+      selClass.innerHTML = '<option value="">— класс —</option>';
+      const cid = selCity.value;
+      if (!cid) { admin.school = admin.cls = null; loadPeople(); return; }
+      db.ref(P.schools(cid)).once('value', (ss) => {
+        const schools = snapArr(ss);
+        selSchool.innerHTML = '<option value="">— школа —</option>' + schools.map((s) => `<option value="${esc(s.key)}">${esc(s.name || '')}</option>`).join('');
+        if (keepSid && schools.some((s) => s.key === keepSid)) {
+          selSchool.value = keepSid;
+          fillClasses(keepSid, admin.cls);
+        } else {
+          admin.school = admin.cls = null;
+          loadPeople();
+        }
+      });
+    };
+    const fillClasses = (sid, keepClid) => {
+      selClass.innerHTML = '<option value="">— класс —</option>';
+      if (!sid) { admin.cls = null; loadPeople(); return; }
+      db.ref(P.classes(admin.city, sid)).once('value', (cs) => {
+        const classes = snapArr(cs);
+        selClass.innerHTML = '<option value="">— класс —</option>' + classes.map((c) => `<option value="${esc(c.key)}">${esc(c.name || '')}</option>`).join('');
+        if (keepClid && classes.some((c) => c.key === keepClid)) { selClass.value = keepClid; admin.cls = keepClid; }
+        else admin.cls = null;
+        loadPeople();
+      });
+    };
+
+    addRef(adminRefs, db.ref(P.cities())).on('value', (snap) => {
+      const cities = snapArr(snap);
+      selCity.innerHTML = '<option value="">— город —</option>' + cities.map((c) => `<option value="${esc(c.key)}">${esc(c.name || '')}</option>`).join('');
+      if (admin.city && cities.some((c) => c.key === admin.city)) selCity.value = admin.city;
+      fillSchools(admin.school);
+    });
+    selCity.addEventListener('change', () => {
+      admin.city = selCity.value || null;
+      admin.school = admin.cls = null;
+      fillSchools();
+    });
+    selSchool.addEventListener('change', () => {
+      admin.school = selSchool.value || null;
+      admin.cls = null;
+      fillClasses(admin.school);
+    });
+    selClass.addEventListener('change', () => { admin.cls = selClass.value || null; loadPeople(); });
+  }
+
+  /* ---------- Статистика: счётчики, активность, «Интересное» ---------- */
+  function openClassChat(cid, sid, clid, title) {
+    const m = $('#view-modal');
+    m.classList.remove('hidden');
+    $('#view-title').textContent = 'Чат: ' + (title || '');
+    const body = $('#view-body');
+    body.innerHTML = spinner();
+    db.ref('/cities/' + cid + '/schools/' + sid + '/classes/' + clid + '/chat').once('value', (snap) => {
+      const items = snapArr(snap);
+      items.sort((a, b) => (a.time || 0) - (b.time || 0));
+      const last = items.slice(-50);
+      body.innerHTML = last.length ? last.map((m2) => {
+        const fl = m2.flagged;
+        return `
+          <div class="rounded-2xl bg-slate-800 px-3.5 py-2">
+            <div class="text-[11px] font-bold mb-0.5" style="color:${nickColor(m2.name || '?')}">${esc(m2.name || 'Ученик')}${fl ? ' <span class="text-amber-400">· помечено</span>' : ''}</div>
+            <p class="text-sm break-words whitespace-pre-wrap ${fl ? 'text-amber-200' : ''}">${esc(m2.text || '')}</p>
+            <div class="text-[10px] opacity-60 mt-1 text-right">${fmtDate(m2.time)}</div>
+          </div>`;
+      }).join('') : emptyNote('В этом чате пока нет сообщений');
+    });
+  }
+
+  function renderAdminStats(body) {
+    body.innerHTML = `
+      <p class="text-xs text-slate-500 mb-3">Общая статистика базы и помеченные фильтром сообщения.</p>
+      <div id="stats-cards" class="grid grid-cols-3 gap-2 mb-4">${spinner()}</div>
+      <div class="text-xs text-slate-400 font-bold mb-2">Классы и активность (сообщения за последние 24 ч)</div>
+      <div id="stats-classes" class="space-y-2 mb-5">${spinner()}</div>
+      <div class="text-xs text-slate-400 font-bold mb-2">Интересное (помеченные сообщения)</div>
+      <div id="stats-flagged" class="space-y-2">${spinner()}</div>`;
+
+    const cardsEl = $('#stats-cards');
+    const classesEl = $('#stats-classes');
+    const flaggedEl = $('#stats-flagged');
+    const DAY24 = 24 * 60 * 60 * 1000;
+    const NOW = Date.now();
+
+    // Счётчики + активные классы (одним глубоким чтением /cities)
+    db.ref('/cities').once('value', (cs) => {
+      let cities = 0, schools = 0, classes = 0, classesRows = [];
+      const cv = cs.val() || {};
+      Object.keys(cv).forEach((cid) => {
+        cities++;
+        const cVal = cv[cid] || {};
+        const cName = cVal.name || '';
+        const schV = cVal.schools || {};
+        Object.keys(schV).forEach((sid) => {
+          schools++;
+          const sVal = schV[sid] || {};
+          const sName = sVal.name || '';
+          const clsV = sVal.classes || {};
+          Object.keys(clsV).forEach((clid) => {
+            classes++;
+            const clVal = clsV[clid] || {};
+            const clName = clVal.name || '';
+            const chatV = clVal.chat || {};
+            let msgs24 = 0;
+            Object.keys(chatV).forEach((mgId) => {
+              const mt = (chatV[mgId] && chatV[mgId].time) || 0;
+              if (mt >= NOW - DAY24) msgs24++;
+            });
+            classesRows.push({
+              name: `${cName}, ${sName}, ${clName}`,
+              msgs: msgs24,
+              cid, sid, clid,
+            });
+          });
+        });
+      });
+      classesRows.sort((a, b) => b.msgs - a.msgs);
+      const statCell = (title, val, clsExtra) => `
+        <div class="rounded-2xl bg-slate-900 border border-slate-800 p-3">
+          <div class="text-2xl font-extrabold ${clsExtra || ''}">${val}</div>
+          <div class="text-[11px] text-slate-500 mt-0.5">${esc(title)}</div>
+        </div>`;
+      cardsEl.innerHTML = statCell('Города', cities) + statCell('Школы', schools) + statCell('Классы', classes) + `
+        <div class="rounded-2xl bg-slate-900 border border-slate-800 p-3">
+          <div class="text-2xl font-extrabold text-emerald-400" id="stat-online">…</div>
+          <div class="text-[11px] text-slate-500 mt-0.5">Онлайн (5 мин)</div>
+        </div>
+        <div class="rounded-2xl bg-slate-900 border border-slate-800 p-3">
+          <div class="text-2xl font-extrabold text-indigo-300" id="stat-unique">…</div>
+          <div class="text-[11px] text-slate-500 mt-0.5">Уникальных всего</div>
+        </div>`;
+      classesEl.innerHTML = classesRows.length ? classesRows.map((a) => `
+        <div class="rounded-xl bg-slate-900 border border-slate-800 p-3 flex items-center justify-between gap-2">
+          <div class="text-sm font-semibold min-w-0 truncate">${esc(a.name)}</div>
+          ${a.msgs > 0
+            ? `<div class="shrink-0 text-[11px] text-indigo-300 font-bold">${a.msgs} сообщ.</div>`
+            : '<div class="shrink-0 text-[11px] text-slate-600 font-semibold">без сообщений</div>'}
+        </div>`).join('') : emptyNote('Классов пока нет');
+
+      // Онлайн (в пределах 5 минут) и уникальные пользователи
+      db.ref('/online').once('value', (os) => {
+        let online = 0;
+        const ov = os.val() || {};
+        Object.keys(ov).forEach((k) => {
+          const v = ov[k];
+          if (typeof v === 'number' && v >= Date.now() - 5 * 60 * 1000) online++;
+        });
+        const el = $('#stat-online');
+        if (el) el.textContent = String(online);
+      });
+      db.ref('/unique').once('value', (us) => {
+        const el = $('#stat-unique');
+        if (el) el.textContent = String(us.numChildren());
+      });
+    });
+
+    // «Интересное» — все помеченные сообщения
+    db.ref('/flagged_messages').once('value', (fs) => {
+      const flags = [];
+      const fv = fs.val() || {};
+      Object.keys(fv).forEach((cid) => {
+        const sv = fv[cid] || {};
+        Object.keys(sv).forEach((sid) => {
+          const clv = sv[sid] || {};
+          Object.keys(clv).forEach((clid) => {
+            const mv = clv[clid] || {};
+            Object.keys(mv).forEach((key) => {
+              flags.push({ cid, sid, clid, key, d: mv[key] });
+            });
+          });
+        });
+      });
+      flags.sort((a, b) => ((b.d && b.d.time) || 0) - ((a.d && a.d.time) || 0));
+      flaggedEl.innerHTML = flags.length ? flags.map((f) => `
+        <div class="rounded-xl bg-slate-900 border border-amber-500/30 p-3 fade-up">
+          <div class="flex items-center gap-2 mb-1">
+            <span class="text-[11px] font-bold text-amber-300">${esc((f.d && f.d.reason) || 'помечено')}</span>
+            <span class="text-[10px] text-slate-500 ml-auto">${fmtDate(f.d && f.d.time)}</span>
+          </div>
+          <p class="text-sm break-words whitespace-pre-wrap">${esc((f.d && f.d.text) || '')}</p>
+          <p class="text-[11px] text-slate-500 mt-1">${esc((f.d && f.d.cityName) || '?')}, ${esc((f.d && f.d.schoolName) || '?')}, ${esc((f.d && f.d.className) || '?')} · ${esc((f.d && f.d.name) || '?')}</p>
+          <div class="flex flex-wrap gap-2 mt-2">
+            <button data-act="flagOpen" data-cid="${esc(f.cid)}" data-sid="${esc(f.sid)}" data-clid="${esc(f.clid)}"
+                    data-cname="${esc((f.d && f.d.cityName) || '')}" data-sname="${esc((f.d && f.d.schoolName) || '')}" data-clname="${esc((f.d && f.d.className) || '')}"
+                    class="${aBtn('bg-sky-600 hover:bg-sky-500')}">Открыть чат</button>
+            <button data-act="flagIgnore" data-cid="${esc(f.cid)}" data-sid="${esc(f.sid)}" data-clid="${esc(f.clid)}" data-key="${esc(f.key)}"
+                    class="${aBtn('bg-slate-700 hover:bg-slate-600')}">Игнорировать</button>
+            <button data-act="flagDel" data-cid="${esc(f.cid)}" data-sid="${esc(f.sid)}" data-clid="${esc(f.clid)}" data-key="${esc(f.key)}"
+                    class="${aBtn('bg-rose-600 hover:bg-rose-500')}">Удалить сообщение</button>
+          </div>
+        </div>`).join('') : emptyNote('Помеченных сообщений нет');
+    });
+  }
+
+  /* ---------- Содержимое класса: расписание / домашка / объявления ---------- */
+  function renderAdminContent(body) {
+    body.innerHTML = `
+      <p class="text-xs text-slate-500 mb-3">Выберите класс, для которого хотите изменить данные.</p>
+      <div class="space-y-3 mb-4">
+        <div>
+          <label class="text-xs text-slate-400 block mb-1">Город</label>
+          <select id="cont-city" class="${aInput('w-full')}"></select>
+        </div>
+        <div>
+          <label class="text-xs text-slate-400 block mb-1">Школа</label>
+          <select id="cont-school" class="${aInput('w-full')}"></select>
+        </div>
+        <div>
+          <label class="text-xs text-slate-400 block mb-1">Класс</label>
+          <select id="cont-class" class="${aInput('w-full')}"></select>
+        </div>
+      </div>
+      <div id="cont-editor"></div>`;
+
+    const editor = $('#cont-editor');
+    const selCity = $('#cont-city'), selSchool = $('#cont-school'), selClass = $('#cont-class');
+
+    // Подвкладки редактора
+    const subNav = () => `
+      <div class="grid grid-cols-3 gap-1 px-1 py-2 mb-3 bg-slate-800/50 rounded-xl">
+        <button data-ctype="schedule" class="ctype-btn py-2 rounded-lg text-[11px] font-semibold ${admin.ctype === 'schedule' ? 'bg-indigo-600 text-white' : 'text-slate-400'}">Расписание</button>
+        <button data-ctype="homework" class="ctype-btn py-2 rounded-lg text-[11px] font-semibold ${admin.ctype === 'homework' ? 'bg-indigo-600 text-white' : 'text-slate-400'}">Домашка</button>
+        <button data-ctype="announcements" class="ctype-btn py-2 rounded-lg text-[11px] font-semibold ${admin.ctype === 'announcements' ? 'bg-indigo-600 text-white' : 'text-slate-400'}">Объявления</button>
+      </div>`;
+
+    const loadEditor = () => {
+      offRefs(adminRefs); adminRefs = [];
+      if (!admin.city || !admin.school || !admin.cls) { editor.innerHTML = emptyNote('Выберите город, школу и класс'); return; }
+      const node = db.ref(P.classNode(admin.city, admin.school, admin.cls));
+
+      if (admin.ctype === 'schedule') {
+        editor.innerHTML = subNav() + scheduleEditorForm();
+        $$('.ctype-btn').forEach((b) => b.addEventListener('click', () => { admin.ctype = b.dataset.ctype; loadEditor(); }));
+        // Заполняем поля из БД и вешаем сохранение
+        editor.querySelector('#sch-save').addEventListener('click', () => {
+          const data = {};
+          DAY_KEYS.forEach((d) => {
+            const ta = editor.querySelector('#sch-' + d);
+            data[d] = ta.value.split('\n').map((s) => s.replace(/\r/g, '').trim()).filter(Boolean);
+          });
+          node.child('schedule').set(data);
+          showToast('Расписание сохранено');
+        });
+        editor.querySelector('#sch-clear').addEventListener('click', () => {
+          askConfirm('Очистить всё расписание?', () => {
+            node.child('schedule').remove().then(() => showToast('Расписание очищено')).catch((err) => showToast('Ошибка: ' + (err.message || err)));
+          });
+        });
+        addRef(adminRefs, node.child('schedule')).on('value', (snap) => {
+          const s = snap.val() || {};
+          DAY_KEYS.forEach((d) => {
+            const ta = editor.querySelector('#sch-' + d);
+            if (ta) ta.value = Array.isArray(s[d]) ? s[d].join('\n') : '';
+          });
+        });
+      }
+      else if (admin.ctype === 'homework') {
+        editor.innerHTML = subNav() + homeworkEditorForm();
+        $$('.ctype-btn').forEach((b) => b.addEventListener('click', () => { admin.ctype = b.dataset.ctype; loadEditor(); }));
+        editor.querySelector('#hw-add').addEventListener('click', () => {
+          const s = editor.querySelector('#hw-new-subj').value.trim();
+          const t = editor.querySelector('#hw-new-task').value;
+          if (!s) { showToast('Введите предмет'); return; }
+          node.child('homework/' + s).set(t);
+          editor.querySelector('#hw-new-subj').value = '';
+          editor.querySelector('#hw-new-task').value = '';
+        });
+        addRef(adminRefs, node.child('homework')).on('value', (snap) => {
+          const hw = snap.val() || {};
+          const entries = Object.entries(hw).sort((a, b) => a[0].localeCompare(b[0], 'ru'));
+          const wrap = editor.querySelector('#hw-list');
+          wrap.innerHTML = entries.length ? entries.map(([subj, task]) => `
+            <div class="row rounded-xl bg-slate-900 border border-slate-800 p-3 space-y-2 fade-up">
+              <input data-hw-key="${esc(subj)}" value="${esc(subj)}" placeholder="Предмет" class="${aInput('w-full font-semibold')}">
+              <textarea data-hw-task rows="2" placeholder="Задание" class="${aInput('w-full resize-none')}">${esc(task || '')}</textarea>
+              <div class="flex gap-2">
+                <button data-hw-save data-key="${esc(subj)}" class="${aBtn('bg-emerald-600 hover:bg-emerald-500', 'Сохранить')}">Сохранить</button>
+                <button data-hw-del data-key="${esc(subj)}" class="${aBtn('bg-rose-600 hover:bg-rose-500', 'Удалить')}">Удалить</button>
+              </div>
+            </div>`).join('') : emptyNote('Домашки нет');
+        });
+      }
+      else if (admin.ctype === 'announcements') {
+        editor.innerHTML = subNav() + announcementsEditorForm();
+        $$('.ctype-btn').forEach((b) => b.addEventListener('click', () => { admin.ctype = b.dataset.ctype; loadEditor(); }));
+
+        const btn = editor.querySelector('#ann-save');
+        btn.addEventListener('click', () => {
+          const text = editor.querySelector('#ann-text').value.trim();
+          if (!text) { showToast('Введите текст'); return; }
+          if (admin.annKey) {
+            // Редактирование существующего
+            node.child('announcements/' + admin.annKey).set({ text, createdAt: admin.annDate || Date.now() });
+            admin.annKey = admin.annDate = null;
+          } else {
+            node.child('announcements').push({ text, createdAt: Date.now() });
+          }
+          editor.querySelector('#ann-text').value = '';
+          btn.textContent = 'Опубликовать';
+        });
+        editor.querySelector('#ann-cancel').addEventListener('click', () => {
+          admin.annKey = admin.annDate = null;
+          editor.querySelector('#ann-text').value = '';
+          editor.querySelector('#ann-save').textContent = 'Опубликовать';
+          editor.querySelector('#ann-cancel').classList.add('hidden');
+        });
+
+        addRef(adminRefs, node.child('announcements')).on('value', (snap) => {
+          const items = snapArr(snap).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+          const wrap = editor.querySelector('#ann-list');
+          wrap.innerHTML = items.length ? items.map((a) => `
+            <div class="row rounded-xl bg-slate-900 border border-slate-800 p-3 space-y-2 fade-up">
+              <p class="text-sm whitespace-pre-wrap break-words">${esc(a.text || '')}</p>
+              <p class="text-[11px] text-slate-500">${fmtDate(a.createdAt)}</p>
+              <div class="flex gap-2">
+                <button data-ann-edit data-key="${esc(a.key)}" data-date="${a.createdAt || ''}" class="${aBtn('bg-sky-600 hover:bg-sky-500', 'Изменить')}">Изменить</button>
+                <button data-ann-del data-key="${esc(a.key)}" class="${aBtn('bg-rose-600 hover:bg-rose-500', 'Удалить')}">Удалить</button>
+              </div>
+            </div>`).join('') : emptyNote('Объявлений нет');
+        });
+      }
+    };
+
+    // Города
+    addRef(adminRefs, db.ref(P.cities())).on('value', (snap) => {
+      const cities = snapArr(snap);
+      selCity.innerHTML = '<option value="">— город —</option>' + cities.map((c) => `<option value="${esc(c.key)}">${esc(c.name || '')}</option>`).join('');
+      if (admin.city && cities.some((c) => c.key === admin.city)) selCity.value = admin.city;
+      // школы
+      selSchool.innerHTML = '<option value="">— школа —</option>';
+      selClass.innerHTML = '<option value="">— класс —</option>';
+      if (admin.city) {
+        db.ref(P.schools(admin.city)).once('value', (ss) => {
+          const schools = snapArr(ss);
+          selSchool.innerHTML = '<option value="">— школа —</option>' + schools.map((s) => `<option value="${esc(s.key)}">${esc(s.name || '')}</option>`).join('');
+          if (admin.school && schools.some((s) => s.key === admin.school)) {
+            selSchool.value = admin.school;
+            db.ref(P.classes(admin.city, admin.school)).once('value', (cs) => {
+              const classes = snapArr(cs);
+              selClass.innerHTML = '<option value="">— класс —</option>' + classes.map((c) => `<option value="${esc(c.key)}">${esc(c.name || '')}</option>`).join('');
+              if (admin.cls && classes.some((c) => c.key === admin.cls)) selClass.value = admin.cls;
+              loadEditor();
+            });
+          } else {
+            loadEditor();
+          }
+        });
+      } else {
+        loadEditor();
+      }
+    });
+
+    selCity.addEventListener('change', () => { admin.city = selCity.value || null; admin.school = admin.cls = null; renderAdminPage('content'); });
+    selSchool.addEventListener('change', () => { admin.school = selSchool.value || null; admin.cls = null; renderAdminPage('content'); });
+    selClass.addEventListener('change', () => { admin.cls = selClass.value || null; renderAdminPage('content'); });
+  }
+
+  /* Формы редактора содержимого */
+  function scheduleEditorForm() {
+    const days = [
+      ['mon', 'Понедельник'], ['tue', 'Вторник'], ['wed', 'Среда'],
+      ['thu', 'Четверг'], ['fri', 'Пятница'], ['sat', 'Суббота'], ['sun', 'Воскресенье'],
+    ];
+    return `
+      <div class="max-h-[45vh] overflow-y-auto pr-1 space-y-2">
+        ${days.map(([k, name]) => `
+          <div>
+            <label class="text-xs text-slate-400 block mb-1">${name} <span class="text-slate-600">(урок на строке)</span></label>
+            <textarea id="sch-${k}" rows="3" placeholder="Например:&#10;Математика&#10;Русский язык" class="${aInput('w-full resize-none')}"></textarea>
+          </div>`).join('')}
+      </div>
+      <div class="flex gap-2 mt-3">
+        <button id="sch-save" class="${aBtn('bg-emerald-600 hover:bg-emerald-500 flex-1 py-3 text-sm', 'Сохранить расписание')}">Сохранить расписание</button>
+        <button id="sch-clear" class="${aBtn('bg-rose-600/80 hover:bg-rose-500', 'Очистить всё')}">Очистить всё</button>
+      </div>`;
+  }
+  function homeworkEditorForm() {
+    return `
+      <div class="rounded-xl bg-slate-900 border border-slate-800 p-3 space-y-2 mb-3">
+        <input id="hw-new-subj" placeholder="Предмет" class="${aInput('w-full font-semibold')}">
+        <textarea id="hw-new-task" rows="2" placeholder="Задание" class="${aInput('w-full resize-none')}"></textarea>
+        <button id="hw-add" class="${aBtn('bg-indigo-600 hover:bg-indigo-500 w-full py-2.5 text-sm', 'Добавить домашка')}">Добавить</button>
+      </div>
+      <div id="hw-list" class="space-y-2"></div>`;
+  }
+  function announcementsEditorForm() {
+    return `
+      <div class="rounded-xl bg-slate-900 border border-slate-800 p-3 space-y-2 mb-3">
+        <p class="text-[11px] text-slate-500">Если текст содержит «Завтра контрольная» — всем придёт уведомление.</p>
+        <textarea id="ann-text" rows="3" placeholder="Текст объявления" class="${aInput('w-full resize-none')}"></textarea>
+        <div class="flex gap-2">
+          <button id="ann-save" class="${aBtn('bg-indigo-600 hover:bg-indigo-500 flex-1 py-2.5 text-sm', 'Опубликовать')}">Опубликовать</button>
+          <button id="ann-cancel" class="hidden ${aBtn('bg-slate-700 hover:bg-slate-600', 'Отмена')}">Отмена</button>
+        </div>
+      </div>
+      <div id="ann-list" class="space-y-2"></div>`;
+  }
+
+  // Экранирование HTML в значениях из БД
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  /* ---------- Обработчики кликов в админ-панели (делегирование) ---------- */
+  function bindAdminActions() {
+    $('#admin-body').addEventListener('click', (e) => {
+      const t = e.target.closest('button[data-act]') ||
+                e.target.closest('button[data-hw-save]') ||
+                e.target.closest('button[data-hw-del]') ||
+                e.target.closest('button[data-ann-edit]') ||
+                e.target.closest('button[data-ann-del]');
+      if (!t) return;
+      const act = t.dataset.act;
+
+      // Города
+      if (act === 'citySave') {
+        const key = t.dataset.key;
+        const name = t.closest('.row').querySelector('[data-act="cityName"]').value.trim();
+        db.ref(P.cities() + '/' + key).update({ name });
+        return;
+      }
+      if (act === 'cityDelete') {
+        askConfirm('Удалить город и все данные внутри?', () => {
+          db.ref(P.cities() + '/' + t.dataset.key).remove().catch((err) => showToast('Ошибка: ' + (err.message || err)));
+        });
+        return;
+      }
+      // Школы
+      if (act === 'schoolSave') {
+        const cid = $('#school-city').value;
+        const key = t.dataset.key;
+        const name = t.closest('.row').querySelector('[data-act="schoolName"]').value.trim();
+        db.ref(P.schools(cid) + '/' + key).update({ name });
+        return;
+      }
+      if (act === 'schoolDelete') {
+        askConfirm('Удалить школу и все данные внутри?', () => {
+          db.ref(P.schools($('#school-city').value) + '/' + t.dataset.key).remove().catch((err) => showToast('Ошибка: ' + (err.message || err)));
+        });
+        return;
+      }
+      // Классы
+      if (act === 'classSave') {
+        const cid = $('#class-city').value, sid = $('#class-school').value;
+        const name = t.closest('.row').querySelector('[data-act="className"]').value.trim();
+        db.ref(P.classes(cid, sid) + '/' + t.dataset.key).update({ name });
+        return;
+      }
+      if (act === 'classDelete') {
+        askConfirm('Удалить класс и все данные внутри?', () => {
+          db.ref(P.classes($('#class-city').value, $('#class-school').value) + '/' + t.dataset.key).remove()
+            .then(() => showToast('Класс удалён'))
+            .catch((err) => showToast('Ошибка: ' + (err.message || err)));
+        });
+        return;
+      }
+      // Люди и чат (вкладка people — выборка из выпадающих списков)
+      const selPeo = () => {
+        const cid = $('#people-city') && $('#people-city').value;
+        const sid = $('#people-school') && $('#people-school').value;
+        const clid = $('#people-class') && $('#people-class').value;
+        return (cid && sid && clid) ? P.classNode(cid, sid, clid) : null;
+      };
+      // Перезапрос списка модерации после изменения статуса пользователя
+      const reloadPeople = () => { if (admin.page === 'people') renderAdminPage('people'); };
+      if (act === 'mute1') {
+        HubModeration.muteHours(t.dataset.uid, 1).then(() => { showToast('Мут на 1 час'); reloadPeople(); })
+          .catch((err) => showToast('Нет прав: ' + (err.message || err)));
+        return;
+      }
+      if (act === 'mute24') {
+        HubModeration.muteHours(t.dataset.uid, 24).then(() => { showToast('Мут на 24 часа'); reloadPeople(); })
+          .catch((err) => showToast('Нет прав: ' + (err.message || err)));
+        return;
+      }
+      if (act === 'banForever') {
+        HubModeration.banForever(t.dataset.uid).then(() => { showToast('Пользователь забанен'); reloadPeople(); })
+          .catch((err) => showToast('Нет прав: ' + (err.message || err)));
+        return;
+      }
+      if (act === 'unban') {
+        HubModeration.unban(t.dataset.uid).then(() => { showToast('Разблокирован'); reloadPeople(); })
+          .catch((err) => showToast('Нет прав: ' + (err.message || err)));
+        return;
+      }
+      if (act === 'purgeUser') {
+        const path = selPeo();
+        if (!path) { showToast('Выберите класс'); return; }
+        const uidVal = t.dataset.uid;
+        const nickVal = t.dataset.nick;
+        askConfirm('Удалить ВСЕ сообщения пользователя «' + nickVal + '»?', () => {
+          const chatRef = db.ref(path + '/chat');
+          chatRef.once('value', (snap) => {
+            const updates = {};
+            const snapV = snap.val() || {};
+            Object.keys(snapV).forEach((k) => {
+              const m = snapV[k] || {};
+              // по UID (новые) или по нику (старые сообщения без uid)
+              if (m.uid === uidVal || (!m.uid && (m.nick || m.name) === nickVal)) updates['/chat/' + k] = null;
+            });
+            if (Object.keys(updates).length) {
+              db.ref(path).update(updates).then(() => { showToast('Сообщения удалены'); reloadPeople(); }).catch((err) => showToast('Ошибка: ' + (err.message || err)));
+            } else {
+              showToast('Сообщений от этого пользователя нет');
+            }
+          });
+        });
+        return;
+      }
+      if (act === 'delMsg') {
+        const path = selPeo();
+        if (!path) { showToast('Выберите класс'); return; }
+        askConfirm('Удалить это сообщение?', () => {
+          db.ref(path + '/chat/' + t.dataset.key).remove()
+            .then(() => forgetMsg(t.dataset.key))
+            .catch((err) => showToast('Ошибка: ' + (err.message || err)));
+        });
+        return;
+      }
+
+      // Статистика: «Интересное»
+      if (act === 'flagOpen') {
+        openClassChat(t.dataset.cid, t.dataset.sid, t.dataset.clid,
+          [t.dataset.cname, t.dataset.sname, t.dataset.clname].filter(Boolean).join(', '));
+        return;
+      }
+      if (act === 'flagIgnore') {
+        db.ref('/flagged_messages/' + t.dataset.cid + '/' + t.dataset.sid + '/' + t.dataset.clid + '/' + t.dataset.key)
+          .remove()
+          .then(() => renderAdminPage('stats'))
+          .catch((err) => showToast('Ошибка: ' + (err.message || err)));
+        return;
+      }
+      if (act === 'flagDel') {
+        askConfirm('Удалить это сообщение из чата и из «Интересного»?', () => {
+          const root = '/cities/' + t.dataset.cid + '/schools/' + t.dataset.sid + '/classes/' + t.dataset.clid + '/chat/' + t.dataset.key;
+          Promise.all([
+            db.ref(root).remove(),
+            db.ref('/flagged_messages/' + t.dataset.cid + '/' + t.dataset.sid + '/' + t.dataset.clid + '/' + t.dataset.key).remove(),
+          ]).then(() => renderAdminPage('stats'))
+            .catch((err) => showToast('Ошибка: ' + (err.message || err)));
+        });
+        return;
+      }
+
+      // Домашка (кнопки без data-act)
+      if ('hwSave' in t.dataset) {
+        const key = t.dataset.key;
+        const row = t.closest('.row');
+        const subj = row.querySelector('[data-hw-key]').value.trim();
+        const task = row.querySelector('[data-hw-task]').value;
+        if (!subj) { showToast('Введите предмет'); return; }
+        const node = db.ref(P.classNode(admin.city, admin.school, admin.cls) + '/homework');
+        if (subj !== key) node.child(key).remove();
+        node.child(subj).set(task);
+        return;
+      }
+      if ('hwDel' in t.dataset) {
+        db.ref(P.classNode(admin.city, admin.school, admin.cls) + '/homework/' + t.dataset.key).remove();
+        return;
+      }
+      // Объявления
+      if ('annEdit' in t.dataset) {
+        const ed = $('#cont-editor');
+        const textarea = ed.querySelector('#ann-text');
+        admin.annKey = t.dataset.key;
+        admin.annDate = t.dataset.date ? Number(t.dataset.date) : Date.now();
+        textarea.value = t.closest('.row').querySelector('p').textContent.trim();
+        ed.querySelector('#ann-save').textContent = 'Сохранить изменения';
+        ed.querySelector('#ann-cancel').classList.remove('hidden');
+        return;
+      }
+      if ('annDel' in t.dataset) {
+        askConfirm('Удалить объявление?', () => {
+          db.ref(P.classNode(admin.city, admin.school, admin.cls) + '/announcements/' + t.dataset.key).remove();
+          if (admin.annKey === t.dataset.key) { admin.annKey = admin.annDate = null; }
+        });
+      }
+    });
+  }
+
+  /* ============================================================
+     ПОДКЛЮЧЕНИЕ СОБЫТИЙ И ЗАПУСК
+     ============================================================ */
+  // Кнопка закрытия toast
+  $('#toast-close').addEventListener('click', hideToast);
+
+  // Экран входа
+  $('#back-btn').addEventListener('click', onBack);
+  $('#change-btn').addEventListener('click', resetSelection);
+
+  // Вкладки
+  $$('.tab-btn').forEach((b) => b.addEventListener('click', () => switchTab(b.dataset.tab)));
+
+  // Чат
+  $('#chat-form').addEventListener('submit', sendMessage);
+  $('#chat-nick').addEventListener('click', changeNick);
+  // Удаление сообщения администратором (альт-менедж)
+  $('#chat-messages').addEventListener('click', (e) => {
+    const btn = e.target.closest('.msg-del');
+    if (!btn) return;
+    if (!(admin.authorized && altMode())) return;
+    const wrap = btn.closest('[data-msg]');
+    if (!wrap) return;
+    askConfirm('Удалить это сообщение?', () => {
+      db.ref(curClassPath() + '/chat/' + wrap.dataset.msg).remove()
+        .then(() => forgetMsg(wrap.dataset.msg))
+        .catch((err) => showToast('Ошибка: ' + (err.message || err)));
+    });
+  });
+
+  // Ник
+  $('#nick-save').addEventListener('click', saveNick);
+  $('#nick-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') saveNick(); });
+
+  // Секретный вход
+  bindLongPress($('#header-title'), openAdmin);
+  bindNTaps($('#logo'), 5, openAdmin);
+  // С главного заголовка экрана входа админка тоже доступна (для первичного заполнения данных)
+  bindLongPress($('#auth-title'), openAdmin);
+  bindNTaps($('#auth-logo'), 5, openAdmin);
+
+  // Модалка пароля администратора
+  $('#pass-btn').addEventListener('click', tryLogin);
+  $('#pass-cancel').addEventListener('click', closePassModal);
+  $('#pass-overlay').addEventListener('click', closePassModal);
+  $('#pass-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') tryLogin(); });
+
+  // Просмотр чата
+  $('#view-close').addEventListener('click', () => $('#view-modal').classList.add('hidden'));
+  $('#view-overlay').addEventListener('click', () => $('#view-modal').classList.add('hidden'));
+
+  // Админ-панель
+  $('#admin-close').addEventListener('click', closeAdmin);
+  $('#admin-overlay').addEventListener('click', closeAdmin);
+  $$('#admin-nav button').forEach((b) => b.addEventListener('click', () => renderAdminPage(b.dataset.apage)));
+  bindAdminActions();
+
+  // Старт приложения
+  function start() {
+    initSeen();
+    initFirebase();
+    if (!isConfigured()) {
+      // Показываем экран входа с подсказкой про конфиг
+      showAuth();
+      return;
+    }
+    loadSelection();
+    const s = state.sel;
+    if (s && s.cid && s.sid && s.clid) {
+      showMainScreen();
+    } else {
+      showAuth();
+    }
+    // Анонимная авторизация Firebase: если пользователь уже входил,
+    // Firebase восстановит сессию автоматически. Присутствие и профиль
+    // users/{uid} запускаем только после готовности входа (правила требуют auth).
+    HubAuth.start(() => {
+      startPresence(); // онлайн-присутствие и уникальные пользователи
+      ensureProfile(); // создаём/обновляем профиль (nick, class, createdAt)
+      document.dispatchEvent(new CustomEvent('hub-auth-done'));
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', start);
+
+  // Регистрация Service Worker (PWA)
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js')
+        .then((reg) => {
+          // Принудительно проверяем наличие обновлённого sw.js при каждом заходе
+          if (reg.update) reg.update();
+        })
+        .catch(() => { /* работаем и без SW */ });
+    });
+  }
+  </script>
+
+  <script>
+    // Аварийная диагностика ДО и ПОСЛЕ основного скрипта: если что-то упало
+    // (в том числе ошибка парсинга основного скрипта), показываем сообщение
+    // вместо пустого экрана с одним логотипом.
+    window.addEventListener('error', function (ev) {
+      var msg = (ev && ev.message) || 'Неизвестная ошибка';
+      if (/script\.error\./i.test(msg)) msg = 'Ошибка стороннего скрипта (возможно, нет интернета для CDN)';
+      var auth = document.getElementById('auth-screen');
+      if (!auth || auth.classList.contains('hidden')) return;
+      var d = document.getElementById('select-list');
+      var s = document.getElementById('select-status');
+      if (s) s.textContent = 'Что-то пошло не так.';
+      if (d) {
+        d.innerHTML = '<div class="text-center py-10 text-amber-400 text-sm fade-up">Ошибка: ' + msg +
+          '<br><span style="font-size:11px;opacity:.7">Обновите страницу (Ctrl+F5). Если повторяется — пришлите этот текст.</span></div>';
+      }
+    });
+  </script>
+</body>
+</html>
