@@ -65,26 +65,30 @@
     },
 
     // Создать/синхронизировать профиль users/{uid}.
-    // nick/class задаёт сам пользователь, createdAt — только при первом входе.
-    // Поля banned/mutedUntil здесь НЕ трогаем (их меняет только администратор).
+    // nick/class/deviceId задаёт сам пользователь, createdAt — только при первом входе.
+    // banned/mutedUntil здесь НЕ трогаем (старые поля; новых банов нет — они в bannedUsers/).
     // Возвращает Promise с профилем.
     syncProfile(patch) {
       const p = patch || {};
       if (!this.uid) return Promise.resolve(this.profile || {});
       const ref = db.ref('/users/' + this.uid);
       // Пишем каждый ребёнок отдельным запросом — это совместимо с правилами,
-      // где пользователь может менять только свои nick/class (и createdAt 1 раз).
-      const jobs = [];
-      const cl = (p.class != null && p.class !== '') ? String(p.class) : null;
-      jobs.push(ref.child('nick').once('value').then((s) => {
-        if (p.nick && s.val() !== p.nick) return ref.child('nick').set(String(p.nick));
-      }));
-      if (cl) jobs.push(ref.child('class').once('value').then((s) => {
-        if (s.val() !== cl) return ref.child('class').set(cl);
-      }));
-      jobs.push(ref.child('createdAt').once('value').then((s) => {
-        if (!s.exists()) return ref.child('createdAt').set(Date.now());
-      }));
+      // где пользователь может менять только свои nick/class/deviceId (и createdAt 1 раз).
+      const syncField = (name, value) => {
+        if (value == null || value === '') return Promise.resolve();
+        const v = String(value);
+        return ref.child(name).once('value').then((s) => {
+          if (s.val() !== v) return ref.child(name).set(v);
+        });
+      };
+      const jobs = [
+        syncField('nick', p.nick),
+        syncField('class', p.class),
+        syncField('deviceId', p.deviceId),
+        ref.child('createdAt').once('value').then((s) => {
+          if (!s.exists()) return ref.child('createdAt').set(Date.now());
+        }),
+      ];
       return Promise.all(jobs)
         .then(() => ref.once('value'))
         .then((s) => { this.profile = s.val() || {}; return this.profile; });

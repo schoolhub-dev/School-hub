@@ -258,8 +258,8 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
   <!-- Модули: анонимная авторизация (UID) и модерация (бан/мут по UID) -->
-  <script src="auth.js?v=8"></script>
-  <script src="moderation.js?v=8"></script>
+  <script src="auth.js?v=9"></script>
+  <script src="moderation.js?v=9"></script>
 
   <script>
   'use strict';
@@ -336,7 +336,7 @@
   function nick() { return localStorage.getItem(LS.nick) || ''; }
   function setNick(n) { localStorage.setItem(LS.nick, n); }
 
-  // Синхронизация профиля users/{uid}: ник и класс (класс берём из выбранного).
+  // Синхронизация профиля users/{uid}: ник, класс и device_id (для старых сообщений).
   // Вызывается после входа, смены ника и выбора класса.
   function ensureProfile() {
     if (!window.HubAuth || !HubAuth.uid) return;
@@ -344,6 +344,22 @@
     return HubAuth.syncProfile({
       nick: nick() || 'Ученик',
       class: (s && s.clname) ? s.clname : null,
+      deviceId: deviceId(),
+    }).catch(() => {});
+  }
+
+  // Предупреждения администратора (кнопка «Предупредить»): показываем одно
+  // последнее и удаляем все, чтобы не повторялись.
+  function checkWarnings() {
+    if (!window.HubAuth || !HubAuth.uid) return;
+    const wref = db.ref('/warnings/' + HubAuth.uid);
+    wref.once('value', (s) => {
+      const wv = s.val() || {};
+      const keys = Object.keys(wv);
+      if (!keys.length) return;
+      const lastW = wv[keys[keys.length - 1]];
+      showToast((lastW && lastW.text) || 'Вам пришло предупреждение от администратора');
+      keys.forEach((k) => wref.child(k).remove().catch(() => {}));
     }).catch(() => {});
   }
 
@@ -934,7 +950,7 @@
       // Автофильтр: мат / оскорбление / угроза. Сообщение НЕ удаляем — помечаем флагом.
       const reasons = checkMessage(text);
       const s = state.sel;
-      const msg = { uid: HubAuth.uid, nick: me, text, time: Date.now(), class: (s && s.clname) || '' };
+      const msg = { uid: HubAuth.uid, deviceId: deviceId(), nick: me, text, time: Date.now(), class: (s && s.clname) || '' };
       if (reasons.length) msg.flagged = true;
       const cref = db.ref(curClassPath() + '/chat').push(msg);
       if (reasons.length) {
@@ -942,6 +958,7 @@
         db.ref('/flagged_messages/' + s.cid + '/' + s.sid + '/' + s.clid + '/' + cref.key)
           .set({
             uid: HubAuth.uid,
+            deviceId: deviceId(),
             nick: me,
             text,
             time: Date.now(),
@@ -1402,12 +1419,17 @@
         // Имя выбранного класса (фильтрация списка users по полю class)
         const opt = selClass.selectedOptions && selClass.selectedOptions[0];
         const clname = (opt && opt.value) ? opt.textContent.trim() : '';
-        // Пользователи берутся из ветки users (привязка к UID, а не к нику)
-        db.ref('/users').once('value', (us) => {
+        // Пользователи берутся из ветки users (привязка к UID, а не к нику),
+        // статус бана — из ветки bannedUsers/{uid}
+        Promise.all([
+          db.ref('/users').once('value'),
+          db.ref('/bannedUsers').once('value'),
+        ]).then(([us, bs]) => {
+          const banByUid = bs.val() || {};
           const users = [];
           const uv = us.val() || {};
           Object.keys(uv).forEach((uid) => {
-            const prof = Object.assign({ uid }, uv[uid] || {});
+            const prof = Object.assign({}, uv[uid] || {}, { uid, ban: banByUid[uid] || null });
             if (clname && prof.class !== clname) return; // только пользователи выбранного класса
             const cnt = msgs.filter((m) =>
               (m.uid === uid) || (!m.uid && (m.nick || m.name) === (prof.nick || ''))).length;
@@ -1419,10 +1441,10 @@
           list.innerHTML = `
             <div class="text-xs text-slate-400 font-bold mb-2">Пользователи класса (${esc(String(users.length))})</div>
             <div class="space-y-2 mb-6">${users.length ? users.map((u) => {
-              const st = HubModeration.statusOf(u);
+              const st = HubModeration.statusOf(u.ban);
               const nme = u.nick || 'Ученик';
-              const isBanned = !!u.banned;
-              const isRestricted = !!u.banned || (u.mutedUntil && Number(u.mutedUntil) > Date.now());
+              const isBanned = !!(u.ban && HubModeration.isActive(u.ban));
+              const isRestricted = isBanned;
               return `
               <div class="rounded-xl bg-slate-900 border border-slate-800 p-3 flex flex-col gap-2 sm:flex-row sm:items-center fade-up ${isBanned ? 'opacity-70' : ''}">
                 <div class="flex-1 min-w-0">
@@ -1519,7 +1541,7 @@
         const fl = m2.flagged;
         return `
           <div class="rounded-2xl bg-slate-800 px-3.5 py-2">
-            <div class="text-[11px] font-bold mb-0.5" style="color:${nickColor(m2.name || '?')}">${esc(m2.name || 'Ученик')}${fl ? ' <span class="text-amber-400">· помечено</span>' : ''}</div>
+            <div class="text-[11px] font-bold mb-0.5" style="color:${nickColor(m2.nick || m2.name || '?')}">${esc(m2.nick || m2.name || 'Ученик')}${fl ? ' <span class="text-amber-400">· помечено</span>' : ''}</div>
             <p class="text-sm break-words whitespace-pre-wrap ${fl ? 'text-amber-200' : ''}">${esc(m2.text || '')}</p>
             <div class="text-[10px] opacity-60 mt-1 text-right">${fmtDate(m2.time)}</div>
           </div>`;
@@ -1614,8 +1636,21 @@
       });
     });
 
-    // «Интересное» — все помеченные сообщения
-    db.ref('/flagged_messages').once('value', (fs) => {
+    // «Интересное» — все помеченные сообщения + модерация автора по UID.
+    // Для старых сообщений (без uid) резолвим автора через users/{uid}.deviceId.
+    Promise.all([
+      db.ref('/flagged_messages').once('value'),
+      db.ref('/users').once('value'),
+      db.ref('/bannedUsers').once('value'),
+    ]).then(([fs, us, bs]) => {
+      const uidByDevice = {};
+      const uv = us.val() || {};
+      Object.keys(uv).forEach((uid) => {
+        const p = uv[uid] || {};
+        if (p.deviceId) uidByDevice[p.deviceId] = uid;
+      });
+      const banByUid = bs.val() || {};
+
       const flags = [];
       const fv = fs.val() || {};
       Object.keys(fv).forEach((cid) => {
@@ -1631,25 +1666,45 @@
         });
       });
       flags.sort((a, b) => ((b.d && b.d.time) || 0) - ((a.d && a.d.time) || 0));
-      flaggedEl.innerHTML = flags.length ? flags.map((f) => `
+      flaggedEl.innerHTML = flags.length ? flags.map((f) => {
+        const d = f.d || {};
+        const uid = d.uid || (d.deviceId ? uidByDevice[d.deviceId] : '') || '';
+        const ban = uid ? (banByUid[uid] || null) : null;
+        const st = HubModeration.statusOf(ban);
+        const canMod = !!uid && !!HubAuth.uid;
+        const dis = (cls) => canMod ? cls : (cls + ' opacity-40 pointer-events-none');
+        const uidNote = uid
+          ? esc(uid) + (ban ? ' · <span class="' + esc(st.cls) + '">' + esc(st.label) + '</span>' : '')
+          : '<span class="text-slate-600">uid неизвестен (старое сообщение)</span>';
+        return `
         <div class="rounded-xl bg-slate-900 border border-amber-500/30 p-3 fade-up">
           <div class="flex items-center gap-2 mb-1">
-            <span class="text-[11px] font-bold text-amber-300">${esc((f.d && f.d.reason) || 'помечено')}</span>
-            <span class="text-[10px] text-slate-500 ml-auto">${fmtDate(f.d && f.d.time)}</span>
+            <span class="text-[11px] font-bold text-amber-300">${esc(d.reason || 'помечено')}</span>
+            <span class="text-[10px] text-slate-500 ml-auto">${fmtDate(d.time)}</span>
           </div>
-          <p class="text-sm break-words whitespace-pre-wrap">${esc((f.d && f.d.text) || '')}</p>
-          <p class="text-[11px] text-slate-500 mt-1">${esc((f.d && f.d.cityName) || '?')}, ${esc((f.d && f.d.schoolName) || '?')}, ${esc((f.d && f.d.className) || '?')} · ${esc((f.d && f.d.name) || '?')}</p>
+          <p class="text-sm break-words whitespace-pre-wrap">${esc(d.text || '')}</p>
+          <p class="text-[11px] text-slate-500 mt-1">${esc(d.cityName || '?')}, ${esc(d.schoolName || '?')}, ${esc(d.className || '?')} · ${esc(d.nick || d.name || '?')}</p>
+          <p class="text-[10px] break-all mt-0.5">${uidNote}</p>
           <div class="flex flex-wrap gap-2 mt-2">
             <button data-act="flagOpen" data-cid="${esc(f.cid)}" data-sid="${esc(f.sid)}" data-clid="${esc(f.clid)}"
-                    data-cname="${esc((f.d && f.d.cityName) || '')}" data-sname="${esc((f.d && f.d.schoolName) || '')}" data-clname="${esc((f.d && f.d.className) || '')}"
+                    data-cname="${esc(d.cityName || '')}" data-sname="${esc(d.schoolName || '')}" data-clname="${esc(d.className || '')}"
                     class="${aBtn('bg-sky-600 hover:bg-sky-500')}">Открыть чат</button>
+            <button data-act="flagMute1" data-uid="${esc(uid)}" data-reason="${esc(d.reason || '')}"
+                    class="${dis(aBtn('bg-amber-600 hover:bg-amber-500'))}">Мут 1 час</button>
+            <button data-act="flagMute24" data-uid="${esc(uid)}" data-reason="${esc(d.reason || '')}"
+                    class="${dis(aBtn('bg-amber-600 hover:bg-amber-500'))}">Мут 24 часа</button>
+            <button data-act="flagUnban" data-uid="${esc(uid)}"
+                    class="${dis(aBtn('bg-emerald-600 hover:bg-emerald-500'))}">Разбанить</button>
+            <button data-act="flagWarn" data-uid="${esc(uid)}" data-reason="${esc(d.reason || '')}"
+                    class="${dis(aBtn('bg-indigo-600 hover:bg-indigo-500'))}">Предупредить</button>
             <button data-act="flagIgnore" data-cid="${esc(f.cid)}" data-sid="${esc(f.sid)}" data-clid="${esc(f.clid)}" data-key="${esc(f.key)}"
                     class="${aBtn('bg-slate-700 hover:bg-slate-600')}">Игнорировать</button>
             <button data-act="flagDel" data-cid="${esc(f.cid)}" data-sid="${esc(f.sid)}" data-clid="${esc(f.clid)}" data-key="${esc(f.key)}"
                     class="${aBtn('bg-rose-600 hover:bg-rose-500')}">Удалить сообщение</button>
           </div>
-        </div>`).join('') : emptyNote('Помеченных сообщений нет');
-    });
+        </div>`;
+      }).join('') : emptyNote('Помеченных сообщений нет');
+    }).catch(() => { flaggedEl.innerHTML = emptyNote('Не удалось загрузить помеченные сообщения'); });
   }
 
   /* ---------- Содержимое класса: расписание / домашка / объявления ---------- */
@@ -2005,6 +2060,38 @@
         return;
       }
 
+      // Модерация автора помеченного сообщения («Интересное»): пишет в bannedUsers/{uid}
+      if (act === 'flagMute1' || act === 'flagMute24' || act === 'flagUnban' || act === 'flagWarn') {
+        const uidMod = t.dataset.uid;
+        if (!uidMod) { showToast('uid автора неизвестен'); return; }
+        const reasonFrom = (t.dataset.reason || '').slice(0, 200);
+        const toastAfter = (text) => {
+          showToast(text);
+          if (admin.page === 'stats') renderAdminPage('stats');
+        };
+        if (act === 'flagWarn') {
+          // Просто уведомление (без бана): пишем в warnings/{uid}, юзер увидит тост при заходе
+          const def = reasonFrom ? ('Читайте правила чата: нарушение «' + reasonFrom + '».') : 'Читайте правила чата: мат и оскорбления запрещены.';
+          let txt = null;
+          try { txt = window.prompt('Текст предупреждения для пользователя:', def); } catch (e) { txt = def; }
+          if (!txt) return;
+          db.ref('/warnings/' + uidMod).push({ text: String(txt).slice(0, 300), by: 'admin', at: Date.now() })
+            .then(() => toastAfter('Предупреждение отправлено'))
+            .catch((err) => showToast('Нет прав: ' + (err.message || err)));
+          return;
+        }
+        let job = null;
+        if (act === 'flagMute1') job = HubModeration.muteHours(uidMod, 1, reasonFrom || 'мут администратором');
+        else if (act === 'flagMute24') job = HubModeration.muteHours(uidMod, 24, reasonFrom || 'мут администратором');
+        else if (act === 'flagUnban') job = HubModeration.unban(uidMod);
+        if (job) {
+          job.then(() => toastAfter(act === 'flagUnban' ? 'Пользователь разбанен'
+            : (act === 'flagMute1' ? 'Мут на 1 час' : 'Мут на 24 часа')))
+            .catch((err) => showToast('Нет прав: ' + (err.message || err)));
+        }
+        return;
+      }
+
       // Домашка (кнопки без data-act)
       if ('hwSave' in t.dataset) {
         const key = t.dataset.key;
@@ -2119,7 +2206,8 @@
     // users/{uid} запускаем только после готовности входа (правила требуют auth).
     HubAuth.start(() => {
       startPresence(); // онлайн-присутствие и уникальные пользователи
-      ensureProfile(); // создаём/обновляем профиль (nick, class, createdAt)
+      ensureProfile(); // создаём/обновляем профиль (nick, class, deviceId, createdAt)
+      checkWarnings(); // показать предупреждения администратора (кнопка «Предупредить»)
       document.dispatchEvent(new CustomEvent('hub-auth-done'));
     });
   }
