@@ -13,9 +13,19 @@ parse_schedule.py — выгрузка расписания из Google Табл
        24,09 — с запятой вместо точки; год может отсутствовать),
     4) отбирает вкладки за неделю (пн..сб), проверяя, что день недели
        в названии совпадает с реальной датой (отсекает «старые»/дубли-вкладки),
-    5) собирает колонку класса (по умолчанию 7А) по дням,
-    6) если вкладок на неделю нет — печатает «Не найдено расписание на текущую
-       неделю. Доступные даты: ...».
+5) собирает колонку класса (по умолчанию 7А) по дням,
+  6) если вкладок на неделю нет — печатает «Не найдено расписание на текущую
+     неделю. Доступные даты: ...».
+
+  Каждый урок в расписании получает время начала-конца из колонки времени
+  (формат «08:15-08:55 Геометрия 35»); уроки-«окна» (клетки «окно») в расписание
+  не попадают.
+
+  ЗАГРУЗКА В FIREBASE — ПО УМОЛЧАНИЮ: каждая обработка (обычный режим,
+  --all-classes/--grade/--classes, старый --sheet) заливает расписание в
+  Firebase (cities/{cid}/schools/{sid}/classes/{clid}/schedule). Узел
+  ПЕРЕЗАПИСЫВАЕТСЯ целиком (PUT) — старые данные удаляются, чтобы не копить
+  место. Флаг --no-push отключает загрузку (например для пробы).
 
   --week   принудительно взять текущую неделю,
   --date YYYY-MM-DD — взять неделю, содержащую указанную дату,
@@ -32,9 +42,9 @@ parse_schedule.py — выгрузка расписания из Google Табл
   --classes 7А,7Б,7В — явный список (через запятую).
   Если колонка класса не найдена ни в одной вкладке — класс пропускается
   с предупреждением. Нельзя комбинировать multi-режим с --sheet.
-  С флагом --push каждое расписание заливается в Firebase
-  (cities/{cid}/schools/{sid}/classes/{clid}/schedule, узел ищется по имени
-  класса); классы, отсутствующие в Firebase, пропускаются с предупреждением.
+  Все найденные классы заливаются в Firebase отдельными узлами /schedule
+  (узел ищется по имени класса); классы, отсутствующие в Firebase,
+  пропускаются с предупреждением. Отключить загрузку — --no-push.
 
 Источники (по порядку):
   0. requests -> export?format=xlsx (все листы воркбука, без авторизации)
@@ -43,17 +53,18 @@ parse_schedule.py — выгрузка расписания из Google Табл
   3. Playwright headless (свежий контекст)
 
 Результат: schedule.json в формате хаба
-    { "class": "7А", "days": { "mon": [...], "tue": [...], ... } }
+    { "class": "7А", "days": { "mon": ["08:15-08:55 Геометрия 35", ...],
+                               "tue": [...], ... } }
 
 Примеры:
     python parse_schedule.py "URL"
     python parse_schedule.py --date 2026-09-18 --class 7Б --out s7b.json "URL"
-    python parse_schedule.py --week --push "URL"
+    python parse_schedule.py --week --no-push "URL"
     python parse_schedule.py --list "URL"
     python parse_schedule.py --sheet "2 четверть" "URL"
     python parse_schedule.py --all-classes "URL"
     python parse_schedule.py --all-classes --grade 7 "URL"
-    python parse_schedule.py --classes 7А,7Б,7В --push "URL"
+    python parse_schedule.py --classes 7А,7Б,7В --no-push "URL"
     python parse_schedule.py --local schedule.csv
 """
 
@@ -167,6 +178,36 @@ def parse_tab_date(name):
     return (key, best) if best else None
 
 
+def is_window_cell(cell):
+    """Урок-«окно» (свободное окошко без занятия) в расписание не попадает."""
+    return cell is not None and norm_key(cell) == "окно"
+
+
+_TIME_PART = re.compile(r"^(\d{1,2})[.,](\d{1,2})$")
+
+
+def fmt_time(cell):
+    """«8.15 - 08.55» / «09.05 - 09.45» -> «08:15-08:55».
+
+    Минуты должны задаваться двумя цифрами (иначе ячейку временем
+    не считаем и возвращаем "").
+    """
+    if cell is None:
+        return ""
+    t = str(cell).replace("\xa0", " ").strip()
+    parts = [p.strip() for p in re.split(r"-|–|—", t) if p.strip()]
+    out = []
+    for p in parts:
+        m = _TIME_PART.match(p)
+        if not m or len(m.group(2)) < 2:
+            return ""
+        h, mi = int(m.group(1)), int(m.group(2))
+        if not (0 <= h <= 23 and 0 <= mi <= 59):
+            return ""
+        out.append(f"{h:02d}:{mi:02d}")
+    return "-".join(out)
+
+
 def extract_class_day(rows, class_name):
     """Из матрицы ОДНОЙ датированной вкладки достаёт уроки класса.
 
@@ -196,8 +237,11 @@ def extract_class_day(rows, class_name):
         if cell is None or not str(cell).strip():
             continue
         t = str(cell).replace("\xa0", " ").strip()
-        if t and not LESSON_NO.match(t):
-            lessons.append(t)
+        if is_window_cell(t):
+            continue
+        if t and not LESSON_NO.match(t) and not TIME_TXT.match(t):
+            t2 = fmt_time(r[1]) if len(r) > 1 else ""
+            lessons.append((f"{t2} {t}" if t2 else t).strip())
     return lessons, True
 
 
@@ -414,7 +458,11 @@ def extract_class_week(rows, class_name):
                     if hcol is not None and len(rr) > hcol + 1:
                         cell = rr[hcol + 1]
                         if cell and not LESSON_NO.match(str(cell).strip()):
-                            days[day_key].append(str(cell))
+                            t = str(cell).replace("\xa0", " ").strip()
+                            if not is_window_cell(t):
+                                t2 = fmt_time(rr[0]) if rr else ""
+                                days[day_key].append(
+                                    (f"{t2} {t}" if t2 else t).strip())
             k += 1
         i = k
     return days, found_blocks, found_col
@@ -697,9 +745,11 @@ def firebase_class_nodes(db_url, token):
 
 
 def _push_schedule(base, node, schedule, token):
+    """PUT-перезапись узла: старое содержимое /schedule удаляется целиком,
+    в Firebase остаётся только свежая неделя (место не забивается хвостами)."""
     import requests
-    resp = requests.patch(base + node + ".json", params={"auth": token},
-                          json=schedule, timeout=30)
+    resp = requests.put(base + node + ".json", params={"auth": token},
+                        json=schedule, timeout=30)
     if resp.status_code != 200:
         raise RuntimeError(f"Firebase вернул {resp.status_code}: {resp.text[:160]}")
 
@@ -788,7 +838,10 @@ def main(argv=None):
     ap.add_argument("--out", default="schedule.json",
                     help="Файл результата (по умолчанию schedule.json)")
     ap.add_argument("--local", help="Распарсить локальный CSV вместо сети")
-    ap.add_argument("--push", action="store_true", help="Загрузить расписание в Firebase")
+    ap.add_argument("--no-push", action="store_true",
+                    help="НЕ загружать в Firebase (по умолчанию загружает)")
+    ap.add_argument("--push", action="store_true",
+                    help="Загрузить расписание в Firebase (включено по умолчанию)")
     ap.add_argument("--api-key", default=None, help="Web API key Firebase")
     ap.add_argument("--database-url",
                     default="https://school-hub-9d8aa-default-rtdb.firebaseio.com",
@@ -916,7 +969,7 @@ def main(argv=None):
                               ensure_ascii=False, indent=2)
             print("Записал: schedule_<класс>.json для каждого класса.")
 
-            if args.push:
+            if not args.no_push:
                 try:
                     push_all_schedules(results, load_api_key(args.api_key),
                                        args.database_url)
@@ -948,7 +1001,7 @@ def main(argv=None):
                 json.dump({"class": args.class_name, "sheet": nm, "rows": m}, f,
                           ensure_ascii=False, indent=2)
             print(f"Записал: {args.out}")
-            if args.push:
+            if not args.no_push:
                 try:
                     push_to_firebase(days, args.class_name,
                                      load_api_key(args.api_key), args.database_url)
@@ -1009,7 +1062,7 @@ def main(argv=None):
                       ensure_ascii=False, indent=2)
         print("Записал: schedule_raw.json")
 
-        if args.push:
+        if not args.no_push:
             try:
                 push_to_firebase(days, args.class_name,
                                  load_api_key(args.api_key), args.database_url)
