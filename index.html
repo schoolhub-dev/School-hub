@@ -127,6 +127,9 @@
       border-radius: 10px; margin-bottom: 8px;
       border-left: 3px solid #6366f1;
     }
+    /* Tailwind .hidden не перебивает display:flex у ID-селектора выше */
+    #chat-reply-box.hidden { display: none; }
+    #chat-edit-box.hidden { display: none; }
 
     /* @mention в тексте */
     .mention { color: #818cf8; font-weight: 600; }
