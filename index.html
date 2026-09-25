@@ -2347,15 +2347,21 @@
       const row = (label, val) => `
         <div class="flex items-center justify-between py-2 border-b border-slate-800/60 last:border-0">
           <span class="text-xs text-slate-400">${label}</span>
-          ${val == null ? '<span class="text-[11px] text-rose-400">доступ запрещён правилами</span>' : `<span class="text-sm font-bold">${val}</span>`}
+          ${val == null ? '<span class="text-[11px] text-slate-500">—</span>' : `<span class="text-sm font-bold">${val}</span>`}
         </div>`;
       const now5 = Date.now() - 300000;
       const now24 = Date.now() - dayMs;
+      const onlineV = ov == null ? null : Object.values(ov).filter((t) => Number(t) > now5).length;
+      const uniqAll = uv == null ? null : Object.keys(uv).length;
+      const uniq24 = uv == null ? null : Object.values(uv).filter((t) => Number(t) > now24).length;
+      const actCls = actL == null ? null : actL.filter((t) => t != null && t > now24).length;
+      const blocked = [onlineV, uniqAll, uniq24].filter((x) => x == null).length;
       $('#stats-extra').innerHTML = [
-        row('Онлайн сейчас (5 мин)', ov == null ? null : Object.values(ov).filter((t) => Number(t) > now5).length),
-        row('Уникальные пользователи (всего)', uv == null ? null : Object.keys(uv).length),
-        row('Уникальные (за 24 ч)', uv == null ? null : Object.values(uv).filter((t) => Number(t) > now24).length),
-        row('Активные классы (24 ч)', actL == null ? null : actL.filter((t) => t != null && t > now24).length),
+        row('Онлайн сейчас (5 мин)', onlineV),
+        row('Уникальные пользователи (всего)', uniqAll),
+        row('Уникальные (за 24 ч)', uniq24),
+        row('Активные классы (24 ч)', actCls),
+        ...(blocked ? ['<div class="pt-1 text-[10px] text-slate-500">— появятся после публикации правил (README, раздел 5)</div>'] : []),
       ].join('');
 
       // 📌 Интересное: помеченные фильтром сообщения
@@ -2365,7 +2371,7 @@
         safe(db.ref('/users')),
         safe(db.ref('/bannedUsers')),
       ]);
-      if (fv == null) { fEl.innerHTML = emptyNote('Раздел «Интересное» не доступен — опубликуйте правила из rules.json'); return; }
+      if (fv == null) { fEl.innerHTML = emptyNote('Помеченных сообщений нет — правила ещё не опубликованы (README, раздел 5)'); return; }
       const fEntries = [];
       Object.keys(fv).forEach((cid) => {
         Object.keys(fv[cid] || {}).forEach((sid) => {
