@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" class="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -13,58 +13,201 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-  <!-- Tailwind CSS через CDN (все стили) -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { darkMode: 'class' };
+    (function () {
+      var saved = localStorage.getItem('sh_theme') || 'dark';
+      document.documentElement.classList.toggle('dark', saved === 'dark');
+      var accent = localStorage.getItem('sh_accent') || 'indigo';
+      document.documentElement.setAttribute('data-accent', accent);
+    })();
+  </script>
 
   <style>
-    /* Минимальные кастомные анимации (Tailwind CDN не умеет keyframes) */
     @keyframes toast-in { from { transform: translateY(-16px); opacity: 0; } to { transform: none; opacity: 1; } }
     @keyframes fade-up  { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
     .toast-in { animation: toast-in .25s ease-out; }
     .fade-up  { animation: fade-up .25s ease-out; }
 
-    /* Запрет выделения текста и подсветки тапа на "жестовых" элементах */
-    .no-select {
-      user-select: none;
-      -webkit-user-select: none;
-      -webkit-tap-highlight-color: transparent;
-      touch-action: manipulation;
-    }
+    .no-select { user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
     .hold { opacity: .6; transform: scale(.98); }
 
-    /* Тонкий скроллбар для чата */
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: #334155; border-radius: 9999px; }
 
-    /* Отступ для зоны "чёлки" iPhone */
     .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
     .pt-safe { padding-top: env(safe-area-inset-top); }
 
-    /* Высота списка сообщений (с фолбэком для старых браузеров) */
-    .chat-scroll { height: calc(100vh - 300px); height: calc(100dvh - 290px); }
+    .chat-scroll { height: calc(100vh - 340px); height: calc(100dvh - 330px); }
+
+    .avatar { display: inline-flex; align-items: center; justify-content: center; border-radius: 9999px; font-weight: 700; flex-shrink: 0; }
+    .avatar-sm { width: 28px; height: 28px; font-size: 12px; }
+    .avatar-md { width: 40px; height: 40px; font-size: 16px; }
+    .avatar-lg { width: 64px; height: 64px; font-size: 24px; }
+
+    .accent-dot { width: 36px; height: 36px; border-radius: 9999px; border: 3px solid transparent; cursor: pointer; transition: transform .15s; }
+    .accent-dot:hover { transform: scale(1.1); }
+    .accent-dot.active { border-color: #fff; box-shadow: 0 0 0 2px #6366f1; }
+    html:not(.dark) .accent-dot.active { border-color: #0f172a; }
+
+    html[data-accent="indigo"] .accent-bg { background-color: #6366f1 !important; }
+    html[data-accent="blue"]   .accent-bg { background-color: #3b82f6 !important; }
+    html[data-accent="emerald"] .accent-bg { background-color: #10b981 !important; }
+    html[data-accent="rose"]   .accent-bg { background-color: #f43f5e !important; }
+    html[data-accent="amber"]  .accent-bg { background-color: #f59e0b !important; }
+    html[data-accent="violet"] .accent-bg { background-color: #8b5cf6 !important; }
+
+    html[data-accent="indigo"] .accent-text { color: #818cf8 !important; }
+    html[data-accent="blue"]   .accent-text { color: #60a5fa !important; }
+    html[data-accent="emerald"] .accent-text { color: #34d399 !important; }
+    html[data-accent="rose"]   .accent-text { color: #fb7185 !important; }
+    html[data-accent="amber"]  .accent-text { color: #fbbf24 !important; }
+    html[data-accent="violet"] .accent-text { color: #a78bfa !important; }
+
+    html[data-accent="indigo"] .accent-border { border-color: #6366f1 !important; }
+    html[data-accent="blue"]   .accent-border { border-color: #3b82f6 !important; }
+    html[data-accent="emerald"] .accent-border { border-color: #10b981 !important; }
+    html[data-accent="rose"]   .accent-border { border-color: #f43f5e !important; }
+    html[data-accent="amber"]  .accent-border { border-color: #f59e0b !important; }
+    html[data-accent="violet"] .accent-border { border-color: #8b5cf6 !important; }
+
+    .hw-check { width: 22px; height: 22px; border-radius: 6px; border: 2px solid #475569; background: transparent; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all .15s; }
+    .hw-check.done { background: #10b981; border-color: #10b981; }
+    .hw-check.done svg { display: block; }
+    .hw-check svg { display: none; width: 14px; height: 14px; color: #fff; }
+
+    .cal-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: default; }
+    .cal-day.today { background: #6366f1; color: #fff; }
+    .cal-day.has-ann { background: rgba(99,102,241,.15); color: #818cf8; }
+    .cal-day.empty { opacity: .25; }
+
+    .chat-search { position: sticky; top: 0; z-index: 5; background: rgba(15,23,42,.95); backdrop-filter: blur(6px); padding: 8px 0; }
+    html:not(.dark) .chat-search { background: rgba(248,250,252,.95); }
+
+    /* Реакции */
+    .reaction-pill {
+      display: inline-flex; align-items: center; gap: 3px;
+      padding: 2px 7px; border-radius: 9999px;
+      font-size: 11px; cursor: pointer; user-select: none;
+      background: rgba(99,102,241,.15); border: 1px solid rgba(99,102,241,.3);
+      transition: transform .1s;
+    }
+    .reaction-pill:active { transform: scale(.95); }
+    .reaction-pill.mine { background: rgba(99,102,241,.35); border-color: rgba(99,102,241,.6); }
+
+    /* Панель реакций */
+    .reactions-bar {
+      position: absolute; z-index: 30;
+      background: #1e293b; border: 1px solid #334155; border-radius: 12px;
+      padding: 6px; display: flex; gap: 4px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.5);
+    }
+    html:not(.dark) .reactions-bar { background: #fff; border-color: #e2e8f0; box-shadow: 0 10px 30px rgba(0,0,0,.1); }
+    .reactions-bar button {
+      width: 32px; height: 32px; border-radius: 8px; font-size: 18px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; background: transparent; transition: background .1s;
+    }
+    .reactions-bar button:hover { background: rgba(99,102,241,.2); }
+
+    /* Стикеры */
+    .sticker-btn { font-size: 24px; padding: 6px; border-radius: 8px; cursor: pointer; transition: background .1s; }
+    .sticker-btn:hover { background: rgba(99,102,241,.2); }
+
+    /* Reply-превью в сообщении */
+    .reply-preview {
+      border-left: 3px solid #6366f1; padding: 3px 8px;
+      background: rgba(0,0,0,.15); border-radius: 6px; margin-bottom: 4px;
+      font-size: 11px; opacity: .85;
+    }
+    html:not(.dark) .reply-preview { background: rgba(0,0,0,.05); }
+
+    /* Reply-плашка над полем ввода */
+    #chat-reply-box {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 12px; background: rgba(99,102,241,.15);
+      border-radius: 10px; margin-bottom: 8px;
+      border-left: 3px solid #6366f1;
+    }
+
+    /* @mention в тексте */
+    .mention { color: #818cf8; font-weight: 600; }
+
+    /* Редактирование сообщения */
+    .msg-edited { font-size: 9px; opacity: .6; font-style: italic; }
+
+    /* Статус "печатает..." */
+    #typing-indicator {
+      font-size: 11px; color: #94a3b8; font-style: italic;
+      padding: 4px 4px 0; min-height: 16px;
+    }
+
+    /* Счётчик непрочитанных на вкладке */
+    .unread-badge {
+      position: absolute; top: 2px; right: 2px;
+      min-width: 16px; height: 16px; padding: 0 4px;
+      border-radius: 9999px; background: #ef4444; color: #fff;
+      font-size: 10px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* Стикеры панель */
+    #sticker-panel {
+      display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px;
+      padding: 8px; background: #1e293b; border-radius: 12px;
+      margin-bottom: 8px; max-height: 200px; overflow-y: auto;
+    }
+    html:not(.dark) #sticker-panel { background: #fff; border: 1px solid #e2e8f0; }
+
+    .msg-hidden { display: none !important; }
+    .msg-highlight { background: rgba(251,191,36,.25) !important; }
+
+    /* ==== Светлая тема ==== */
+    html:not(.dark) body { background: #f8fafc; color: #0f172a; }
+    html:not(.dark) .bg-slate-950 { background-color: #f8fafc !important; }
+    html:not(.dark) .bg-slate-950\/90 { background-color: rgba(248,250,252,.92) !important; }
+    html:not(.dark) .bg-slate-950\/10 { background-color: rgba(0,0,0,.06) !important; }
+    html:not(.dark) .bg-slate-900 { background-color: #ffffff !important; }
+    html:not(.dark) .bg-slate-800 { background-color: #f1f5f9 !important; }
+    html:not(.dark) .bg-slate-800\/50 { background-color: rgba(241,245,249,.7) !important; }
+    html:not(.dark) .bg-slate-700 { background-color: #e2e8f0 !important; }
+    html:not(.dark) .border-slate-800 { border-color: #e2e8f0 !important; }
+    html:not(.dark) .border-slate-700 { border-color: #cbd5e1 !important; }
+    html:not(.dark) .text-slate-100 { color: #0f172a !important; }
+    html:not(.dark) .text-slate-200 { color: #1e293b !important; }
+    html:not(.dark) .text-slate-300 { color: #334155 !important; }
+    html:not(.dark) .text-slate-400 { color: #64748b !important; }
+    html:not(.dark) .text-slate-500 { color: #94a3b8 !important; }
+    html:not(.dark) .text-slate-600 { color: #94a3b8 !important; }
+    html:not(.dark) .placeholder-slate-500::placeholder { color: #94a3b8 !important; }
+    html:not(.dark) .bg-black\/60 { background-color: rgba(0,0,0,.4) !important; }
+    html:not(.dark) .bg-black\/70 { background-color: rgba(0,0,0,.5) !important; }
+    html:not(.dark) input, html:not(.dark) textarea, html:not(.dark) select { color: #0f172a; }
+    html:not(.dark) input::placeholder, html:not(.dark) textarea::placeholder { color: #94a3b8; }
+    html:not(.dark) ::-webkit-scrollbar-thumb { background: #cbd5e1; }
   </style>
 </head>
 
-<body class="bg-slate-950 text-slate-100 antialiased min-h-screen">
+<body class="bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100 antialiased min-h-screen transition-colors">
 
-  <!-- ======================= TOAST (уведомление вверху экрана) ======================= -->
+  <!-- ======================= TOAST ======================= -->
   <div id="toast" class="hidden fixed top-3 left-3 right-3 z-[70] rounded-xl bg-amber-400 text-slate-950 shadow-2xl px-4 py-3 flex items-center gap-3 text-sm toast-in max-w-md mx-auto">
     <svg class="shrink-0 w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
       <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.9 5h13.8a2 2 0 001.78-3L13.78 4.9a2 2 0 00-3.56 0L4.12 18a2 2 0 001.78 3z"/>
     </svg>
     <div class="flex-1 min-w-0">
-      <div class="font-extrabold">Завтра контрольная!</div>
+      <div class="font-extrabold">Уведомление</div>
       <div id="toast-text" class="truncate opacity-80 font-medium"></div>
     </div>
     <button id="toast-close" class="shrink-0 w-7 h-7 rounded-full bg-slate-950/10 flex items-center justify-center font-bold" aria-label="Закрыть">✕</button>
   </div>
 
-  <!-- ======================= ЭКРАН ВХОДА (пошаговый выбор) ======================= -->
+  <!-- ======================= ЭКРАН ВХОДА ======================= -->
   <div id="auth-screen" class="min-h-screen flex flex-col">
-    <!-- 5 тапов по логотипу или долгое нажатие на заголовок открывают админ-панель -->
     <header class="px-5 pt-safe pt-14 pb-6 text-center">
-      <div id="auth-logo" class="no-select mx-auto w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-900/40">
+      <div id="auth-logo" class="no-select mx-auto w-14 h-14 rounded-2xl accent-bg flex items-center justify-center shadow-lg shadow-indigo-900/40">
         <svg class="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.25c-1.8-1.3-4.6-1.75-7.75-1.25v12.5c3.15-.5 5.95-.05 7.75 1.25 1.8-1.3 4.6-1.75 7.75-1.25V5c-3.15-.5-5.95-.05-7.75 1.25z"/>
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.25v12.5"/>
@@ -75,7 +218,6 @@
     </header>
 
     <div class="flex-1 px-4 pb-6 w-full max-w-md mx-auto">
-      <!-- Шапка шага выбора -->
       <div class="flex items-center gap-3 mb-4">
         <button id="back-btn" class="hidden h-10 w-10 shrink-0 rounded-full bg-slate-800 flex items-center justify-center hover:bg-slate-700" aria-label="Назад">
           <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -91,55 +233,54 @@
 
   <!-- ======================= ГЛАВНЫЙ ЭКРАН ======================= -->
   <div id="main-screen" class="hidden min-h-screen flex flex-col">
-    <!-- Шапка + вкладки (приклеена вверху) -->
     <div class="sticky top-0 z-30 bg-slate-950/90 backdrop-blur border-b border-slate-800 pt-safe">
       <div class="w-full max-w-md mx-auto">
         <div class="flex items-center gap-3 px-4 pt-2 pb-2">
-          <!-- Логотип: 5 тапов открывают админ-панель -->
-          <div id="logo" class="no-select shrink-0 h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center cursor-pointer">
+          <div id="logo" class="no-select shrink-0 h-10 w-10 rounded-xl accent-bg flex items-center justify-center cursor-pointer">
             <svg class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.25c-1.8-1.3-4.6-1.75-7.75-1.25v12.5c3.15-.5 5.95-.05 7.75 1.25 1.8-1.3 4.6-1.75 7.75-1.25V5c-3.15-.5-5.95-.05-7.75 1.25z"/>
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.25v12.5"/>
             </svg>
           </div>
-          <!-- Заголовок: долгое нажатие 3 секунды открывает админ-панель -->
           <button id="header-title" class="no-select flex-1 text-left leading-tight cursor-pointer transition-transform duration-200">
             <span id="header-text" class="block font-bold text-sm truncate">Находка, Школа №4, 7А</span>
-            <span class="block text-[11px] text-slate-400">Твой класс</span>
+            <span class="block text-[11px] text-slate-400">
+              <span id="header-clock">—</span> · Твой класс
+            </span>
           </button>
           <button id="change-btn" class="shrink-0 px-3 py-2 rounded-lg bg-slate-800 text-xs font-semibold hover:bg-slate-700 active:scale-95 transition">
             Сменить
           </button>
         </div>
 
-        <!-- Вкладки -->
         <nav class="flex gap-1 px-3 pb-2">
-          <button data-tab="schedule" class="tab-btn flex-1 flex flex-col items-center gap-0.5 py-2 rounded-lg text-[11px] font-semibold text-slate-400">
+          <button data-tab="schedule" class="tab-btn relative flex-1 flex flex-col items-center gap-0.5 py-2 rounded-lg text-[11px] font-semibold text-slate-400">
             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
               <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3M4 8h16M5 5h14a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1V6a1 1 0 011-1z"/>
             </svg>
             <span>Расписание</span>
           </button>
-          <button data-tab="homework" class="tab-btn flex-1 flex flex-col items-center gap-0.5 py-2 rounded-lg text-[11px] font-semibold text-slate-400">
+          <button data-tab="homework" class="tab-btn relative flex-1 flex flex-col items-center gap-0.5 py-2 rounded-lg text-[11px] font-semibold text-slate-400">
             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
               <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6M7 4h10a2 2 0 012 2v14l-3-2-3 2-3-2-3 2V6a2 2 0 012-2z"/>
             </svg>
             <span>Домашка</span>
           </button>
-          <button data-tab="announcements" class="tab-btn flex-1 flex flex-col items-center gap-0.5 py-2 rounded-lg text-[11px] font-semibold text-slate-400">
+          <button data-tab="announcements" class="tab-btn relative flex-1 flex flex-col items-center gap-0.5 py-2 rounded-lg text-[11px] font-semibold text-slate-400">
             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
               <path stroke-linecap="round" stroke-linejoin="round" d="M15 9a5 5 0 010 6M19.5 6a9 9 0 010 12M8 11h.01M8 15h-1a3 3 0 01-3-3v0a3 3 0 013-3h1v6zm10.5-6a9 9 0 010 12"/>
             </svg>
             <span>Объявл.</span>
           </button>
-          <button data-tab="chat" class="tab-btn flex-1 flex flex-col items-center gap-0.5 py-2 rounded-lg text-[11px] font-semibold text-slate-400">
+          <button data-tab="chat" class="tab-btn relative flex-1 flex flex-col items-center gap-0.5 py-2 rounded-lg text-[11px] font-semibold text-slate-400">
             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
               <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.4-4 8-9 8-1 0-2-.15-2.9-.4L4 21l1.5-3.9A7.8 7.8 0 013 12c0-4.4 4-8 9-8s9 3.6 9 8z"/>
             </svg>
             <span>Чат</span>
+            <span id="chat-unread" class="unread-badge hidden"></span>
           </button>
           <button id="tab-settings-btn" data-tab="settings"
-                  class="tab-btn hidden flex-1 flex-col items-center gap-0.5 py-2 rounded-lg text-[11px] font-semibold text-slate-400">
+                  class="tab-btn relative flex-1 flex-col items-center gap-0.5 py-2 rounded-lg text-[11px] font-semibold text-slate-400">
             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
               <path stroke-linecap="round" stroke-linejoin="round" d="M10.3 4.3 11 3a1 1 0 0 1 2 0l.7 1.3a1 1 0 0 0 .9.5l1.5-.1a1 1 0 0 1 1 1l.1 1.5c0 .4.2.7.5.9l1.3.7a1 1 0 0 1 0 2l-1.3.7a1 1 0 0 0-.5.9l.1 1.5a1 1 0 0 1-1 1l-1.5-.1a1 1 0 0 0-.9.5L13 21a1 1 0 0 1-2 0l-.7-1.3a1 1 0 0 0-.9-.5l-1.5.1a1 1 0 0 1-1-1l-.1-1.5a1 1 0 0 0-.5-.9l-1.3-.7a1 1 0 0 1 0-2l1.3-.7a1 1 0 0 0 .5-.9L6.5 9a1 1 0 0 1 1-1L9 8.1c.4 0 .7-.2.9-.5l.7-1.3z"/>
               <circle cx="12" cy="12" r="2.6"/>
@@ -150,22 +291,52 @@
       </div>
     </div>
 
-    <!-- Контент вкладок -->
     <main class="flex-1 w-full max-w-md mx-auto px-4 py-4 pb-safe">
       <section id="tab-schedule" class="tab space-y-4"></section>
       <section id="tab-homework" class="tab hidden space-y-3"></section>
       <section id="tab-announcements" class="tab hidden space-y-3"></section>
       <section id="tab-chat" class="tab hidden flex flex-col">
         <div class="flex items-center justify-between mb-2">
-          <p class="text-xs text-slate-400">Ты в чате как <button id="chat-nick" class="font-bold text-indigo-400 underline decoration-dotted">—</button></p>
+          <p class="text-xs text-slate-400">Ты в чате как <button id="chat-nick" class="font-bold accent-text underline decoration-dotted">—</button></p>
+          <button id="chat-search-btn" class="text-xs text-slate-400 hover:text-slate-200 px-2 py-1 rounded">🔍 Поиск</button>
+        </div>
+        <div id="chat-search-box" class="chat-search hidden">
+          <input id="chat-search-input" type="text" placeholder="Поиск по сообщениям…"
+                 class="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-sm placeholder-slate-500 outline-none focus:border-indigo-500">
         </div>
         <div id="chat-messages" class="chat-scroll space-y-3 overflow-y-auto pr-1"></div>
+        <div id="typing-indicator"></div>
+
+        <!-- Reply-превью -->
+        <div id="chat-reply-box" class="hidden">
+          <div class="flex-1 min-w-0">
+            <div class="text-[10px] font-bold accent-text" id="chat-reply-nick"></div>
+            <div class="text-[11px] text-slate-500 truncate" id="chat-reply-text"></div>
+          </div>
+          <button id="chat-reply-close" class="text-slate-400 hover:text-rose-400 font-bold px-2">✕</button>
+        </div>
+
+        <!-- Edit-превью -->
+        <div id="chat-edit-box" class="hidden flex items-center gap-2 px-3 py-2 mb-2 rounded-lg bg-amber-500/15 border-l-4 border-amber-500">
+          <div class="flex-1 min-w-0">
+            <div class="text-[10px] font-bold text-amber-400">РЕДАКТИРОВАНИЕ</div>
+            <div class="text-[11px] text-slate-500 truncate" id="chat-edit-text"></div>
+          </div>
+          <button id="chat-edit-close" class="text-slate-400 hover:text-rose-400 font-bold px-2">✕</button>
+        </div>
+
+        <!-- Панель стикеров -->
+        <div id="sticker-panel" class="hidden"></div>
+
         <form id="chat-form" class="flex gap-2 mt-3 pt-3 border-t border-slate-800 bg-slate-950/90 backdrop-blur">
+          <button type="button" id="sticker-btn" class="shrink-0 h-11 w-11 rounded-xl bg-slate-800 flex items-center justify-center hover:bg-slate-700 active:scale-95 transition text-lg" aria-label="Стикеры">
+            😊
+          </button>
           <input id="chat-input" type="text" maxlength="500" autocomplete="off"
-                 placeholder="Сообщение…"
+                 placeholder="Сообщение… (@ник — упомянуть)"
                  class="flex-1 min-w-0 rounded-xl bg-slate-800 border border-slate-700 px-4 py-2.5 text-sm placeholder-slate-500 outline-none focus:border-indigo-500 transition">
-          <button type="submit" class="shrink-0 h-11 w-11 rounded-xl bg-indigo-600 flex items-center justify-center hover:bg-indigo-500 active:scale-95 transition" aria-label="Отправить">
-            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <button type="submit" class="shrink-0 h-11 w-11 rounded-xl accent-bg flex items-center justify-center hover:opacity-90 active:scale-95 transition" aria-label="Отправить">
+            <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9-7-9-7v14zm0 0V5"/>
             </svg>
           </button>
@@ -184,7 +355,7 @@
              placeholder="Введите ник"
              class="mt-4 w-full rounded-xl bg-slate-800 border border-slate-700 px-4 py-2.5 text-sm placeholder-slate-500 outline-none focus:border-indigo-500 transition">
       <p id="nick-error" class="hidden text-xs text-rose-400 mt-2"></p>
-      <button id="nick-save" class="mt-4 w-full rounded-xl bg-indigo-600 py-3 text-sm font-bold hover:bg-indigo-500 active:scale-[.98] transition">
+      <button id="nick-save" class="mt-4 w-full rounded-xl accent-bg py-3 text-sm font-bold text-white hover:opacity-90 active:scale-[.98] transition">
         Сохранить
       </button>
     </div>
@@ -209,7 +380,7 @@
         <button data-apage="schools" class="apage-btn py-2 rounded-lg text-[11px] font-semibold text-slate-400">Школы</button>
         <button data-apage="classes" class="apage-btn py-2 rounded-lg text-[11px] font-semibold text-slate-400">Классы</button>
         <button data-apage="content" class="apage-btn py-2 rounded-lg text-[11px] font-semibold text-slate-400">Данные</button>
-        <button data-apage="people"  class="apage-btn py-2 rounded-lg text-[11px] font-semibold text-slate-400">Люди и чат</button>
+        <button data-apage="people"  class="apage-btn py-2 rounded-lg text-[11px] font-semibold text-slate-400">Люди</button>
         <button data-apage="stats"   class="apage-btn py-2 rounded-lg text-[11px] font-semibold text-slate-400">Статистика</button>
       </nav>
 
@@ -223,20 +394,20 @@
     <div class="absolute inset-x-0 bottom-0 rounded-t-3xl border-t border-slate-700 bg-slate-900 p-5 flex flex-col gap-4">
       <div>
         <h3 class="font-extrabold text-base">Вход для администратора</h3>
-        <p class="text-xs text-slate-500 mt-1">Введите пароль, чтобы получить вкладку «Настройки».</p>
+        <p class="text-xs text-slate-500 mt-1">Введите пароль, чтобы получить админ-функции.</p>
       </div>
       <input id="pass-input" type="password" placeholder="Пароль администратора"
              class="w-full rounded-xl bg-slate-800 border border-slate-700 px-4 py-2.5 text-sm placeholder-slate-500 outline-none focus:border-indigo-500 transition"
              autocomplete="current-password">
       <div class="flex gap-2">
-        <button id="pass-btn" class="flex-1 rounded-xl bg-indigo-600 hover:bg-indigo-500 py-2.5 text-sm font-bold">Войти</button>
+        <button id="pass-btn" class="flex-1 rounded-xl accent-bg text-white hover:opacity-90 py-2.5 text-sm font-bold">Войти</button>
         <button id="pass-cancel" class="rounded-xl bg-slate-800 hover:bg-slate-700 px-4 py-2.5 text-sm font-semibold">Отмена</button>
       </div>
       <p id="pass-hint" class="text-[11px] text-slate-500"></p>
     </div>
   </div>
 
-  <!-- Просмотр чата (режим чтения, последние 50 сообщений) -->
+  <!-- Просмотр чата -->
   <div id="view-modal" class="hidden fixed inset-0 z-40">
     <div id="view-overlay" class="absolute inset-0 bg-black/60"></div>
     <div class="absolute inset-x-0 bottom-0 top-10 bg-slate-900 rounded-t-3xl border-t border-slate-700 flex flex-col">
@@ -248,96 +419,83 @@
     </div>
   </div>
 
+  <!-- Просмотр избранного -->
+  <div id="fav-modal" class="hidden fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm p-4">
+    <div class="w-full max-w-md mx-auto mt-10 rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl flex flex-col max-h-[80vh]">
+      <div class="flex items-center justify-between px-4 py-3 border-b border-slate-800">
+        <h3 class="font-extrabold text-sm">⭐ Избранные сообщения</h3>
+        <button id="fav-close" class="h-8 w-8 rounded-full bg-slate-800 flex items-center justify-center font-bold">✕</button>
+      </div>
+      <div id="fav-list" class="flex-1 overflow-y-auto p-3 space-y-2"></div>
+    </div>
+  </div>
+
   <noscript><p class="p-5 text-center text-slate-400">Для работы приложения включите JavaScript.</p></noscript>
 
   <!-- ======================= Скрипты ======================= -->
-  <!-- Конфиг Firebase заполняется в firebase-config.js (индекс v2 — для сброса старого кэша PWA) -->
-  <script src="firebase-config.js?v=2"></script>
+  <script src="firebase-config.js?v=3"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
-  <!-- Модули: анонимная авторизация (UID) и модерация (бан/мут по UID) -->
   <script src="auth.js?v=9"></script>
   <script src="moderation.js?v=9"></script>
 
   <script>
   'use strict';
 
-  /* ============================================================
-     ШКОЛЬНЫЙ ХАБ — логика приложения
-     ============================================================ */
-
-  /* ---------- Конфиг и инициализация Firebase ---------- */
   let app, db;
 
-  // Читаем конфиг из firebase-config.js.
-  // Поддерживаем оба варианта: window.firebaseConfig и глобальный const firebaseConfig
-  // (const на верхнем уровне НЕ создаёт свойство window).
   function getConfig() {
     if (window.firebaseConfig) return window.firebaseConfig;
     if (typeof firebaseConfig !== 'undefined') return firebaseConfig;
     return null;
   }
-
-  // Проверяем, заполнил ли пользователь конфиг в firebase-config.js
   function isConfigured() {
     const c = getConfig();
     return !!(c && c.apiKey && c.databaseURL && !String(c.apiKey).startsWith('YOUR_'));
   }
-
   function initFirebase() {
     if (app || !isConfigured()) return;
     app = firebase.initializeApp(getConfig());
     db = firebase.database();
   }
 
-  /* ---------- Вспомогательные функции ---------- */
   const $  = (sel) => document.querySelector(sel);
   const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 
-  // Ключи localStorage
   const LS = {
-    sel: 'sh_selection',   // выбранные город/школа/класс
-    nick: 'sh_nick',       // ник пользователя
-    seen: 'sh_seen_ann',   // ключи объявлений, для которых уже показали toast
+    sel: 'sh_selection',
+    nick: 'sh_nick',
+    seen: 'sh_seen_ann',
+    theme: 'sh_theme',
+    accent: 'sh_accent',
+    fav: 'sh_fav',
+    hwDone: 'sh_hw_done',
+    bdays: 'sh_bdays',
+    dnd: 'sh_dnd',
+    lastRead: 'sh_last_read',
   };
 
-  // Неделя: индексы JS getDay(): 0 = воскресенье
   const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
   const DAY_NAMES = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
 
-  // Состояние приложения
-  const state = {
-    sel: {},               // { cid, cname, sid, sname, clid, clname }
-    step: 1,               // шаг экрана входа
-  };
-
-  // Админ-состояние
+  const state = { sel: {}, step: 1 };
   const admin = {
-    city: null,     // выбранный город (ключ)
-    school: null,   // выбранная школа (ключ)
-    cls: null,      // выбранный класс (ключ)
-    ctype: 'schedule', // вкладка "содержимого": schedule | homework | announcements
-    annKey: null,      // ключ объявления в режиме редактирования
-    annDate: null,     // createdAt редактируемого объявления
+    city: null, school: null, cls: null,
+    ctype: 'schedule',
+    annKey: null, annDate: null,
     page: 'cities',
-    authorized: sessionStorage.getItem('sh_admin_auth') === '1', // вход по паролю за сессию
+    authorized: sessionStorage.getItem('sh_admin_auth') === '1',
   };
 
-  // Рефы с активными слушателями
-  let authRefs = [];   // экран входа
-  let mainRefs = [];   // главный экран
-  let adminRefs = [];  // админ-панель
-
+  let authRefs = [], mainRefs = [], adminRefs = [];
   const offRefs = (arr) => arr.forEach((r) => r.off());
   const addRef = (arr, ref) => { arr.push(ref); return ref; };
 
   function nick() { return localStorage.getItem(LS.nick) || ''; }
   function setNick(n) { localStorage.setItem(LS.nick, n); }
 
-  // Синхронизация профиля users/{uid}: ник, класс и device_id (для старых сообщений).
-  // Вызывается после входа, смены ника и выбора класса.
   function ensureProfile() {
     if (!window.HubAuth || !HubAuth.uid) return;
     const s = state.sel;
@@ -348,8 +506,6 @@
     }).catch(() => {});
   }
 
-  // Предупреждения администратора (кнопка «Предупредить»): показываем одно
-  // последнее и удаляем все, чтобы не повторялись.
   function checkWarnings() {
     if (!window.HubAuth || !HubAuth.uid) return;
     const wref = db.ref('/warnings/' + HubAuth.uid);
@@ -363,8 +519,6 @@
     }).catch(() => {});
   }
 
-  // SHA-256 (hex) для пароля админки. crypto.subtle работает на https и localhost.
-  // Есть запасной хеш для других случаев; при проверке принимаем любой из них.
   function sHashFb(str) {
     let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
     for (let i = 0; i < str.length; i++) {
@@ -385,9 +539,6 @@
     return Promise.resolve(sHashFb(str));
   }
 
-  /* ---------- Статистика и фильтр сообщений ---------- */
-
-  // device_id: генерируется один раз и хранится в localStorage
   function deviceId() {
     let id = localStorage.getItem('sh_device');
     if (!id) {
@@ -399,8 +550,6 @@
     return id;
   }
 
-  // Онлайн-присутствие: пишем online/{device_id}: TIMESTAMP, обновляем каждые 30 сек.
-  // Один раз на устройство регистрируем его в unique/{device_id} (счётчик уникальных).
   function startPresence() {
     const id = deviceId();
     const beacon = () => db.ref('/online/' + id).set(firebase.database.ServerValue.TIMESTAMP);
@@ -416,23 +565,20 @@
     }
   }
 
-  // Простой фильтр по спискам слов (без ИИ). Возвращает категории нарушений.
-  const BAD_WORDS = {
-    'мат': ['хуй', 'хуя', 'хую', 'хуем', 'хуи', 'пизд', 'бля', 'блять', 'ебал', 'ебан', 'ебаш', 'ебать', 'выеб', 'наеб', 'сука', 'суки', 'мудак', 'муда', 'мразь', 'уёбок', 'уёбищ', 'ёб'],
-    'оскорбление': ['лох', 'лошара', 'чмо', 'дебил', 'идиот', 'тупой', 'тупая', 'шлюха', 'пидор', 'пидр', 'гандон', 'козёл', 'козел', 'овца', 'сволочь', 'тварь', 'гнида', 'редиска'],
-    'угроза': ['убью', 'придушу', 'задушу', 'найду тебя', 'порву', 'сломаю тебе', 'побью', 'изобью', 'порежу', 'закопаю'],
-  };
-  // Сообщение проверяется как подстрока (регистр не важен)
-  function checkMessage(text) {
-    const t = ' ' + String(text).toLowerCase() + ' ';
-    const hits = [];
-    Object.keys(BAD_WORDS).forEach((cat) => {
-      if (BAD_WORDS[cat].some((w) => t.includes(w))) hits.push(cat);
-    });
-    return hits; // например ['мат', 'угроза']
+  /* ---- Аватарки ---- */
+  function avatarHue(name) {
+    let h = 0;
+    for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 360;
+    return h;
+  }
+  function avatarHtml(name, size) {
+    const n = String(name || '?').trim() || '?';
+    const initial = n[0].toUpperCase();
+    const hue = avatarHue(n);
+    const sizeCls = size === 'sm' ? 'avatar-sm' : size === 'lg' ? 'avatar-lg' : 'avatar-md';
+    return `<span class="avatar ${sizeCls}" style="background:hsl(${hue},55%,45%);color:#fff">${esc(initial)}</span>`;
   }
 
-  /* ---------- Пути в БД ---------- */
   const P = {
     cities: () => '/cities',
     schools: (cid) => `/cities/${cid}/schools`,
@@ -440,15 +586,15 @@
     classNode: (cid, sid, clid) => `/cities/${cid}/schools/${sid}/classes/${clid}`,
   };
 
-  // Путь к текущему классу (для главного экрана)
   function curClassPath() {
     const s = state.sel;
     return P.classNode(s.cid, s.sid, s.clid);
   }
+  function curClassKey() {
+    const s = state.sel;
+    return `${s.cid}|${s.sid}|${s.clid}`;
+  }
 
-  // Преобразование snapshot в массив { key, ...val }
-  // ВАЖНО: идём через snap.val(), а не snap.forEach(): forEach иногда отдаёт только часть
-  // дочерних узлов (виден 1 класс из 12), а val() всегда содержит полный набор.
   function snapArr(snap) {
     const arr = [];
     const v = snap && snap.val();
@@ -461,7 +607,6 @@
     return arr;
   }
 
-  // Мини-треска (иконка "нет данных")
   function emptyNote(text) {
     return `<div class="text-center py-10 text-slate-500 text-sm fade-up"><p>${text}</p></div>`;
   }
@@ -469,7 +614,6 @@
     return `<div class="text-center py-10 text-slate-500 text-sm">Загрузка…</div>`;
   }
 
-  // Форматирование даты/времени
   function fmtDate(ts) {
     if (!ts) return '';
     const d = new Date(ts);
@@ -477,8 +621,174 @@
     return `${p(d.getDate())}.${p(d.getMonth() + 1)}, ${p(d.getHours())}:${p(d.getMinutes())}`;
   }
 
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  // Подсветка @упоминаний и переносов строк
+  function formatMessageText(text) {
+    let s = esc(text);
+    s = s.replace(/(^|\s)@([\wА-Яа-яЁё]{1,30})/g, '$1<span class="mention">@$2</span>');
+    return s;
+  }
+
   /* ============================================================
-     TOAST УВЕДОМЛЕНИЯ
+     АВТОЗАПОЛНЕНИЕ ШКОЛЫ №25
+     ============================================================ */
+  function seedSchool25() {
+    db.ref('/cities').once('value', (snap) => {
+      const cities = snap.val() || {};
+      let cid = null;
+      Object.keys(cities).forEach((k) => {
+        if ((cities[k].name || '').toLowerCase().includes('находка')) cid = k;
+      });
+      const ensureClasses = (cityId, schoolId) => {
+        const wanted = ['6А', '6Б', '6В', '6Г', '6Д'];
+        db.ref(`/cities/${cityId}/schools/${schoolId}/classes`).once('value', (c2) => {
+          const classes = c2.val() || {};
+          const existing = Object.keys(classes).map((k) => (classes[k].name || '').trim());
+          const toAdd = wanted.filter((n) => !existing.includes(n));
+          if (!toAdd.length) return;
+          const updates = {};
+          toAdd.forEach((name) => {
+            const key = db.ref(`/cities/${cityId}/schools/${schoolId}/classes`).push().key;
+            updates[`${key}/name`] = name;
+          });
+          db.ref(`/cities/${cityId}/schools/${schoolId}/classes`).update(updates).catch(() => {});
+        });
+      };
+      const ensureSchool = (cityId) => {
+        db.ref(`/cities/${cityId}/schools`).once('value', (s2) => {
+          const schools = s2.val() || {};
+          let sid = null;
+          Object.keys(schools).forEach((k) => {
+            const n = (schools[k].name || '').toLowerCase();
+            if (n.includes('25') || n.includes('№25')) sid = k;
+          });
+          if (!sid) {
+            db.ref(`/cities/${cityId}/schools`).push({ name: 'Школа №25' })
+              .then((ref) => ensureClasses(cityId, ref.key));
+          } else ensureClasses(cityId, sid);
+        });
+      };
+      if (!cid) db.ref('/cities').push({ name: 'Находка' }).then((ref) => ensureSchool(ref.key));
+      else ensureSchool(cid);
+    });
+  }
+
+  /* ============================================================
+     ИНТЕГРАЦИЯ С НИКА-СОФТ
+     ============================================================ */
+  const NIKA_URL = 'https://raspisanie.nikasoft.ru/86111512.html';
+  const CORS_PROXIES = [
+    (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+    (u) => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+    (u) => `https://thingproxy.freeboard.io/fetch/${u}`,
+    (u) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+  ];
+  function fetchViaProxy(url) {
+    let i = 0;
+    const tryNext = () => {
+      if (i >= CORS_PROXIES.length) return Promise.reject(new Error('Все CORS-прокси недоступны'));
+      return fetch(CORS_PROXIES[i++](url), { cache: 'no-store' })
+        .then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+        .catch(() => tryNext());
+    };
+    return tryNext();
+  }
+  function parseNikaHtml(html) {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const result = {};
+    const DAY_MAP = [
+      [/понед/i, 'mon'], [/вторн/i, 'tue'], [/сред/i, 'wed'],
+      [/четверг/i, 'thu'], [/пятниц/i, 'fri'], [/суббот/i, 'sat'], [/воскрес/i, 'sun'],
+    ];
+    const detectClass = (table) => {
+      let cn = '';
+      const cap = table.querySelector('caption');
+      if (cap) cn = cap.textContent.trim();
+      if (!cn) {
+        let prev = table.previousElementSibling;
+        while (prev && !cn) {
+          const m = (prev.textContent || '').match(/\b(\d{1,2})\s*[-\s]?\s*([А-ЯA-Z])\b/i);
+          if (m) cn = (m[1] + m[2]).toUpperCase();
+          prev = prev.previousElementSibling;
+        }
+      }
+      if (!cn) {
+        const fr = table.querySelector('tr');
+        if (fr) {
+          const m = fr.textContent.match(/\b(\d{1,2})\s*[-\s]?\s*([А-ЯA-Z])\b/i);
+          if (m) cn = (m[1] + m[2]).toUpperCase();
+        }
+      }
+      return cn;
+    };
+    doc.querySelectorAll('table').forEach((table) => {
+      const className = detectClass(table);
+      if (!className) return;
+      const schedule = { mon: [], tue: [], wed: [], thu: [], fri: [], sat: [], sun: [] };
+      const rows = Array.from(table.querySelectorAll('tr'));
+      if (!rows.length) return;
+      const headerCells = Array.from(rows[0].querySelectorAll('th,td')).map((c) => c.textContent.trim());
+      const colDayIdx = {};
+      headerCells.forEach((txt, idx) => DAY_MAP.forEach(([re, key]) => { if (re.test(txt)) colDayIdx[key] = idx; }));
+      if (Object.keys(colDayIdx).length >= 2) {
+        for (let r = 1; r < rows.length; r++) {
+          const cells = Array.from(rows[r].querySelectorAll('th,td'));
+          Object.keys(colDayIdx).forEach((dayKey) => {
+            const cell = cells[colDayIdx[dayKey]];
+            if (!cell) return;
+            const txt = cell.textContent.replace(/\s+/g, ' ').trim();
+            if (txt && txt !== '-' && txt !== '—') schedule[dayKey].push(txt);
+          });
+        }
+      } else {
+        rows.forEach((row) => {
+          const cells = Array.from(row.querySelectorAll('th,td'));
+          if (!cells.length) return;
+          const firstTxt = cells[0].textContent.trim();
+          let dayKey = null;
+          DAY_MAP.forEach(([re, key]) => { if (re.test(firstTxt)) dayKey = key; });
+          if (!dayKey) return;
+          for (let c = 1; c < cells.length; c++) {
+            const txt = cells[c].textContent.replace(/\s+/g, ' ').trim();
+            if (txt && txt !== '-' && txt !== '—') schedule[dayKey].push(txt);
+          }
+        });
+      }
+      const total = Object.values(schedule).reduce((a, b) => a + b.length, 0);
+      if (total > 0) result[className] = schedule;
+    });
+    return result;
+  }
+  function syncFromNika(cid, sid, clid) {
+    showToast('Загрузка расписания с Ника-Софт…');
+    fetchViaProxy(NIKA_URL)
+      .then((html) => {
+        const parsed = parseNikaHtml(html);
+        const names = Object.keys(parsed);
+        if (!names.length) { showToast('Не удалось распознать расписание'); return; }
+        db.ref(P.classNode(cid, sid, clid) + '/name').once('value', (s) => {
+          const our = (s.val() || '').trim().toUpperCase();
+          let matched = parsed[our];
+          if (!matched) {
+            const k = names.find((n) => n.replace(/\s/g, '') === our.replace(/\s/g, ''));
+            if (k) matched = parsed[k];
+          }
+          if (!matched) { showToast('Нет класса «' + our + '». Найдены: ' + names.join(', ')); return; }
+          db.ref(P.classNode(cid, sid, clid) + '/schedule').set(matched)
+            .then(() => showToast('Расписание обновлено'))
+            .catch((err) => showToast('Ошибка: ' + (err.message || err)));
+        });
+      })
+      .catch((err) => showToast('Ошибка загрузки: ' + (err.message || err)));
+  }
+
+  /* ============================================================
+     TOAST
      ============================================================ */
   let toastTimer = null;
   function showToast(text) {
@@ -486,21 +796,13 @@
     const t = $('#toast');
     t.classList.remove('hidden');
     t.classList.remove('toast-in');
-    void t.offsetWidth; // перезапуск анимации
+    void t.offsetWidth;
     t.classList.add('toast-in');
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(hideToast, 7000);
+    toastTimer = setTimeout(hideToast, 6000);
   }
-  function hideToast() {
-    $('#toast').classList.add('hidden');
-    clearTimeout(toastTimer);
-  }
+  function hideToast() { $('#toast').classList.add('hidden'); clearTimeout(toastTimer); }
 
-  /* ============================================================
-     ПОДТВЕРЖДЕНИЕ ДЕЙСТВИЙ (вместо window.confirm)
-     window.confirm() в установленном PWA/WebView может не работать,
-     поэтому показываем своё окно-диалог.
-     ============================================================ */
   function askConfirm(text, onYes) {
     if (!text || typeof onYes !== 'function') return;
     let el = document.getElementById('confirm-box');
@@ -525,15 +827,13 @@
         if (doYes && cb) cb();
       });
       document.body.appendChild(el);
-    } else {
-      document.body.appendChild(el);
-    }
+    } else document.body.appendChild(el);
     el.querySelector('p').textContent = text;
     el.__cb = onYes;
   }
 
   /* ============================================================
-     ЭКРАН ВХОДА — пошаговый выбор города / школы / класса
+     ЭКРАН ВХОДА
      ============================================================ */
   function detachAuth() { offRefs(authRefs); authRefs = []; }
 
@@ -543,7 +843,6 @@
     $('#back-btn').classList.toggle('hidden', state.step === 1);
   }
 
-  // Кнопка-элемент списка выбора
   function choiceBtn(item) {
     return `
       <button data-key="${item.key}"
@@ -556,7 +855,6 @@
         </svg>
       </button>`;
   }
-
   function renderList(items, emptyText, onCb) {
     const list = $('#select-list');
     if (!items.length) { list.innerHTML = emptyNote(emptyText); return; }
@@ -566,30 +864,23 @@
     });
   }
 
-  // Шаг 1. Города из cities/
   function loadCities() {
-    detachAuth();
-    state.step = 1;
+    detachAuth(); state.step = 1;
     setStepView('Выберите город', '');
     $('#select-list').innerHTML = spinner();
-
     addRef(authRefs, db.ref(P.cities())).once('value', (snap) => {
       const cities = snapArr(snap);
       state.sel.cid = state.sel.cname = state.sel.sid = state.sel.sname = state.sel.clid = state.sel.clname = null;
-      renderList(cities, 'Пока нет городов. Добавьте первый город в админ-панели (зажмите заголовок).', (key, it) => {
+      renderList(cities, 'Пока нет городов. Добавьте первый город в админ-панели.', (key, it) => {
         state.sel.cid = key; state.sel.cname = it.name;
         loadSchools();
       });
     });
   }
-
-  // Шаг 2. Школы в выбранном городе
   function loadSchools() {
-    detachAuth();
-    state.step = 2;
+    detachAuth(); state.step = 2;
     setStepView('Выберите школу', state.sel.cname ? `Город: ${state.sel.cname}` : '');
     $('#select-list').innerHTML = spinner();
-
     addRef(authRefs, db.ref(P.schools(state.sel.cid))).once('value', (snap) => {
       const schools = snapArr(snap);
       state.sel.sid = state.sel.sname = state.sel.clid = state.sel.clname = null;
@@ -599,14 +890,10 @@
       });
     });
   }
-
-  // Шаг 3. Классы в выбранной школе
   function loadClasses() {
-    detachAuth();
-    state.step = 3;
+    detachAuth(); state.step = 3;
     setStepView('Выберите класс', `${state.sel.cname} · ${state.sel.sname}`);
     $('#select-list').innerHTML = spinner();
-
     addRef(authRefs, db.ref(P.classes(state.sel.cid, state.sel.sid))).once('value', (snap) => {
       const classes = snapArr(snap);
       state.sel.clid = state.sel.clname = null;
@@ -618,42 +905,25 @@
     });
   }
 
-  // Сохраняем выбор в localStorage, чтобы при следующем заходе открывался класс сразу
-  function saveSelection() {
-    localStorage.setItem(LS.sel, JSON.stringify(state.sel));
-  }
+  function saveSelection() { localStorage.setItem(LS.sel, JSON.stringify(state.sel)); }
   function loadSelection() {
     try { state.sel = JSON.parse(localStorage.getItem(LS.sel)) || {}; } catch (e) { state.sel = {}; }
   }
-
-  // Кнопка «Сменить» — сброс выбора и выход на экран входа
   function resetSelection() {
     detachMain();
     state.sel = { cid: null, cname: null, sid: null, sname: null, clid: null, clname: null };
     saveSelection();
     showAuth();
   }
-
-  // Кнопка «Назад» на экране выбора
   function onBack() {
     if (state.step === 3) loadSchools();
     else if (state.step === 2) loadCities();
   }
-
   function showAuth() {
     $('#auth-screen').classList.remove('hidden');
     $('#main-screen').classList.add('hidden');
     if (!isConfigured()) {
-      const c = getConfig();
-      let why = 'не загрузился файл firebase-config.js';
-      if (c) {
-        if (!c.apiKey) why = 'в конфиге нет apiKey';
-        else if (String(c.apiKey).startsWith('YOUR_')) why = 'apiKey остался заглушкой (YOUR_...)';
-        if (!c.databaseURL) why += ', нет databaseURL';
-      }
-      $('#select-list').innerHTML = emptyNote(
-        `Файл firebase-config.js: ${why}.<br>Проверьте конфиг и обновите страницу (Ctrl+F5).`
-      );
+      $('#select-list').innerHTML = emptyNote('Проверьте firebase-config.js и обновите страницу.');
       return;
     }
     loadCities();
@@ -662,44 +932,54 @@
   /* ============================================================
      ГЛАВНЫЙ ЭКРАН
      ============================================================ */
-  function detachMain() { offRefs(mainRefs); mainRefs = []; clearChatPoll(); }
+  function detachMain() { offRefs(mainRefs); mainRefs = []; clearChatPoll(); stopTypingBeacon(); }
 
-  // Обновляем подзаголовок и убираем прослушку "своего" прошлого класса
   function showMainScreen() {
     const s = state.sel;
     $('#header-text').textContent = `${s.cname}, ${s.sname}, ${s.clname}`;
     $('#auth-screen').classList.add('hidden');
     $('#main-screen').classList.remove('hidden');
-    showSettingsTab(admin.authorized); // вкладка «Настройки» видна только администратору
     switchTab('schedule');
     loadMainData();
     askNickIfNeeded();
     $('#chat-nick').textContent = nick() || 'Ученик';
-    ensureProfile(); // профиль: ник + класс (при наличии авторизации)
+    ensureProfile();
+    startClock();
+    paintStickerPanel();
   }
 
-  // Подписки на данные текущего класса
   function loadMainData() {
     detachMain();
     const root = db.ref(curClassPath());
-
-    // Расписание
     addRef(mainRefs, root.child('schedule')).on('value', renderSchedule);
-    // Домашка
     addRef(mainRefs, root.child('homework')).on('value', renderHomework);
-    // Объявления (лента)
     addRef(mainRefs, root.child('announcements')).on('value', renderAnnouncements);
-    // Объявления (только новые — для toast)
     addRef(mainRefs, root.child('announcements')).on('child_added', onNewAnnouncement);
-    // Чат
     addRef(mainRefs, root.child('chat')).on('child_added', onChatMessage);
+    addRef(mainRefs, root.child('chat')).on('child_changed', onChatChanged);
     addRef(mainRefs, root.child('chat')).on('child_removed', (snap) => forgetMsg(snap.key));
-    // Чат: гарантированная полная отрисовка + страховочный поллинг (on-события ненадёжны)
+    addRef(mainRefs, root.child('typing')).on('value', onTypingUpdate);
     refreshChat();
     startChatPoll();
+    updateUnreadBadge();
   }
 
-  /* ---------- Уведомление: «Завтра контрольная» ---------- */
+  /* ---- Часы ---- */
+  let clockTimer = null;
+  function startClock() {
+    if (clockTimer) return;
+    const upd = () => {
+      const el = $('#header-clock');
+      if (!el) return;
+      const d = new Date();
+      const p = (n) => String(n).padStart(2, '0');
+      el.textContent = `${p(d.getHours())}:${p(d.getMinutes())} · ${DAY_NAMES[d.getDay()]}`;
+    };
+    upd();
+    clockTimer = setInterval(upd, 30000);
+  }
+
+  /* ---- Объявления ---- */
   let seenSet = new Set();
   function initSeen() {
     try { seenSet = new Set(JSON.parse(localStorage.getItem(LS.seen) || '[]')); } catch (e) { seenSet = new Set(); }
@@ -715,99 +995,240 @@
     const already = seenSet.has(snap.key);
     seenSet.add(snap.key);
     persistSeen();
-    // Уведомление показываем только для НОВЫХ записей со словом «Завтра контрольная»
     if (!already && CTRL_RE.test(a.text)) showToast(a.text);
   }
 
-  /* ---------- Вкладки ---------- */
+  /* ---- Вкладки ---- */
   function switchTab(name) {
     $$('.tab-btn').forEach((b) => {
       const active = b.dataset.tab === name;
-      b.classList.toggle('text-indigo-400', active);
+      b.classList.toggle('accent-text', active);
       b.classList.toggle('bg-indigo-500/10', active);
       b.classList.toggle('text-slate-400', !active);
     });
     $$('.tab').forEach((sec) => sec.classList.add('hidden'));
     const target = $('#tab-' + name);
     target.classList.remove('hidden');
-    target.querySelectorAll('.fade-up').forEach((el) => el.classList.add('fade-up'));
-    if (name === 'chat') refreshChat();
+    if (name === 'chat') {
+      refreshChat();
+      markChatRead();
+    }
     if (name === 'settings') renderSettingsTab();
   }
 
-  /* ---------- Расписание: сегодня и завтра ---------- */
+  /* ---- Расписание ---- */
+  let scheduleCache = {};
+  let scheduleView = 'today';
   function renderSchedule(snap) {
-    const data = snap.val() || {};
+    scheduleCache = snap.val() || {};
+    paintSchedule();
+  }
+  function paintSchedule() {
+    const data = scheduleCache;
     const todayIdx = new Date().getDay();
     const tomorrowIdx = (todayIdx + 1) % 7;
-    const days = [
-      { key: DAY_KEYS[todayIdx], title: 'Сегодня', dayName: DAY_NAMES[todayIdx] },
-      { key: DAY_KEYS[tomorrowIdx], title: 'Завтра', dayName: DAY_NAMES[tomorrowIdx] },
-    ];
     const el = $('#tab-schedule');
-    el.innerHTML = days.map((d) => {
-      const lessons = Array.isArray(data[d.key]) ? data[d.key] : [];
+    const head = `
+      <div class="flex gap-1 bg-slate-900 border border-slate-800 rounded-xl p-1">
+        <button data-sview="today" class="sview flex-1 py-2 rounded-lg text-xs font-bold ${scheduleView === 'today' ? 'accent-bg text-white' : 'text-slate-400'}">Сегодня</button>
+        <button data-sview="tomorrow" class="sview flex-1 py-2 rounded-lg text-xs font-bold ${scheduleView === 'tomorrow' ? 'accent-bg text-white' : 'text-slate-400'}">Завтра</button>
+        <button data-sview="week" class="sview flex-1 py-2 rounded-lg text-xs font-bold ${scheduleView === 'week' ? 'accent-bg text-white' : 'text-slate-400'}">Неделя</button>
+      </div>`;
+    const dayBlock = (key, title, dayName) => {
+      const lessons = Array.isArray(data[key]) ? data[key] : [];
       const inner = lessons.length
         ? lessons.map((l, i) => `
             <li class="flex items-center gap-3 px-1">
-              <span class="shrink-0 w-7 h-7 rounded-full bg-indigo-500/15 text-indigo-400 text-xs font-bold flex items-center justify-center">${i + 1}</span>
-              <span class="flex-1 text-sm">${l}</span>
+              <span class="shrink-0 w-7 h-7 rounded-full accent-bg text-white text-xs font-bold flex items-center justify-center">${i + 1}</span>
+              <span class="flex-1 text-sm">${esc(l)}</span>
             </li>`).join('')
         : '<li class="text-sm text-slate-500 px-1">Уроков нет 😌</li>';
       return `
         <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
-          <h3 class="font-bold text-sm mb-3">${d.title} · ${d.dayName}</h3>
+          <h3 class="font-bold text-sm mb-3">${title} · ${dayName}</h3>
           <ul class="space-y-2.5">${inner}</ul>
         </div>`;
-    }).join('');
+    };
+    let body = '';
+    if (scheduleView === 'today') body = dayBlock(DAY_KEYS[todayIdx], 'Сегодня', DAY_NAMES[todayIdx]);
+    else if (scheduleView === 'tomorrow') body = dayBlock(DAY_KEYS[tomorrowIdx], 'Завтра', DAY_NAMES[tomorrowIdx]);
+    else {
+      const order = ['mon','tue','wed','thu','fri','sat','sun'];
+      body = order.map((k) => dayBlock(k, DAY_NAMES[DAY_KEYS.indexOf(k)], '')).join('');
+    }
+    const copyBtn = `<button id="sch-copy" class="w-full rounded-xl bg-slate-800 hover:bg-slate-700 py-2.5 text-xs font-bold">📋 Скопировать расписание</button>`;
+    el.innerHTML = head + body + copyBtn;
+    $$('.sview').forEach((b) => b.addEventListener('click', () => { scheduleView = b.dataset.sview; paintSchedule(); }));
+    $('#sch-copy').addEventListener('click', copySchedule);
+  }
+  function copySchedule() {
+    const data = scheduleCache;
+    const lines = [];
+    const order = ['mon','tue','wed','thu','fri','sat','sun'];
+    order.forEach((k) => {
+      const idx = DAY_KEYS.indexOf(k);
+      const lessons = Array.isArray(data[k]) ? data[k] : [];
+      if (!lessons.length) return;
+      lines.push(DAY_NAMES[idx] + ':');
+      lessons.forEach((l, i) => lines.push(`  ${i + 1}. ${l}`));
+      lines.push('');
+    });
+    const txt = lines.join('\n') || 'Расписание пусто';
+    navigator.clipboard.writeText(txt).then(() => showToast('Расписание скопировано'))
+      .catch(() => showToast('Не удалось скопировать'));
   }
 
-  /* ---------- Домашка ---------- */
-  function renderHomework(snap) {
-    const hw = snap.val() || {};
-    const entries = Object.entries(hw).sort((a, b) => a[0].localeCompare(b[0], 'ru'));
+  /* ---- Домашка ---- */
+  let hwCache = {};
+  function renderHomework(snap) { hwCache = snap.val() || {}; paintHomework(); }
+  function hwDoneKey(subj) { return curClassKey() + '|' + subj; }
+  function isHwDone(subj) {
+    try { return JSON.parse(localStorage.getItem(LS.hwDone) || '[]').includes(hwDoneKey(subj)); }
+    catch (e) { return false; }
+  }
+  function setHwDone(subj, done) {
+    let arr = [];
+    try { arr = JSON.parse(localStorage.getItem(LS.hwDone) || '[]'); } catch (e) {}
+    const key = hwDoneKey(subj);
+    if (done && !arr.includes(key)) arr.push(key);
+    if (!done) arr = arr.filter((x) => x !== key);
+    localStorage.setItem(LS.hwDone, JSON.stringify(arr));
+  }
+  function paintHomework() {
+    const entries = Object.entries(hwCache).sort((a, b) => a[0].localeCompare(b[0], 'ru'));
     const el = $('#tab-homework');
-    if (!entries.length) {
-      el.innerHTML = emptyNote('Домашки нет 🎉');
-      return;
-    }
-    el.innerHTML = entries.map(([subj, task]) => `
+    if (!entries.length) { el.innerHTML = emptyNote('Домашки нет 🎉'); return; }
+    const total = entries.length;
+    const done = entries.filter(([s]) => isHwDone(s)).length;
+    const pct = total ? Math.round((done / total) * 100) : 0;
+    el.innerHTML = `
       <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
-        <div class="flex items-center gap-2 mb-1.5">
-          <span class="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
-          <h4 class="font-bold text-sm">${subj}</h4>
+        <div class="flex items-center justify-between mb-2">
+          <div class="font-bold text-sm">Прогресс домашки</div>
+          <div class="text-xs font-bold accent-text">${done} / ${total}</div>
         </div>
-        <p class="text-sm text-slate-300 whitespace-pre-wrap break-words">${task || '—'}</p>
-      </div>`).join('');
+        <div class="h-2 rounded-full bg-slate-800 overflow-hidden">
+          <div class="h-full accent-bg transition-all" style="width:${pct}%"></div>
+        </div>
+      </div>
+      ${entries.map(([subj, task]) => {
+        const d = isHwDone(subj);
+        return `
+          <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
+            <div class="flex items-start gap-3">
+              <button class="hw-check ${d ? 'done' : ''}" data-hw-subj="${esc(subj)}" aria-label="Сделано">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                </svg>
+              </button>
+              <div class="flex-1 min-w-0">
+                <h4 class="font-bold text-sm ${d ? 'line-through opacity-60' : ''}">${esc(subj)}</h4>
+                <p class="text-sm text-slate-300 whitespace-pre-wrap break-words mt-1 ${d ? 'line-through opacity-60' : ''}">${esc(task || '—')}</p>
+              </div>
+            </div>
+          </div>`;
+      }).join('')}`;
+    $$('.hw-check').forEach((b) => b.addEventListener('click', () => {
+      const s = b.dataset.hwSubj;
+      setHwDone(s, !isHwDone(s));
+      paintHomework();
+    }));
   }
 
-  /* ---------- Объявления ---------- */
+  /* ---- Объявления ---- */
+  let annCache = [];
   function renderAnnouncements(snap) {
-    const items = snapArr(snap).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    annCache = snapArr(snap).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    paintAnnouncements();
+  }
+  function paintAnnouncements() {
     const el = $('#tab-announcements');
-    if (!items.length) {
-      el.innerHTML = emptyNote('Объявлений пока нет');
-      return;
-    }
-    // Подсветка объявлений про контрольную
-    el.innerHTML = items.map((a) => {
-      const isCtrl = CTRL_RE.test(a.text || '');
-      return `
-        <div class="rounded-2xl p-4 border fade-up ${isCtrl ? 'bg-amber-500/10 border-amber-500/40' : 'bg-slate-900 border-slate-800'}">
-          <p class="text-sm whitespace-pre-wrap break-words ${isCtrl ? 'text-amber-200 font-semibold' : 'text-slate-200'}">${a.text}</p>
-          <p class="text-[11px] text-slate-500 mt-2">${fmtDate(a.createdAt)}</p>
-        </div>`;
-    }).join('');
+    if (!annCache.length) { el.innerHTML = emptyNote('Объявлений пока нет'); return; }
+    const [first, ...rest] = annCache;
+    const isCtrl = (txt) => CTRL_RE.test(txt || '');
+    const pinned = `
+      <div class="rounded-2xl p-4 border-2 accent-border bg-amber-500/5 fade-up">
+        <div class="flex items-center gap-2 mb-2"><span class="text-xs font-bold text-amber-400">📌 ЗАКРЕПЛЕНО</span></div>
+        <p class="text-sm whitespace-pre-wrap break-words ${isCtrl(first.text) ? 'text-amber-200 font-semibold' : 'text-slate-200'}">${esc(first.text)}</p>
+        <p class="text-[11px] text-slate-500 mt-2">${fmtDate(first.createdAt)}</p>
+      </div>`;
+    const listHtml = rest.length ? rest.map((a) => `
+      <div class="rounded-2xl p-4 border fade-up ${isCtrl(a.text) ? 'bg-amber-500/10 border-amber-500/40' : 'bg-slate-900 border-slate-800'}">
+        <p class="text-sm whitespace-pre-wrap break-words ${isCtrl(a.text) ? 'text-amber-200 font-semibold' : 'text-slate-200'}">${esc(a.text)}</p>
+        <p class="text-[11px] text-slate-500 mt-2">${fmtDate(a.createdAt)}</p>
+      </div>`).join('') : '';
+    el.innerHTML = pinned + listHtml + buildCalendar();
   }
 
-  /* ---------- Чат: реального времени через Firebase ---------- */
+  function buildCalendar() {
+    const now = new Date();
+    const y = now.getFullYear(), m = now.getMonth();
+    const first = new Date(y, m, 1);
+    const firstDay = (first.getDay() + 6) % 7;
+    const daysInMonth = new Date(y, m + 1, 0).getDate();
+    const today = now.getDate();
+    const annDays = new Set();
+    annCache.forEach((a) => {
+      if (!a.createdAt) return;
+      const d = new Date(a.createdAt);
+      if (d.getFullYear() === y && d.getMonth() === m) annDays.add(d.getDate());
+    });
+    const cells = [];
+    for (let i = 0; i < firstDay; i++) cells.push('<div class="cal-day empty"></div>');
+    for (let d = 1; d <= daysInMonth; d++) {
+      const cls = ['cal-day'];
+      if (d === today) cls.push('today');
+      else if (annDays.has(d)) cls.push('has-ann');
+      cells.push(`<div class="${cls.join(' ')}">${d}</div>`);
+    }
+    const monthNames = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+    const wd = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+    return `
+      <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up mt-4">
+        <div class="font-bold text-sm mb-3">📅 ${monthNames[m]} ${y}</div>
+        <div class="grid grid-cols-7 gap-1 mb-2 text-[10px] text-slate-500 font-bold text-center">
+          ${wd.map((w) => `<div>${w}</div>`).join('')}
+        </div>
+        <div class="grid grid-cols-7 gap-1">${cells.join('')}</div>
+        <p class="text-[10px] text-slate-500 mt-2">Синий — сегодня, светлый — день с объявлением</p>
+      </div>`;
+  }
+
+  /* ============================================================
+     ЧАТ: расширенные функции
+     ============================================================ */
   const nickColor = (n) => {
     const hue = (n.split('').reduce((a, c) => a + c.charCodeAt(0), 0) * 37) % 360;
     return `hsl(${hue},70%,70%)`;
   };
 
-  // Вставка сообщения по времени (а не в конец): иначе опоздавшие события
-  // притворяются самыми свежими и вызывают иллюзию дубликатов.
+  // Ответ на сообщение
+  let replyTo = null; // { key, nick, text }
+  // Редактирование
+  let editMsg = null; // { key, text }
+
+  // Реакции: [{emoji, user}]
+  function reactionsHtml(msg) {
+    const r = msg.reactions || {};
+    const byEmoji = {};
+    Object.keys(r).forEach((uid) => {
+      const emoji = r[uid];
+      if (!byEmoji[emoji]) byEmoji[emoji] = [];
+      byEmoji[emoji].push(uid);
+    });
+    const keys = Object.keys(byEmoji);
+    if (!keys.length) return '';
+    return `<div class="flex flex-wrap gap-1 mt-1.5">${
+      keys.map((e) => {
+        const users = byEmoji[e];
+        const mine = HubAuth.uid && users.includes(HubAuth.uid);
+        return `<span class="reaction-pill ${mine ? 'mine' : ''}" data-emoji="${esc(e)}">
+          <span>${esc(e)}</span><span>${users.length}</span>
+        </span>`;
+      }).join('')
+    }</div>`;
+  }
+
   function nodeTime(el) { return parseInt(el.getAttribute('data-time') || '0', 10) || 0; }
   function insertSorted(div) {
     const box = $('#chat-messages');
@@ -820,57 +1241,137 @@
     else box.appendChild(div);
   }
 
+  function favs() {
+    try { return JSON.parse(localStorage.getItem(LS.fav) || '[]'); } catch (e) { return []; }
+  }
+  function isFav(key) { return favs().some((f) => f.key === key); }
+  function toggleFav(msg) {
+    let arr = favs();
+    if (arr.some((f) => f.key === msg.key)) {
+      arr = arr.filter((f) => f.key !== msg.key);
+      showToast('Удалено из избранного');
+    } else {
+      arr.push({ key: msg.key, nick: msg.nick, text: msg.text, time: msg.time, classKey: curClassKey() });
+      showToast('Добавлено в избранное');
+    }
+    localStorage.setItem(LS.fav, JSON.stringify(arr));
+    const box = $('#chat-messages');
+    const el = box && box.querySelector('[data-msg="' + msg.key + '"]');
+    if (el) {
+      const star = el.querySelector('.msg-fav');
+      if (star) star.textContent = isFav(msg.key) ? '★' : '☆';
+    }
+  }
+
+  // Считаем - является ли сообщение "моим"
+  function isMine(m) {
+    if (!HubAuth.uid) return false;
+    if (m.uid) return m.uid === HubAuth.uid;
+    // Для старых сообщений без uid
+    return (m.nick || m.name) === nick();
+  }
+
+  function renderMessageEl(key, m) {
+    const me = nick();
+    const mname = m.nick || m.name || 'Ученик';
+    const mine = isMine(m);
+    const div = document.createElement('div');
+    div.className = `flex ${mine ? 'justify-end' : 'justify-start'} fade-up`;
+    div.setAttribute('data-msg', key);
+    div.setAttribute('data-time', String(m.time || 0));
+    div.setAttribute('data-nick', mname);
+    div.setAttribute('data-text', (m.text || '').toLowerCase());
+    if (m.uid) div.setAttribute('data-uid', m.uid);
+
+    const star = isFav(key) ? '★' : '☆';
+
+    // Reply-превью
+    let replyBlock = '';
+    if (m.replyTo && m.replyTo.nick) {
+      replyBlock = `<div class="reply-preview">
+        <div class="font-bold">↪ ${esc(m.replyTo.nick)}</div>
+        <div class="truncate opacity-80">${esc(m.replyTo.text || '')}</div>
+      </div>`;
+    }
+
+    // Кнопка редактирования (только для своих)
+    const editBtn = mine ? `<button class="msg-edit text-[10px] opacity-70 hover:opacity-100 px-1 rounded" title="Редактировать">✎</button>` : '';
+    const delBtn = mine ? `<button class="msg-del text-[10px] opacity-70 hover:opacity-100 px-1 rounded" title="Удалить">✕</button>` : '';
+    const reactBtn = `<button class="msg-react text-[10px] opacity-70 hover:opacity-100 px-1 rounded" title="Реакция">☺</button>`;
+    const replyBtn = `<button class="msg-reply text-[10px] opacity-70 hover:opacity-100 px-1 rounded" title="Ответить">↩</button>`;
+
+    // Показываем "изменено"
+    const editedMark = m.edited ? '<span class="msg-edited">(изменено)</span>' : '';
+
+    div.innerHTML = `
+      <div class="flex items-start gap-2 max-w-[85%] ${mine ? 'flex-row-reverse' : ''}">
+        ${avatarHtml(mname, 'sm')}
+        <div class="${mine ? 'accent-bg text-white' : 'bg-slate-800'} rounded-2xl px-3.5 py-2 min-w-0 flex-1">
+          <div class="flex items-center gap-1 mb-0.5 flex-wrap">
+            <span class="text-[11px] font-bold" style="color:${mine ? '#e0e7ff' : nickColor(mname)}">${esc(mname)}</span>
+            ${editedMark}
+            <span class="ml-auto flex items-center gap-0.5">
+              <button class="msg-fav text-[12px] opacity-70 hover:opacity-100 px-1 rounded" title="Избранное">${star}</button>
+              ${replyBtn}
+              ${reactBtn}
+              ${editBtn}
+              ${delBtn}
+            </span>
+          </div>
+          ${replyBlock}
+          <p class="text-sm break-words whitespace-pre-wrap">${formatMessageText(m.text || '')}</p>
+          ${reactionsHtml(m)}
+          <div class="text-[10px] opacity-60 mt-1 text-right">${fmtDate(m.time || Date.now())}</div>
+        </div>
+      </div>`;
+    return div;
+  }
+
   function onChatMessage(snap) {
     const m = snap.val();
     if (!m || !m.text) return;
     const key = snap.key;
     const box = $('#chat-messages');
-    if (box.querySelector('[data-msg="' + key + '"]')) return; // уже нарисовано (поллинг/перерисовка)
-    const me = nick();
-    const mname = m.nick || m.name || 'Ученик';
-    const div = document.createElement('div');
-    const mine = mname === me;
-    const canDel = admin.authorized && altMode(); // альт-менедж: удаление любых сообщений
-    div.className = `flex ${mine ? 'justify-end' : 'justify-start'} fade-up`;
-    div.setAttribute('data-msg', key);
-    div.setAttribute('data-time', String(m.time || 0));
-    div.innerHTML = `
-      <div class="${mine ? 'bg-indigo-600' : 'bg-slate-800'} rounded-2xl px-3.5 py-2 max-w-[80%]">
-        <div class="flex items-center gap-2 mb-0.5">
-          <div class="text-[11px] font-bold" style="color:${mine ? '#c7d2fe' : nickColor(mname)}">${mname}</div>
-          ${canDel ? `<button class="msg-del text-[10px] opacity-70 hover:opacity-100 px-1 -mr-1 rounded ${mine ? 'text-indigo-200' : 'text-slate-300'}" title="Удалить">✕</button>` : ''}
-        </div>
-        <p class="text-sm break-words whitespace-pre-wrap">${m.text}</p>
-        <div class="text-[10px] opacity-60 mt-1 text-right">${fmtDate(m.time || Date.now())}</div>
-      </div>`;
+    if (box.querySelector('[data-msg="' + key + '"]')) return;
+    const div = renderMessageEl(key, m);
     insertSorted(div);
     chatMaxCount = Math.max(chatMaxCount, box.querySelectorAll('[data-msg]').length);
     scrollChat();
+    applyChatSearch();
+    // Счётчик непрочитанных, если вкладка чата не открыта и сообщение не от меня
+    if ($('#tab-chat').classList.contains('hidden') && !isMine(m)) {
+      incrementUnread();
+    }
   }
 
-  // Максимум когда-либо отрисованных сообщений. Используется, чтобы не
-  //  "ужать" чат до частичного снапшота (once('value') иногда приходит неполным).
+  function onChatChanged(snap) {
+    const m = snap.val();
+    if (!m) return;
+    const key = snap.key;
+    const box = $('#chat-messages');
+    const el = box.querySelector('[data-msg="' + key + '"]');
+    if (!el) return;
+    // Пересобираем сообщение (могло измениться: текст, reactions, edited)
+    const newEl = renderMessageEl(key, m);
+    el.replaceWith(newEl);
+    applyChatSearch();
+  }
+
   let chatMaxCount = 0;
   let chatFetchBusy = false;
 
-  // Полная пересборка чата из полного снапшота
   function renderChat(items) {
     const box = $('#chat-messages');
-    if (items.length < chatMaxCount) return false; // частичный снапшот — не перерисовываем меньше
+    if (items.length < chatMaxCount) return false;
     box.innerHTML = '';
     chatMaxCount = Math.max(chatMaxCount, items.length);
-    items
-      .sort((a, b) => (a.time || 0) - (b.time || 0))
-      .forEach((m) => onChatMessage({ key: m.key, val: () => m }));
+    items.sort((a, b) => (a.time || 0) - (b.time || 0)).forEach((m) => {
+      const div = renderMessageEl(m.key, m);
+      box.appendChild(div);
+    });
     if (!$('#tab-chat').classList.contains('hidden')) scrollChat();
     return true;
   }
-
-  // Пересборка чата (например, после смены альт-менедж режима).
-  //  ЗАЩИТА от частичных снапшотов:
-  //   1) если снапшот меньше уже отрисованного — переспрашиваем (до 3 попыток);
-  //   2) после первой отрисовки через 1.2с делаем контрольный запрос: если в нём
-  //      больше сообщений — перерисовываем (чатик "подрастает", но не ужимается).
   function refreshChat(tries) {
     if (chatFetchBusy) { setTimeout(() => refreshChat(tries || 0), 800); return; }
     chatFetchBusy = true;
@@ -883,26 +1384,10 @@
       chatFetchBusy = false;
       showToast('Ошибка чата: ' + (err && err.message ? err.message : err));
     });
-    // Контрольный запрос: ловим случай, когда сам первый снапшот был частичным
-    setTimeout(() => {
-      if (curClassPath() !== path || chatFetchBusy) return;
-      chatFetchBusy = true;
-      db.ref(path + '/chat').once('value', (snap) => {
-        chatFetchBusy = false;
-        if (curClassPath() !== path) return;
-        const v = snapArr(snap);
-        if (v.length > chatMaxCount) renderChat(v);
-      });
-    }, 1200);
   }
-
   let chatPollTimer = null;
   function startChatPoll() { clearChatPoll(); chatPollTimer = setInterval(pollChat, 12000); }
   function clearChatPoll() { if (chatPollTimer) { clearInterval(chatPollTimer); chatPollTimer = null; } }
-
-  // Страховка: если живые события не пришли, сверим полные снапшоты раз в 12 сек.
-  //  «Растём» (новые сообщения) и аккуратно лечим одиночные удаления:
-  //  ужимать чат до частичного снапшота нельзя.
   function pollChat() {
     const tab = $('#tab-chat');
     if (!tab || tab.classList.contains('hidden') || chatFetchBusy) return;
@@ -915,66 +1400,249 @@
       const localKeys = new Set(Array.from(nodes).map((n) => n.dataset.msg));
       const hasNew = [...remoteKeys].some((k) => !localKeys.has(k));
       if (hasNew && remote.length >= chatMaxCount) { renderChat(remote); return; }
-      // Одиночное удаление (нет новых ключей, в БД ровно на один меньше)
       if (!hasNew && remoteKeys.size === localKeys.size - 1) {
         const gone = [...localKeys].find((k) => !remoteKeys.has(k));
         if (gone) forgetMsg(gone);
       }
     });
   }
-
   function forgetMsg(key) {
     const box = $('#chat-messages');
     const el = box.querySelector('[data-msg="' + key + '"]');
     if (el) el.remove();
     chatMaxCount = box.querySelectorAll('[data-msg]').length;
   }
-
   function scrollChat() {
     const box = $('#chat-messages');
     box.scrollTop = box.scrollHeight;
   }
 
+  /* ---- Поиск ---- */
+  function applyChatSearch() {
+    const q = ($('#chat-search-input') && $('#chat-search-input').value || '').trim().toLowerCase();
+    const box = $('#chat-messages');
+    if (!box) return;
+    box.querySelectorAll('[data-msg]').forEach((el) => {
+      const text = (el.getAttribute('data-text') || '');
+      const nick = (el.getAttribute('data-nick') || '').toLowerCase();
+      const hit = !q || text.includes(q) || nick.includes(q);
+      el.classList.toggle('msg-hidden', !hit);
+    });
+  }
+
+  /* ---- Ответ на сообщение ---- */
+  function setReply(key, nickName, text) {
+    replyTo = { key, nick: nickName, text: text.slice(0, 120) };
+    $('#chat-reply-nick').textContent = nickName;
+    $('#chat-reply-text').textContent = text.slice(0, 120);
+    $('#chat-reply-box').classList.remove('hidden');
+    $('#chat-input').focus();
+  }
+  function clearReply() {
+    replyTo = null;
+    $('#chat-reply-box').classList.add('hidden');
+  }
+
+  /* ---- Редактирование ---- */
+  function setEdit(key, text) {
+    editMsg = { key, text };
+    $('#chat-edit-text').textContent = text.slice(0, 120);
+    $('#chat-edit-box').classList.remove('hidden');
+    $('#chat-input').value = text;
+    $('#chat-input').focus();
+  }
+  function clearEdit() {
+    editMsg = null;
+    $('#chat-edit-box').classList.add('hidden');
+    $('#chat-input').value = '';
+  }
+
+  /* ---- Реакции ---- */
+  const REACTION_EMOJIS = ['👍','❤️','😂','🔥','😮','😢','🎉','🤔','👏','💯','😍','🤯'];
+  function showReactionsBar(msgKey, anchorEl) {
+    const old = document.getElementById('reactions-bar');
+    if (old) old.remove();
+    const bar = document.createElement('div');
+    bar.id = 'reactions-bar';
+    bar.className = 'reactions-bar';
+    bar.innerHTML = REACTION_EMOJIS.map((e) => `<button data-emoji="${e}">${e}</button>`).join('');
+    document.body.appendChild(bar);
+    const r = anchorEl.getBoundingClientRect();
+    bar.style.top = (window.scrollY + r.top - 44) + 'px';
+    bar.style.left = Math.max(8, Math.min(window.innerWidth - bar.offsetWidth - 8, r.left)) + 'px';
+    bar.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-emoji]');
+      if (!btn) return;
+      toggleReaction(msgKey, btn.dataset.emoji);
+      bar.remove();
+    });
+    // Закрытие по клику вне
+    setTimeout(() => {
+      const close = (ev) => {
+        if (!bar.contains(ev.target)) { bar.remove(); document.removeEventListener('click', close); }
+      };
+      document.addEventListener('click', close);
+    }, 50);
+  }
+  function toggleReaction(msgKey, emoji) {
+    if (!HubAuth.uid) return;
+    const ref = db.ref(curClassPath() + '/chat/' + msgKey + '/reactions/' + HubAuth.uid);
+    ref.once('value', (s) => {
+      if (s.val() === emoji) ref.remove();
+      else ref.set(emoji);
+    });
+  }
+
+  /* ---- Стикеры ---- */
+  const STICKERS = ['😀','😂','😍','🥳','😎','🤔','😢','😡','👍','👎','❤️','🔥','💯','🎉','✨','🙏','👋','🤝','💪','🧠','📚','✏️','⚽','🎮','🍕','🍎','☕','🌙','☀️','⭐','🎵','🎬','🐱','🐶','🌈','🏆','🥇','🚀','💡','✅'];
+  function paintStickerPanel() {
+    const el = $('#sticker-panel');
+    el.innerHTML = STICKERS.map((s) => `<span class="sticker-btn" data-sticker="${s}">${s}</span>`).join('');
+    el.querySelectorAll('.sticker-btn').forEach((b) => b.addEventListener('click', () => {
+      $('#chat-input').value += b.dataset.sticker;
+      $('#chat-input').focus();
+    }));
+  }
+
+  /* ---- Статус "печатает..." ---- */
+  let typingBeacon = null;
+  let lastTypingSent = 0;
+  function startTypingBeacon() {
+    if (typingBeacon) return;
+    const me = nick();
+    if (!me || !HubAuth.uid) return;
+    const doSend = () => {
+      if (!db) return;
+      db.ref(curClassPath() + '/typing/' + HubAuth.uid).set({
+        nick: me, at: firebase.database.ServerValue.TIMESTAMP
+      }).then(() => {
+        // Автоудаление через 3 сек
+        setTimeout(() => {
+          db.ref(curClassPath() + '/typing/' + HubAuth.uid).remove().catch(() => {});
+        }, 3000);
+      }).catch(() => {});
+    };
+    typingBeacon = true;
+    lastTypingSent = 0;
+  }
+  function stopTypingBeacon() {
+    if (!HubAuth.uid) return;
+    if (db) db.ref(curClassPath() + '/typing/' + HubAuth.uid).remove().catch(() => {});
+    typingBeacon = null;
+  }
+  function onTypingUpdate(snap) {
+    const v = snap.val() || {};
+    const now = Date.now();
+    const users = [];
+    Object.keys(v).forEach((uid) => {
+      if (uid === HubAuth.uid) return;
+      const t = v[uid];
+      if (t && t.at && (now - t.at) < 5000 && t.nick) users.push(t.nick);
+    });
+    const el = $('#typing-indicator');
+    if (!el) return;
+    if (!users.length) { el.textContent = ''; return; }
+    if (users.length === 1) el.textContent = users[0] + ' печатает…';
+    else if (users.length === 2) el.textContent = users[0] + ' и ' + users[1] + ' печатают…';
+    else el.textContent = users.length + ' человека печатают…';
+  }
+
+  /* ---- Счётчик непрочитанных ---- */
+  function getLastRead() {
+    try {
+      const data = JSON.parse(localStorage.getItem(LS.lastRead) || '{}');
+      return data[curClassKey()] || 0;
+    } catch (e) { return 0; }
+  }
+  function setLastRead(ts) {
+    let data = {};
+    try { data = JSON.parse(localStorage.getItem(LS.lastRead) || '{}'); } catch (e) {}
+    data[curClassKey()] = ts;
+    localStorage.setItem(LS.lastRead, JSON.stringify(data));
+  }
+  let unreadCount = 0;
+  function incrementUnread() {
+    unreadCount++;
+    paintUnreadBadge();
+  }
+  function markChatRead() {
+    const box = $('#chat-messages');
+    if (!box) return;
+    const nodes = box.querySelectorAll('[data-msg]');
+    let maxT = 0;
+    nodes.forEach((n) => {
+      const t = parseInt(n.getAttribute('data-time') || '0', 10);
+      if (t > maxT) maxT = t;
+    });
+    if (maxT) setLastRead(maxT);
+    unreadCount = 0;
+    paintUnreadBadge();
+  }
+  function paintUnreadBadge() {
+    const el = $('#chat-unread');
+    if (!el) return;
+    if (unreadCount > 0) {
+      el.textContent = unreadCount > 99 ? '99+' : String(unreadCount);
+      el.classList.remove('hidden');
+    } else {
+      el.classList.add('hidden');
+    }
+  }
+  function updateUnreadBadge() {
+    // При заходе: если есть сообщения новее lastRead — считаем
+    const lastRead = getLastRead();
+    db.ref(curClassPath() + '/chat').once('value', (snap) => {
+      const items = snapArr(snap);
+      unreadCount = items.filter((m) => (m.time || 0) > lastRead && !isMine(m)).length;
+      paintUnreadBadge();
+    });
+  }
+
+  /* ---- Отправка сообщения ---- */
   function sendMessage(e) {
     e.preventDefault();
     const input = $('#chat-input');
     const text = input.value.trim();
     if (!text) return;
     if (!nick()) { showToast('Сначала задайте ник'); askNickIfNeeded(); return; }
-    if (!HubAuth.uid || !HubAuth.ready) { showToast('Авторизация ещё не готова, попробуйте снова'); return; }
+    if (!HubAuth.uid || !HubAuth.ready) { showToast('Авторизация ещё не готова'); return; }
     const me = nick();
-    // Проверяем бан/мут по UID (сменой ника это не обойти)
     HubModeration.checkCanSend((err) => {
       if (err) { showToast(err); return; }
       ensureProfile();
-      // Автофильтр: мат / оскорбление / угроза. Сообщение НЕ удаляем — помечаем флагом.
-      const reasons = checkMessage(text);
       const s = state.sel;
-      const msg = { uid: HubAuth.uid, deviceId: deviceId(), nick: me, text, time: Date.now(), class: (s && s.clname) || '' };
-      if (reasons.length) msg.flagged = true;
-      const cref = db.ref(curClassPath() + '/chat').push(msg);
-      if (reasons.length) {
-        // Отдельно сохраняем в ветку flagged_messages для раздела «Интересное»
-        db.ref('/flagged_messages/' + s.cid + '/' + s.sid + '/' + s.clid + '/' + cref.key)
-          .set({
-            uid: HubAuth.uid,
-            deviceId: deviceId(),
-            nick: me,
-            text,
-            time: Date.now(),
-            reason: reasons.join(', '),
-            cityName: s.cname,
-            schoolName: s.sname,
-            className: s.clname,
-          })
-          .catch((err2) => showToast('Ошибка: ' + (err2.message || err2)));
+      // Редактирование
+      if (editMsg) {
+        db.ref(curClassPath() + '/chat/' + editMsg.key).update({
+          text: text,
+          edited: true,
+          editedAt: Date.now(),
+        }).then(() => {
+          clearEdit();
+          showToast('Сообщение изменено');
+        }).catch((err2) => showToast('Ошибка: ' + (err2.message || err2)));
+        return;
       }
+      // Обычная отправка (с reply, если есть)
+      const msg = {
+        uid: HubAuth.uid,
+        deviceId: deviceId(),
+        nick: me,
+        text: text,
+        time: Date.now(),
+        class: (s && s.clname) || ''
+      };
+      if (replyTo) {
+        msg.replyTo = { key: replyTo.key, nick: replyTo.nick, text: replyTo.text };
+      }
+      db.ref(curClassPath() + '/chat').push(msg);
+      clearReply();
     });
     input.value = '';
-    setTimeout(refreshChat, 500); // гарантированный показ своего сообщения
+    setTimeout(refreshChat, 500);
   }
 
-  /* ---------- Модалка ника ---------- */
+  /* ---- Модалка ника ---- */
   function askNickIfNeeded() {
     if (nick()) return;
     const modal = $('#nick-modal');
@@ -984,21 +1652,17 @@
   }
   function saveNick() {
     const val = $('#nick-input').value.trim();
-    // Пустое поле → ник «Ученик»
     setNick(val ? val.slice(0, 30) : 'Ученик');
-    $('#nick-error').classList.add('hidden');
     closeNickModal();
     $('#chat-nick').textContent = nick();
-    ensureProfile(); // обновляем nick в профиле users/{uid}
+    ensureProfile();
   }
   function closeNickModal() {
     const modal = $('#nick-modal');
     modal.classList.add('hidden');
     modal.classList.remove('flex');
-    $('#nick-error').classList.add('hidden');
     $('#nick-input').value = '';
   }
-  // Смена ника из чата
   function changeNick() {
     const modal = $('#nick-modal');
     modal.classList.remove('hidden');
@@ -1007,45 +1671,49 @@
     setTimeout(() => $('#nick-input').focus(), 100);
   }
 
-  /* ============================================================
-     СЕКРЕТНЫЙ ВХОД В РЕЖИМ АДМИНИСТРАТОРА
-     ============================================================ */
-  // Пароль администратора (фиксированный; при желании поменяйте строку ниже)
-  const ADMIN_PASS = '7G_Nkdk_$ch00l_Hub_#2026_xX';
+  /* ---- Экспорт чата ---- */
+  function exportChat() {
+    const box = $('#chat-messages');
+    if (!box) return;
+    const nodes = Array.from(box.querySelectorAll('[data-msg]'));
+    if (!nodes.length) { showToast('Сообщений нет'); return; }
+    const lines = nodes.map((n) => {
+      const nickName = n.getAttribute('data-nick') || '?';
+      const time = fmtDate(parseInt(n.getAttribute('data-time') || '0', 10));
+      const text = n.querySelector('p') ? n.querySelector('p').textContent : '';
+      return `[${time}] ${nickName}: ${text}`;
+    });
+    const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'chat-' + curClassKey().replace(/\|/g, '_') + '.txt';
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('Чат сохранён в TXT');
+  }
 
-  // Альт-менедж: возможность удалять любые сообщения чата
+  /* ============================================================
+     АДМИН
+     ============================================================ */
+  const ADMIN_PASS = '7G_Nkdk_$ch00l_Hub_#2026_xX';
   function altMode() { return localStorage.getItem('sh_altadmin') === '1'; }
   function setAltMode(on) { localStorage.setItem('sh_altadmin', on ? '1' : '0'); }
 
-  // Скрыть/показать вкладку «Настройки»
-  function showSettingsTab(show) {
-    const btn = $('#tab-settings-btn');
-    if (!btn) return;
-    btn.classList.toggle('hidden', !show);
-  }
-
   function openAdmin() {
-    if (!isConfigured()) { showToast('Сначала заполните firebase-config.js'); return; }
+    if (!isConfigured()) { showToast('Заполните firebase-config.js'); return; }
     offRefs(adminRefs); adminRefs = [];
     if (admin.authorized) { enableAdminMode(); return; }
     showPassModal();
   }
-  function closeAdmin() {
-    offRefs(adminRefs); adminRefs = [];
-    $('#admin-panel').classList.add('hidden');
-  }
-
-  /* ---- Вход по паролю ---- */
+  function closeAdmin() { offRefs(adminRefs); adminRefs = []; $('#admin-panel').classList.add('hidden'); }
   function showPassModal() {
     const m = $('#pass-modal');
     m.classList.remove('hidden');
     $('#pass-input').value = '';
-    $('#pass-hint').textContent = 'Вход работает только с зарегистрированным паролем.';
     setTimeout(() => $('#pass-input').focus(), 100);
   }
-  function closePassModal() {
-    $('#pass-modal').classList.add('hidden');
-  }
+  function closePassModal() { $('#pass-modal').classList.add('hidden'); }
   function tryLogin() {
     const v = $('#pass-input').value;
     if (!v) { showToast('Введите пароль'); return; }
@@ -1056,101 +1724,228 @@
           sessionStorage.setItem('sh_admin_auth', '1');
           closePassModal();
           enableAdminMode();
-        } else {
-          showToast('Неверный пароль');
-        }
+        } else showToast('Неверный пароль');
       });
     });
   }
-
-  // Включение режима администратора: появляется вкладка «Настройки»
   function enableAdminMode() {
-    showSettingsTab(true);
     showToast('Режим администратора включён');
+    renderSettingsTab();
     if (!$('#main-screen').classList.contains('hidden')) refreshChat();
   }
-
-  // Выход из режима администратора
   function exitAdminMode() {
     admin.authorized = false;
     sessionStorage.removeItem('sh_admin_auth');
     setAltMode(false);
-    showSettingsTab(false);
+    renderSettingsTab();
     showToast('Режим администратора выключен');
   }
 
-  /* ---- Вкладка «Настройки» ---- */
-  function updateAltSwitch(on) {
-    const s = $('#alt-slider');
-    if (!s) return;
-    s.classList.toggle('bg-indigo-600', on);
-    s.classList.toggle('bg-slate-700', !on);
-    const k = $('#alt-knob');
-    if (k) k.classList.toggle('translate-x-5', on);
-  }
+  /* ---- Настройки ---- */
   function renderSettingsTab() {
     const el = $('#tab-settings');
     const on = altMode();
+    const theme = localStorage.getItem(LS.theme) || 'dark';
+    const accent = localStorage.getItem(LS.accent) || 'indigo';
+    const isAdmin = !!admin.authorized;
+    const dnd = localStorage.getItem(LS.dnd) === '1';
+    const n = nick() || 'Ученик';
+    const s = state.sel;
+
     el.innerHTML = `
+      <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
+        <div class="flex items-center gap-3">
+          ${avatarHtml(n, 'lg')}
+          <div class="flex-1 min-w-0">
+            <div class="font-bold text-base truncate">${esc(n)}</div>
+            <div class="text-[11px] text-slate-500 truncate">${esc(s.cname || '')}, ${esc(s.sname || '')}, ${esc(s.clname || '')}</div>
+            <button id="profile-edit-nick" class="text-[11px] accent-text underline mt-1">Изменить ник</button>
+          </div>
+        </div>
+      </div>
+
       <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
         <div class="flex items-center justify-between gap-3">
           <div>
-            <div class="font-bold text-sm">Альт-менедж</div>
-            <p class="text-[11px] text-slate-500 mt-0.5">Возможность удалять свои и чужие сообщения в чате</p>
+            <div class="font-bold text-sm">Тема оформления</div>
+            <p class="text-[11px] text-slate-500 mt-0.5">Светлая или тёмная</p>
+          </div>
+          <button id="theme-toggle" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold">
+            ${theme === 'dark' ? '🌙 Тёмная' : '☀️ Светлая'}
+          </button>
+        </div>
+      </div>
+
+      <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
+        <div class="font-bold text-sm mb-3">Цвет акцента</div>
+        <div class="flex flex-wrap gap-3 justify-center">
+          ${['indigo:#6366f1','blue:#3b82f6','emerald:#10b981','rose:#f43f5e','amber:#f59e0b','violet:#8b5cf6'].map((pair) => {
+            const [key, color] = pair.split(':');
+            return `<span class="accent-dot ${accent === key ? 'active' : ''}" data-accent="${key}" style="background:${color}"></span>`;
+          }).join('')}
+        </div>
+      </div>
+
+      <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <div class="font-bold text-sm">🔕 Не беспокоить</div>
+            <p class="text-[11px] text-slate-500 mt-0.5">Скрывает всплывающие уведомления</p>
           </div>
           <label class="relative inline-flex items-center cursor-pointer shrink-0">
-            <input id="alt-toggle" type="checkbox" class="sr-only" ${on ? 'checked' : ''}>
-            <span id="alt-slider" class="w-11 h-6 rounded-full ${on ? 'bg-indigo-600' : 'bg-slate-700'} relative transition">
-              <span id="alt-knob" class="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition ${on ? 'translate-x-5' : ''}"></span>
+            <input id="dnd-toggle" type="checkbox" class="sr-only" ${dnd ? 'checked' : ''}>
+            <span id="dnd-slider" class="w-11 h-6 rounded-full ${dnd ? 'accent-bg' : 'bg-slate-700'} relative transition">
+              <span id="dnd-knob" class="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition ${dnd ? 'translate-x-5' : ''}"></span>
             </span>
           </label>
         </div>
       </div>
-      <button id="admin-full-btn" class="w-full rounded-xl bg-slate-800 hover:bg-slate-700 py-3 text-sm font-bold fade-up">Полная админ-панель</button>
-      <button id="admin-exit-btn" class="w-full rounded-xl bg-rose-600/80 hover:bg-rose-600 py-3 text-sm font-bold fade-up">Выйти из режима администратора</button>
-      <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
-        <div class="font-bold text-sm">Мой ID (UID)</div>
-        <p class="text-[11px] text-slate-500 mt-0.5 mb-2">Нужен, чтобы добавить себя в ветку admins (правки содержимого и модерация). Это единственный идентификатор аккаунта — бан/мут привязан к нему.</p>
-        <code id="my-uid" class="block text-[11px] break-all bg-slate-800 rounded-lg px-2 py-1.5">${esc(HubAuth.uid || '…')}</code>
-      </div>
-      <p class="text-[11px] text-slate-600 px-1">Полная панель — как раньше: города, школы, классы, данные класса, люди и чат.</p>`;
 
-    $('#alt-toggle').addEventListener('change', (e) => {
-      setAltMode(e.target.checked);
-      updateAltSwitch(e.target.checked);
-      refreshChat();
-      showToast(e.target.checked ? 'Альт-менедж включён' : 'Альт-менедж выключен');
+      <button id="fav-open" class="w-full rounded-xl bg-slate-800 hover:bg-slate-700 py-3 text-sm font-bold fade-up">⭐ Избранные сообщения</button>
+      <button id="export-chat" class="w-full rounded-xl bg-slate-800 hover:bg-slate-700 py-3 text-sm font-bold fade-up">📥 Скачать чат в TXT</button>
+
+      <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
+        <div class="font-bold text-sm mb-2">🎂 Дни рождения класса</div>
+        <div id="bdays-list" class="space-y-1.5 mb-2"></div>
+        <form id="bday-add" class="flex gap-2 mt-2">
+          <input id="bday-name" placeholder="Имя" class="flex-1 min-w-0 rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-xs outline-none focus:border-indigo-500">
+          <input id="bday-date" type="date" class="rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-xs outline-none focus:border-indigo-500">
+          <button class="rounded-lg px-3 py-2 text-xs font-bold accent-bg text-white">+</button>
+        </form>
+      </div>
+
+      ${isAdmin ? `
+        <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <div class="font-bold text-sm">Альт-менедж</div>
+              <p class="text-[11px] text-slate-500 mt-0.5">Удаление чужих сообщений</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer shrink-0">
+              <input id="alt-toggle" type="checkbox" class="sr-only" ${on ? 'checked' : ''}>
+              <span id="alt-slider" class="w-11 h-6 rounded-full ${on ? 'accent-bg' : 'bg-slate-700'} relative transition">
+                <span id="alt-knob" class="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition ${on ? 'translate-x-5' : ''}"></span>
+              </span>
+            </label>
+          </div>
+        </div>
+        <button id="admin-full-btn" class="w-full rounded-xl bg-slate-800 hover:bg-slate-700 py-3 text-sm font-bold fade-up">Полная админ-панель</button>
+        <button id="admin-exit-btn" class="w-full rounded-xl bg-rose-600/80 hover:bg-rose-600 py-3 text-sm font-bold fade-up">Выйти из режима администратора</button>
+      ` : ''}`;
+
+    $('#profile-edit-nick').addEventListener('click', changeNick);
+    $('#theme-toggle').addEventListener('click', () => {
+      const cur = localStorage.getItem(LS.theme) || 'dark';
+      const next = cur === 'dark' ? 'light' : 'dark';
+      localStorage.setItem(LS.theme, next);
+      document.documentElement.classList.toggle('dark', next === 'dark');
+      renderSettingsTab();
+      showToast(next === 'dark' ? 'Тёмная тема' : 'Светлая тема');
     });
-    $('#admin-full-btn').addEventListener('click', () => {
-      $('#admin-panel').classList.remove('hidden');
-      renderAdminCore();
+    $$('.accent-dot').forEach((d) => d.addEventListener('click', () => {
+      const key = d.dataset.accent;
+      localStorage.setItem(LS.accent, key);
+      document.documentElement.setAttribute('data-accent', key);
+      renderSettingsTab();
+      showToast('Цвет изменён');
+    }));
+    $('#dnd-toggle').addEventListener('change', (e) => {
+      localStorage.setItem(LS.dnd, e.target.checked ? '1' : '0');
+      const sl = $('#dnd-slider'), kn = $('#dnd-knob');
+      if (sl) { sl.classList.toggle('accent-bg', e.target.checked); sl.classList.toggle('bg-slate-700', !e.target.checked); }
+      if (kn) kn.classList.toggle('translate-x-5', e.target.checked);
+      showToast(e.target.checked ? 'Уведомления скрыты' : 'Уведомления включены');
     });
-    $('#admin-exit-btn').addEventListener('click', () => {
-      exitAdminMode();
-      switchTab('schedule');
+    $('#fav-open').addEventListener('click', openFavModal);
+    $('#export-chat').addEventListener('click', exportChat);
+    paintBdays();
+    $('#bday-add').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const name = $('#bday-name').value.trim();
+      const date = $('#bday-date').value;
+      if (!name || !date) return;
+      let arr = [];
+      try { arr = JSON.parse(localStorage.getItem(LS.bdays) || '[]'); } catch (er) {}
+      arr.push({ name, date });
+      arr.sort((a, b) => a.date.localeCompare(b.date));
+      localStorage.setItem(LS.bdays, JSON.stringify(arr));
+      $('#bday-name').value = '';
+      $('#bday-date').value = '';
+      paintBdays();
     });
+    if (isAdmin) {
+      const alt = $('#alt-toggle');
+      if (alt) alt.addEventListener('change', (e) => {
+        setAltMode(e.target.checked);
+        refreshChat();
+        showToast(e.target.checked ? 'Альт-менедж вкл' : 'Альт-менедж выкл');
+      });
+      const full = $('#admin-full-btn');
+      if (full) full.addEventListener('click', () => { $('#admin-panel').classList.remove('hidden'); renderAdminPage('cities'); });
+      const ex = $('#admin-exit-btn');
+      if (ex) ex.addEventListener('click', () => { exitAdminMode(); switchTab('schedule'); });
+    }
   }
 
-  // Долгое нажатие (3 секунды) — таймер
+  function paintBdays() {
+    const el = $('#bdays-list');
+    if (!el) return;
+    let arr = [];
+    try { arr = JSON.parse(localStorage.getItem(LS.bdays) || '[]'); } catch (e) {}
+    if (!arr.length) { el.innerHTML = '<p class="text-[11px] text-slate-500">Пока никого</p>'; return; }
+    const today = new Date();
+    const p = (n) => String(n).padStart(2, '0');
+    const todayMD = p(today.getMonth() + 1) + '-' + p(today.getDate());
+    el.innerHTML = arr.map((b, i) => {
+      const isToday = b.date.slice(5) === todayMD;
+      return `
+        <div class="flex items-center justify-between gap-2 text-xs">
+          <span class="${isToday ? 'font-bold accent-text' : ''}">${esc(b.name)}</span>
+          <span class="text-slate-500">${b.date.slice(5).split('-').reverse().join('.')}${isToday ? ' 🎉' : ''}</span>
+          <button class="bday-del text-slate-500 hover:text-rose-400 px-1" data-i="${i}">✕</button>
+        </div>`;
+    }).join('');
+    el.querySelectorAll('.bday-del').forEach((b) => b.addEventListener('click', () => {
+      let a = [];
+      try { a = JSON.parse(localStorage.getItem(LS.bdays) || '[]'); } catch (e) {}
+      a.splice(Number(b.dataset.i), 1);
+      localStorage.setItem(LS.bdays, JSON.stringify(a));
+      paintBdays();
+    }));
+  }
+
+  function openFavModal() {
+    const m = $('#fav-modal');
+    m.classList.remove('hidden');
+    m.classList.add('flex');
+    const arr = favs();
+    const el = $('#fav-list');
+    if (!arr.length) { el.innerHTML = emptyNote('Пока пусто'); return; }
+    el.innerHTML = arr.map((f) => `
+      <div class="rounded-xl bg-slate-800 p-3 fade-up">
+        <div class="flex items-center gap-2 mb-1">
+          ${avatarHtml(f.nick || '?', 'sm')}
+          <span class="text-[11px] font-bold">${esc(f.nick || 'Ученик')}</span>
+          <span class="text-[10px] text-slate-500 ml-auto">${fmtDate(f.time)}</span>
+          <button class="fav-del text-slate-400 hover:text-rose-400" data-key="${esc(f.key)}">✕</button>
+        </div>
+        <p class="text-sm break-words whitespace-pre-wrap">${esc(f.text)}</p>
+      </div>`).join('');
+    el.querySelectorAll('.fav-del').forEach((b) => b.addEventListener('click', () => {
+      let a = favs().filter((x) => x.key !== b.dataset.key);
+      localStorage.setItem(LS.fav, JSON.stringify(a));
+      openFavModal();
+    }));
+  }
+
+  /* ---- Долгое нажатие / N тапов ---- */
   function bindLongPress(el, cb) {
     let timer = null;
-    const start = () => {
-      timer = setTimeout(() => {
-        timer = null;
-        el.classList.add('hold');
-        cb();
-      }, 3000);
-    };
-    const stop = (e) => {
-      clearTimeout(timer);
-      timer = null;
-      el.classList.remove('hold');
-    };
+    const start = () => { timer = setTimeout(() => { timer = null; el.classList.add('hold'); cb(); }, 3000); };
+    const stop = () => { clearTimeout(timer); timer = null; el.classList.remove('hold'); };
     el.addEventListener('pointerdown', start);
     ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => el.addEventListener(ev, stop));
   }
-
-  // N тапов по элементу в течение 2 секунд
   function bindNTaps(el, n, cb) {
     let count = 0, timer = null;
     el.addEventListener('click', () => {
@@ -1161,19 +1956,7 @@
     });
   }
 
-  /* ============================================================
-     АДМИН-ПАНЕЛЬ: управление данными
-     ============================================================ */
-  // Страницы админки
-  const ADMIN_PAGES = [
-    ['cities', 'Города'],
-    ['schools', 'Школы'],
-    ['classes', 'Классы'],
-    ['content', 'Данные'],
-    ['people', 'Люди и чат'],
-    ['stats', 'Статистика'],
-  ];
-
+  /* ---- АДМИН-ПАНЕЛЬ ---- */
   function renderAdminPage(name) {
     admin.page = name;
     offRefs(adminRefs); adminRefs = [];
@@ -1185,7 +1968,6 @@
     });
     const body = $('#admin-body');
     body.innerHTML = '';
-
     if (name === 'cities') renderAdminCities(body);
     else if (name === 'schools') renderAdminSchools(body);
     else if (name === 'classes') renderAdminClasses(body);
@@ -1194,573 +1976,160 @@
     else if (name === 'stats') renderAdminStats(body);
   }
 
-  // ---- Общие элементы форм админки ----
   const aInput = (cls) => `w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-sm placeholder-slate-500 outline-none focus:border-indigo-500 transition ${cls || ''}`;
-  const aBtn = (cls) => `rounded-lg px-3 py-2 text-xs font-bold transition ${cls || 'bg-slate-800 hover:bg-slate-700'}`;
 
-  /* ---- Города ---- */
   function renderAdminCities(body) {
     body.innerHTML = `
       <form id="city-add" class="flex gap-2">
         <input id="city-name" placeholder="Название города" class="${aInput('flex-1 min-w-0')}">
-        <button class="${aBtn('bg-indigo-600 hover:bg-indigo-500', 'Добавить')}">Добавить</button>
+        <button class="rounded-lg px-3 py-2 text-xs font-bold accent-bg text-white">Добавить</button>
       </form>
-      <p class="text-xs text-slate-500 mt-2">Изменяйте название прямо в поле и нажимайте «Сохранить».</p>
       <div id="city-list" class="mt-3 space-y-2"></div>`;
-
     $('#city-add').addEventListener('submit', (e) => {
       e.preventDefault();
       const name = $('#city-name').value.trim();
       if (!name) return;
-      const target = db.ref(P.cities());
-      target.push({ name })
-        .then(() => showToast('Город добавлен'))
-        .catch((err) => {
-          console.error('Ошибка записи:', err);
-          showToast('Ошибка сохранения: ' + (err && err.message || err));
-        });
+      db.ref(P.cities()).push({ name }).catch((err) => showToast('Ошибка: ' + err.message));
       $('#city-name').value = '';
     });
-
     addRef(adminRefs, db.ref(P.cities())).on('value', (snap) => {
       const cities = snapArr(snap);
       $('#city-list').innerHTML = cities.length ? cities.map((c) => `
         <div class="row rounded-xl bg-slate-900 border border-slate-800 p-3 flex flex-col gap-2 sm:flex-row sm:items-center fade-up">
-          <input data-act="cityName" value="${esc(c.name || '')}" placeholder="Название" class="${aInput('flex-1 min-w-0')}">
+          <input data-act="cityName" value="${esc(c.name || '')}" class="${aInput('flex-1 min-w-0')}">
           <div class="flex gap-2 shrink-0">
-            <button data-act="citySave" data-key="${esc(c.key)}" class="${aBtn('bg-emerald-600 hover:bg-emerald-500', 'Сохранить')}">Сохранить</button>
-            <button data-act="cityDelete" data-key="${esc(c.key)}" class="${aBtn('bg-rose-600 hover:bg-rose-500', 'Удалить')}">Удалить</button>
+            <button data-act="citySave" data-key="${esc(c.key)}" class="rounded-lg px-3 py-2 text-xs font-bold bg-emerald-600">Сохранить</button>
+            <button data-act="cityDelete" data-key="${esc(c.key)}" class="rounded-lg px-3 py-2 text-xs font-bold bg-rose-600">Удалить</button>
           </div>
-        </div>`).join('') : emptyNote('Городов пока нет');
-    }, (err) => {
-      console.error('Ошибка чтения списка городов:', err);
-      $('#city-list').innerHTML = emptyNote('Не удалось прочитать данные.<br>Проверьте правила Firebase Realtime Database (нужен доступ на чтение и запись).');
+        </div>`).join('') : emptyNote('Городов нет');
     });
   }
 
-  /* ---- Школы ---- */
   function renderAdminSchools(body) {
     body.innerHTML = `
-      <div class="mb-3">
-        <label class="text-xs text-slate-400 block mb-1">Город</label>
-        <select id="school-city" class="${aInput('w-full')}"></select>
-      </div>
+      <div class="mb-3"><label class="text-xs text-slate-400 block mb-1">Город</label><select id="school-city" class="${aInput('w-full')}"></select></div>
       <form id="school-add" class="flex gap-2">
-        <input id="school-name" placeholder="Название школы (например, «Школа №4»)" class="${aInput('flex-1 min-w-0')}">
-        <button class="${aBtn('bg-indigo-600 hover:bg-indigo-500', 'Добавить')}">Добавить</button>
+        <input id="school-name" placeholder="Название школы" class="${aInput('flex-1 min-w-0')}">
+        <button class="rounded-lg px-3 py-2 text-xs font-bold accent-bg text-white">Добавить</button>
       </form>
-      <p class="text-xs text-slate-500 mt-2">Сначала выберите город.</p>
       <div id="school-list" class="mt-3 space-y-2"></div>`;
-
     const fill = () => {
       const cid = $('#school-city').value;
-      $('#school-list').innerHTML = spinner();
       offRefs(adminRefs); adminRefs = [];
-
       addRef(adminRefs, db.ref(P.schools(cid))).on('value', (snap) => {
-        const schools = snapArr(snap);
-        $('#school-list').innerHTML = schools.length ? schools.map((s) => `
+        const arr = snapArr(snap);
+        $('#school-list').innerHTML = arr.length ? arr.map((s) => `
           <div class="row rounded-xl bg-slate-900 border border-slate-800 p-3 flex flex-col gap-2 sm:flex-row sm:items-center fade-up">
             <input data-act="schoolName" value="${esc(s.name || '')}" class="${aInput('flex-1 min-w-0')}">
             <div class="flex gap-2 shrink-0">
-              <button data-act="schoolSave" data-key="${esc(s.key)}" class="${aBtn('bg-emerald-600 hover:bg-emerald-500', 'Сохранить')}">Сохранить</button>
-              <button data-act="schoolDelete" data-key="${esc(s.key)}" class="${aBtn('bg-rose-600 hover:bg-rose-500', 'Удалить')}">Удалить</button>
+              <button data-act="schoolSave" data-key="${esc(s.key)}" class="rounded-lg px-3 py-2 text-xs font-bold bg-emerald-600">Сохранить</button>
+              <button data-act="schoolDelete" data-key="${esc(s.key)}" class="rounded-lg px-3 py-2 text-xs font-bold bg-rose-600">Удалить</button>
             </div>
-          </div>`).join('') : emptyNote('Школ в этом городе нет');
+          </div>`).join('') : emptyNote('Школ нет');
       });
     };
-
-    // Заполняем список городов
     addRef(adminRefs, db.ref(P.cities())).on('value', (snap) => {
-      const cities = snapArr(snap);
+      const arr = snapArr(snap);
       const sel = $('#school-city');
-      const prev = admin.city;
-      sel.innerHTML = '<option value="">— выберите город —</option>' +
-        cities.map((c) => `<option value="${esc(c.key)}">${esc(c.name || '')}</option>`).join('');
-      if (prev && cities.some((c) => c.key === prev)) sel.value = prev;
+      sel.innerHTML = '<option value="">— город —</option>' + arr.map((c) => `<option value="${esc(c.key)}">${esc(c.name || '')}</option>`).join('');
+      if (admin.city && arr.some((c) => c.key === admin.city)) sel.value = admin.city;
       fill();
     });
-
-    $('#school-city').addEventListener('change', () => { admin.city = $('#school-city').value || null; admin.school = null; fill(); });
+    $('#school-city').addEventListener('change', () => { admin.city = $('#school-city').value || null; fill(); });
     $('#school-add').addEventListener('submit', (e) => {
       e.preventDefault();
       const cid = $('#school-city').value;
       const name = $('#school-name').value.trim();
-      if (!cid || !name) { showToast('Выберите город и введите название'); return; }
-      db.ref(P.schools(cid)).push({ name }).catch((err) => showToast('Ошибка сохранения: ' + (err.message || err)));
+      if (!cid || !name) return;
+      db.ref(P.schools(cid)).push({ name }).catch((err) => showToast('Ошибка: ' + err.message));
       $('#school-name').value = '';
     });
   }
 
-  /* ---- Классы ---- */
   function renderAdminClasses(body) {
     body.innerHTML = `
-      <div class="mb-3">
-        <label class="text-xs text-slate-400 block mb-1">Город</label>
-        <select id="class-city" class="${aInput('w-full')}"></select>
-      </div>
-      <div class="mb-3">
-        <label class="text-xs text-slate-400 block mb-1">Школа</label>
-        <select id="class-school" class="${aInput('w-full')}"></select>
-      </div>
+      <div class="mb-3"><label class="text-xs text-slate-400 block mb-1">Город</label><select id="class-city" class="${aInput('w-full')}"></select></div>
+      <div class="mb-3"><label class="text-xs text-slate-400 block mb-1">Школа</label><select id="class-school" class="${aInput('w-full')}"></select></div>
       <form id="class-add" class="flex gap-2">
-        <input id="class-name" placeholder="Класс (например, 7А)" class="${aInput('flex-1 min-w-0')}">
-        <button class="${aBtn('bg-indigo-600 hover:bg-indigo-500', 'Добавить')}">Добавить</button>
+        <input id="class-name" placeholder="Класс" class="${aInput('flex-1 min-w-0')}">
+        <button class="rounded-lg px-3 py-2 text-xs font-bold accent-bg text-white">Добавить</button>
       </form>
-      <div id="class-count" class="text-xs text-slate-400 font-bold mt-4 mb-1"></div>
-      <div id="class-list" class="space-y-2"></div>`;
-
-    // Рисуем список классов для выбранных города/школы (надёжный разовый запрос)
+      <div id="class-list" class="mt-3 space-y-2"></div>`;
     const renderList = () => {
-      const cid = $('#class-city').value;
-      const sid = $('#class-school').value;
-      if (!sid) { $('#class-count').textContent = ''; $('#class-list').innerHTML = emptyNote('Сначала выберите школу'); return; }
-      $('#class-count').textContent = 'Загрузка…';
-      $('#class-list').innerHTML = spinner();
+      const cid = $('#class-city').value, sid = $('#class-school').value;
+      if (!sid) { $('#class-list').innerHTML = emptyNote('Выберите школу'); return; }
       db.ref(P.classes(cid, sid)).once('value', (snap) => {
-        const classes = snapArr(snap);
-        $('#class-count').textContent = classes.length ? ('Классы в этой школе: ' + classes.length) : '';
-        $('#class-list').innerHTML = classes.length ? classes.map((c) => `
+        const arr = snapArr(snap);
+        $('#class-list').innerHTML = arr.length ? arr.map((c) => `
           <div class="row rounded-xl bg-slate-900 border border-slate-800 p-3 flex flex-col gap-2 sm:flex-row sm:items-center fade-up">
             <input data-act="className" value="${esc(c.name || '')}" class="${aInput('flex-1 min-w-0')}">
             <div class="flex gap-2 shrink-0">
-              <button data-act="classSave" data-key="${esc(c.key)}" class="${aBtn('bg-emerald-600 hover:bg-emerald-500', 'Сохранить')}">Сохранить</button>
-              <button data-act="classDelete" data-key="${esc(c.key)}" class="${aBtn('bg-rose-600 hover:bg-rose-500', 'Удалить')}">Удалить</button>
+              <button data-act="classSave" data-key="${esc(c.key)}" class="rounded-lg px-3 py-2 text-xs font-bold bg-emerald-600">Сохранить</button>
+              <button data-act="classDelete" data-key="${esc(c.key)}" class="rounded-lg px-3 py-2 text-xs font-bold bg-rose-600">Удалить</button>
             </div>
-          </div>`).join('') : emptyNote('Классов в школе нет');
+          </div>`).join('') : emptyNote('Классов нет');
       });
     };
-
-    let loadedCid = null; // город, для которого уже заполнен список школ
-
-    // Наполняем выпадающий список школ выбранного города (только при смене города)
     const loadSchools = () => {
       const cid = $('#class-city').value;
-      admin.city = cid || null;
-      admin.school = null;
-      loadedCid = cid || null;
       const sel = $('#class-school');
-      sel.innerHTML = '<option value="">— выберите школу —</option>';
-      if (!cid) { $('#class-list').innerHTML = emptyNote('Сначала выберите город'); return; }
-      db.ref(P.schools(cid)).once('value', (snap) => {
-        const schools = snapArr(snap);
-        sel.innerHTML = '<option value="">— выберите школу —</option>' +
-          schools.map((s) => `<option value="${esc(s.key)}">${esc(s.name || '')}</option>`).join('');
-        renderList();
+      sel.innerHTML = '<option value="">— школа —</option>';
+      if (!cid) return;
+      db.ref(P.schools(cid)).once('value', (s) => {
+        const arr = snapArr(s);
+        sel.innerHTML = '<option value="">— школа —</option>' + arr.map((x) => `<option value="${esc(x.key)}">${esc(x.name || '')}</option>`).join('');
       });
     };
-
-    // Города (прослушивание: после добавления класса перечитываем СТОЛЬКО ЖЕ список классов,
-    // но НЕ трогаем выбор школы, если город не менялся)
     addRef(adminRefs, db.ref(P.cities())).on('value', (snap) => {
-      const cities = snapArr(snap);
+      const arr = snapArr(snap);
       const sel = $('#class-city');
-      sel.innerHTML = '<option value="">— выберите город —</option>' +
-        cities.map((c) => `<option value="${esc(c.key)}">${esc(c.name || '')}</option>`).join('');
-      if (admin.city && cities.some((c) => c.key === admin.city)) sel.value = admin.city;
-      const cid = sel.value;
-      if (!cid) { loadedCid = null; renderList(); return; }
-      if (cid !== loadedCid) loadSchools();
-      else renderList();
+      sel.innerHTML = '<option value="">— город —</option>' + arr.map((c) => `<option value="${esc(c.key)}">${esc(c.name || '')}</option>`).join('');
+      loadSchools();
     });
-
     $('#class-city').addEventListener('change', loadSchools);
-    $('#class-school').addEventListener('change', () => {
-      admin.school = $('#class-school').value || null;
-      renderList();
-    });
-
+    $('#class-school').addEventListener('change', renderList);
     $('#class-add').addEventListener('submit', (e) => {
       e.preventDefault();
       const cid = $('#class-city').value, sid = $('#class-school').value;
       const name = $('#class-name').value.trim();
-      if (!cid || !sid || !name) { showToast('Выберите город и школу, введите класс'); return; }
-      db.ref(P.classes(cid, sid)).push({ name })
-        .then(() => { $('#class-name').value = ''; renderList(); showToast('Класс «' + name + '» добавлен'); })
-        .catch((err) => showToast('Ошибка сохранения: ' + (err.message || err)));
+      if (!cid || !sid || !name) return;
+      db.ref(P.classes(cid, sid)).push({ name }).then(() => { $('#class-name').value = ''; renderList(); });
     });
   }
 
-  /* ---------- Люди и чат: блокировки и удаление сообщений ---------- */
-  function renderAdminPeople(body) {
-    body.innerHTML = `
-      <p class="text-xs text-slate-500 mb-3">Модерация привязана к аккаунту (UID), а не к нику: бан/мут нельзя обойти сменой ника. Пользователи берутся из ветки users.</p>
-      <div class="space-y-3 mb-4">
-        <div>
-          <label class="text-xs text-slate-400 block mb-1">Город</label>
-          <select id="people-city" class="${aInput('w-full')}"></select>
-        </div>
-        <div>
-          <label class="text-xs text-slate-400 block mb-1">Школа</label>
-          <select id="people-school" class="${aInput('w-full')}"></select>
-        </div>
-        <div>
-          <label class="text-xs text-slate-400 block mb-1">Класс</label>
-          <select id="people-class" class="${aInput('w-full')}"></select>
-        </div>
-      </div>
-      <div id="people-list"></div>`;
-
-    const selCity = $('#people-city'), selSchool = $('#people-school'), selClass = $('#people-class');
-    const list = $('#people-list');
-
-    const loadPeople = () => {
-      const cid = selCity.value, sid = selSchool.value, clid = selClass.value;
-      if (!cid || !sid || !clid) { list.innerHTML = emptyNote('Выберите город, школу и класс'); return; }
-      list.innerHTML = spinner();
-      const node = db.ref(P.classNode(cid, sid, clid));
-      node.child('chat').once('value', (chatSnap) => {
-        const chat = chatSnap.val() || {};
-        // Сообщения: последние 100 по времени
-        const msgs = Object.keys(chat).map((k) => Object.assign({ key: k }, chat[k]))
-          .filter((m) => m && m.text)
-          .sort((a, b) => (b.time || 0) - (a.time || 0))
-          .slice(0, 100);
-        // Имя выбранного класса (фильтрация списка users по полю class)
-        const opt = selClass.selectedOptions && selClass.selectedOptions[0];
-        const clname = (opt && opt.value) ? opt.textContent.trim() : '';
-        // Пользователи берутся из ветки users (привязка к UID, а не к нику),
-        // статус бана — из ветки bannedUsers/{uid}
-        Promise.all([
-          db.ref('/users').once('value'),
-          db.ref('/bannedUsers').once('value'),
-        ]).then(([us, bs]) => {
-          const banByUid = bs.val() || {};
-          const users = [];
-          const uv = us.val() || {};
-          Object.keys(uv).forEach((uid) => {
-            const prof = Object.assign({}, uv[uid] || {}, { uid, ban: banByUid[uid] || null });
-            if (clname && prof.class !== clname) return; // только пользователи выбранного класса
-            const cnt = msgs.filter((m) =>
-              (m.uid === uid) || (!m.uid && (m.nick || m.name) === (prof.nick || ''))).length;
-            prof.msgCount = cnt;
-            users.push(prof);
-          });
-          users.sort((a, b) => (b.msgCount || 0) - (a.msgCount || 0));
-
-          list.innerHTML = `
-            <div class="text-xs text-slate-400 font-bold mb-2">Пользователи класса (${esc(String(users.length))})</div>
-            <div class="space-y-2 mb-6">${users.length ? users.map((u) => {
-              const st = HubModeration.statusOf(u.ban);
-              const nme = u.nick || 'Ученик';
-              const isBanned = !!(u.ban && HubModeration.isActive(u.ban));
-              const isRestricted = isBanned;
-              return `
-              <div class="rounded-xl bg-slate-900 border border-slate-800 p-3 flex flex-col gap-2 sm:flex-row sm:items-center fade-up ${isBanned ? 'opacity-70' : ''}">
-                <div class="flex-1 min-w-0">
-                  <div class="font-semibold text-sm truncate" style="color:${nickColor(nme)}">${esc(nme)}</div>
-                  <div class="text-[11px] text-slate-500">
-                    <span class="${esc(st.cls)}">${esc(st.label)}</span>
-                    ${u.class ? ' · ' + esc(u.class) : ''} · ${u.msgCount} сообщ.
-                  </div>
-                  <div class="text-[10px] text-slate-600 break-all">${esc(u.uid)}</div>
-                </div>
-                <div class="flex gap-2 shrink-0 flex-wrap">
-                  <button data-act="mute1" data-uid="${esc(u.uid)}" class="${aBtn('bg-amber-600 hover:bg-amber-500')}">Мут 1 час</button>
-                  <button data-act="mute24" data-uid="${esc(u.uid)}" class="${aBtn('bg-amber-600 hover:bg-amber-500')}">Мут 24 часа</button>
-                  <button data-act="banForever" data-uid="${esc(u.uid)}" class="${aBtn('bg-rose-600 hover:bg-rose-500')}">Бан навсегда</button>
-                  ${isRestricted ? `<button data-act="unban" data-uid="${esc(u.uid)}" class="${aBtn('bg-emerald-600 hover:bg-emerald-500')}">Разблокировать</button>` : ''}
-                  <button data-act="purgeUser" data-uid="${esc(u.uid)}" data-nick="${esc(nme)}" class="${aBtn('bg-rose-600/70 hover:bg-rose-500')}">Удалить сообщения</button>
-                </div>
-              </div>`; }).join('') : emptyNote('Пользователей этого класса пока нет')}</div>
-            <div class="text-xs text-slate-400 font-bold mb-2">Последние сообщения (${esc(String(msgs.length))})</div>
-            <div class="space-y-2">${msgs.length ? msgs.map((m) => `
-              <div class="rounded-xl bg-slate-900 border border-slate-800 p-3 fade-up">
-                <div class="flex items-center gap-2 mb-1">
-                  <span class="text-[11px] font-bold" style="color:${nickColor(m.nick || m.name || '?')}">${esc(m.nick || m.name || 'Ученик')}</span>
-                  <span class="text-[10px] text-slate-500">${fmtDate(m.time)}</span>
-                  <button data-act="delMsg" data-key="${esc(m.key)}" class="ml-auto ${aBtn('bg-rose-600/80 hover:bg-rose-500')}">Удалить</button>
-                </div>
-                <p class="text-sm break-words whitespace-pre-wrap">${esc(m.text)}</p>
-              </div>`).join('') : emptyNote('Сообщений нет')}</div>`;
-        }).catch(() => { list.innerHTML = emptyNote('Не удалось загрузить список пользователей'); });
-      });
-    };
-
-    // Города → школы → классы. Сохраняем выбор города/школы/класса между вкладками.
-    const fillSchools = (keepSid) => {
-      selSchool.innerHTML = '<option value="">— школа —</option>';
-      selClass.innerHTML = '<option value="">— класс —</option>';
-      const cid = selCity.value;
-      if (!cid) { admin.school = admin.cls = null; loadPeople(); return; }
-      db.ref(P.schools(cid)).once('value', (ss) => {
-        const schools = snapArr(ss);
-        selSchool.innerHTML = '<option value="">— школа —</option>' + schools.map((s) => `<option value="${esc(s.key)}">${esc(s.name || '')}</option>`).join('');
-        if (keepSid && schools.some((s) => s.key === keepSid)) {
-          selSchool.value = keepSid;
-          fillClasses(keepSid, admin.cls);
-        } else {
-          admin.school = admin.cls = null;
-          loadPeople();
-        }
-      });
-    };
-    const fillClasses = (sid, keepClid) => {
-      selClass.innerHTML = '<option value="">— класс —</option>';
-      if (!sid) { admin.cls = null; loadPeople(); return; }
-      db.ref(P.classes(admin.city, sid)).once('value', (cs) => {
-        const classes = snapArr(cs);
-        selClass.innerHTML = '<option value="">— класс —</option>' + classes.map((c) => `<option value="${esc(c.key)}">${esc(c.name || '')}</option>`).join('');
-        if (keepClid && classes.some((c) => c.key === keepClid)) { selClass.value = keepClid; admin.cls = keepClid; }
-        else admin.cls = null;
-        loadPeople();
-      });
-    };
-
-    addRef(adminRefs, db.ref(P.cities())).on('value', (snap) => {
-      const cities = snapArr(snap);
-      selCity.innerHTML = '<option value="">— город —</option>' + cities.map((c) => `<option value="${esc(c.key)}">${esc(c.name || '')}</option>`).join('');
-      if (admin.city && cities.some((c) => c.key === admin.city)) selCity.value = admin.city;
-      fillSchools(admin.school);
-    });
-    selCity.addEventListener('change', () => {
-      admin.city = selCity.value || null;
-      admin.school = admin.cls = null;
-      fillSchools();
-    });
-    selSchool.addEventListener('change', () => {
-      admin.school = selSchool.value || null;
-      admin.cls = null;
-      fillClasses(admin.school);
-    });
-    selClass.addEventListener('change', () => { admin.cls = selClass.value || null; loadPeople(); });
-  }
-
-  /* ---------- Статистика: счётчики, активность, «Интересное» ---------- */
-  function openClassChat(cid, sid, clid, title) {
-    const m = $('#view-modal');
-    m.classList.remove('hidden');
-    $('#view-title').textContent = 'Чат: ' + (title || '');
-    const body = $('#view-body');
-    body.innerHTML = spinner();
-    db.ref('/cities/' + cid + '/schools/' + sid + '/classes/' + clid + '/chat').once('value', (snap) => {
-      const items = snapArr(snap);
-      items.sort((a, b) => (a.time || 0) - (b.time || 0));
-      const last = items.slice(-50);
-      body.innerHTML = last.length ? last.map((m2) => {
-        const fl = m2.flagged;
-        return `
-          <div class="rounded-2xl bg-slate-800 px-3.5 py-2">
-            <div class="text-[11px] font-bold mb-0.5" style="color:${nickColor(m2.nick || m2.name || '?')}">${esc(m2.nick || m2.name || 'Ученик')}${fl ? ' <span class="text-amber-400">· помечено</span>' : ''}</div>
-            <p class="text-sm break-words whitespace-pre-wrap ${fl ? 'text-amber-200' : ''}">${esc(m2.text || '')}</p>
-            <div class="text-[10px] opacity-60 mt-1 text-right">${fmtDate(m2.time)}</div>
-          </div>`;
-      }).join('') : emptyNote('В этом чате пока нет сообщений');
-    });
-  }
-
-  function renderAdminStats(body) {
-    body.innerHTML = `
-      <p class="text-xs text-slate-500 mb-3">Общая статистика базы и помеченные фильтром сообщения.</p>
-      <div id="stats-cards" class="grid grid-cols-3 gap-2 mb-4">${spinner()}</div>
-      <div class="text-xs text-slate-400 font-bold mb-2">Классы и активность (сообщения за последние 24 ч)</div>
-      <div id="stats-classes" class="space-y-2 mb-5">${spinner()}</div>
-      <div class="text-xs text-slate-400 font-bold mb-2">Интересное (помеченные сообщения)</div>
-      <div id="stats-flagged" class="space-y-2">${spinner()}</div>`;
-
-    const cardsEl = $('#stats-cards');
-    const classesEl = $('#stats-classes');
-    const flaggedEl = $('#stats-flagged');
-    const DAY24 = 24 * 60 * 60 * 1000;
-    const NOW = Date.now();
-
-    // Счётчики + активные классы (одним глубоким чтением /cities)
-    db.ref('/cities').once('value', (cs) => {
-      let cities = 0, schools = 0, classes = 0, classesRows = [];
-      const cv = cs.val() || {};
-      Object.keys(cv).forEach((cid) => {
-        cities++;
-        const cVal = cv[cid] || {};
-        const cName = cVal.name || '';
-        const schV = cVal.schools || {};
-        Object.keys(schV).forEach((sid) => {
-          schools++;
-          const sVal = schV[sid] || {};
-          const sName = sVal.name || '';
-          const clsV = sVal.classes || {};
-          Object.keys(clsV).forEach((clid) => {
-            classes++;
-            const clVal = clsV[clid] || {};
-            const clName = clVal.name || '';
-            const chatV = clVal.chat || {};
-            let msgs24 = 0;
-            Object.keys(chatV).forEach((mgId) => {
-              const mt = (chatV[mgId] && chatV[mgId].time) || 0;
-              if (mt >= NOW - DAY24) msgs24++;
-            });
-            classesRows.push({
-              name: `${cName}, ${sName}, ${clName}`,
-              msgs: msgs24,
-              cid, sid, clid,
-            });
-          });
-        });
-      });
-      classesRows.sort((a, b) => b.msgs - a.msgs);
-      const statCell = (title, val, clsExtra) => `
-        <div class="rounded-2xl bg-slate-900 border border-slate-800 p-3">
-          <div class="text-2xl font-extrabold ${clsExtra || ''}">${val}</div>
-          <div class="text-[11px] text-slate-500 mt-0.5">${esc(title)}</div>
-        </div>`;
-      cardsEl.innerHTML = statCell('Города', cities) + statCell('Школы', schools) + statCell('Классы', classes) + `
-        <div class="rounded-2xl bg-slate-900 border border-slate-800 p-3">
-          <div class="text-2xl font-extrabold text-emerald-400" id="stat-online">…</div>
-          <div class="text-[11px] text-slate-500 mt-0.5">Онлайн (5 мин)</div>
-        </div>
-        <div class="rounded-2xl bg-slate-900 border border-slate-800 p-3">
-          <div class="text-2xl font-extrabold text-indigo-300" id="stat-unique">…</div>
-          <div class="text-[11px] text-slate-500 mt-0.5">Уникальных всего</div>
-        </div>`;
-      classesEl.innerHTML = classesRows.length ? classesRows.map((a) => `
-        <div class="rounded-xl bg-slate-900 border border-slate-800 p-3 flex items-center justify-between gap-2">
-          <div class="text-sm font-semibold min-w-0 truncate">${esc(a.name)}</div>
-          ${a.msgs > 0
-            ? `<div class="shrink-0 text-[11px] text-indigo-300 font-bold">${a.msgs} сообщ.</div>`
-            : '<div class="shrink-0 text-[11px] text-slate-600 font-semibold">без сообщений</div>'}
-        </div>`).join('') : emptyNote('Классов пока нет');
-
-      // Онлайн (в пределах 5 минут) и уникальные пользователи
-      db.ref('/online').once('value', (os) => {
-        let online = 0;
-        const ov = os.val() || {};
-        Object.keys(ov).forEach((k) => {
-          const v = ov[k];
-          if (typeof v === 'number' && v >= Date.now() - 5 * 60 * 1000) online++;
-        });
-        const el = $('#stat-online');
-        if (el) el.textContent = String(online);
-      });
-      db.ref('/unique').once('value', (us) => {
-        const el = $('#stat-unique');
-        if (el) el.textContent = String(us.numChildren());
-      });
-    });
-
-    // «Интересное» — все помеченные сообщения + модерация автора по UID.
-    // Для старых сообщений (без uid) резолвим автора через users/{uid}.deviceId.
-    Promise.all([
-      db.ref('/flagged_messages').once('value'),
-      db.ref('/users').once('value'),
-      db.ref('/bannedUsers').once('value'),
-    ]).then(([fs, us, bs]) => {
-      const uidByDevice = {};
-      const uv = us.val() || {};
-      Object.keys(uv).forEach((uid) => {
-        const p = uv[uid] || {};
-        if (p.deviceId) uidByDevice[p.deviceId] = uid;
-      });
-      const banByUid = bs.val() || {};
-
-      const flags = [];
-      const fv = fs.val() || {};
-      Object.keys(fv).forEach((cid) => {
-        const sv = fv[cid] || {};
-        Object.keys(sv).forEach((sid) => {
-          const clv = sv[sid] || {};
-          Object.keys(clv).forEach((clid) => {
-            const mv = clv[clid] || {};
-            Object.keys(mv).forEach((key) => {
-              flags.push({ cid, sid, clid, key, d: mv[key] });
-            });
-          });
-        });
-      });
-      flags.sort((a, b) => ((b.d && b.d.time) || 0) - ((a.d && a.d.time) || 0));
-      flaggedEl.innerHTML = flags.length ? flags.map((f) => {
-        const d = f.d || {};
-        const uid = d.uid || (d.deviceId ? uidByDevice[d.deviceId] : '') || '';
-        const ban = uid ? (banByUid[uid] || null) : null;
-        const st = HubModeration.statusOf(ban);
-        const canMod = !!uid && !!HubAuth.uid;
-        const dis = (cls) => canMod ? cls : (cls + ' opacity-40 pointer-events-none');
-        const uidNote = uid
-          ? esc(uid) + (ban ? ' · <span class="' + esc(st.cls) + '">' + esc(st.label) + '</span>' : '')
-          : '<span class="text-slate-600">uid неизвестен (старое сообщение)</span>';
-        return `
-        <div class="rounded-xl bg-slate-900 border border-amber-500/30 p-3 fade-up">
-          <div class="flex items-center gap-2 mb-1">
-            <span class="text-[11px] font-bold text-amber-300">${esc(d.reason || 'помечено')}</span>
-            <span class="text-[10px] text-slate-500 ml-auto">${fmtDate(d.time)}</span>
-          </div>
-          <p class="text-sm break-words whitespace-pre-wrap">${esc(d.text || '')}</p>
-          <p class="text-[11px] text-slate-500 mt-1">${esc(d.cityName || '?')}, ${esc(d.schoolName || '?')}, ${esc(d.className || '?')} · ${esc(d.nick || d.name || '?')}</p>
-          <p class="text-[10px] break-all mt-0.5">${uidNote}</p>
-          <div class="flex flex-wrap gap-2 mt-2">
-            <button data-act="flagOpen" data-cid="${esc(f.cid)}" data-sid="${esc(f.sid)}" data-clid="${esc(f.clid)}"
-                    data-cname="${esc(d.cityName || '')}" data-sname="${esc(d.schoolName || '')}" data-clname="${esc(d.className || '')}"
-                    class="${aBtn('bg-sky-600 hover:bg-sky-500')}">Открыть чат</button>
-            <button data-act="flagMute1" data-uid="${esc(uid)}" data-reason="${esc(d.reason || '')}"
-                    class="${dis(aBtn('bg-amber-600 hover:bg-amber-500'))}">Мут 1 час</button>
-            <button data-act="flagMute24" data-uid="${esc(uid)}" data-reason="${esc(d.reason || '')}"
-                    class="${dis(aBtn('bg-amber-600 hover:bg-amber-500'))}">Мут 24 часа</button>
-            <button data-act="flagUnban" data-uid="${esc(uid)}"
-                    class="${dis(aBtn('bg-emerald-600 hover:bg-emerald-500'))}">Разбанить</button>
-            <button data-act="flagWarn" data-uid="${esc(uid)}" data-reason="${esc(d.reason || '')}"
-                    class="${dis(aBtn('bg-indigo-600 hover:bg-indigo-500'))}">Предупредить</button>
-            <button data-act="flagIgnore" data-cid="${esc(f.cid)}" data-sid="${esc(f.sid)}" data-clid="${esc(f.clid)}" data-key="${esc(f.key)}"
-                    class="${aBtn('bg-slate-700 hover:bg-slate-600')}">Игнорировать</button>
-            <button data-act="flagDel" data-cid="${esc(f.cid)}" data-sid="${esc(f.sid)}" data-clid="${esc(f.clid)}" data-key="${esc(f.key)}"
-                    class="${aBtn('bg-rose-600 hover:bg-rose-500')}">Удалить сообщение</button>
-          </div>
-        </div>`;
-      }).join('') : emptyNote('Помеченных сообщений нет');
-    }).catch(() => { flaggedEl.innerHTML = emptyNote('Не удалось загрузить помеченные сообщения'); });
-  }
-
-  /* ---------- Содержимое класса: расписание / домашка / объявления ---------- */
   function renderAdminContent(body) {
     body.innerHTML = `
-      <p class="text-xs text-slate-500 mb-3">Выберите класс, для которого хотите изменить данные.</p>
       <div class="space-y-3 mb-4">
-        <div>
-          <label class="text-xs text-slate-400 block mb-1">Город</label>
-          <select id="cont-city" class="${aInput('w-full')}"></select>
-        </div>
-        <div>
-          <label class="text-xs text-slate-400 block mb-1">Школа</label>
-          <select id="cont-school" class="${aInput('w-full')}"></select>
-        </div>
-        <div>
-          <label class="text-xs text-slate-400 block mb-1">Класс</label>
-          <select id="cont-class" class="${aInput('w-full')}"></select>
-        </div>
+        <div><label class="text-xs text-slate-400 block mb-1">Город</label><select id="cont-city" class="${aInput('w-full')}"></select></div>
+        <div><label class="text-xs text-slate-400 block mb-1">Школа</label><select id="cont-school" class="${aInput('w-full')}"></select></div>
+        <div><label class="text-xs text-slate-400 block mb-1">Класс</label><select id="cont-class" class="${aInput('w-full')}"></select></div>
       </div>
       <div id="cont-editor"></div>`;
-
     const editor = $('#cont-editor');
     const selCity = $('#cont-city'), selSchool = $('#cont-school'), selClass = $('#cont-class');
-
-    // Подвкладки редактора
     const subNav = () => `
       <div class="grid grid-cols-3 gap-1 px-1 py-2 mb-3 bg-slate-800/50 rounded-xl">
-        <button data-ctype="schedule" class="ctype-btn py-2 rounded-lg text-[11px] font-semibold ${admin.ctype === 'schedule' ? 'bg-indigo-600 text-white' : 'text-slate-400'}">Расписание</button>
-        <button data-ctype="homework" class="ctype-btn py-2 rounded-lg text-[11px] font-semibold ${admin.ctype === 'homework' ? 'bg-indigo-600 text-white' : 'text-slate-400'}">Домашка</button>
-        <button data-ctype="announcements" class="ctype-btn py-2 rounded-lg text-[11px] font-semibold ${admin.ctype === 'announcements' ? 'bg-indigo-600 text-white' : 'text-slate-400'}">Объявления</button>
+        <button data-ctype="schedule" class="ctype-btn py-2 rounded-lg text-[11px] font-semibold ${admin.ctype === 'schedule' ? 'accent-bg text-white' : 'text-slate-400'}">Расписание</button>
+        <button data-ctype="homework" class="ctype-btn py-2 rounded-lg text-[11px] font-semibold ${admin.ctype === 'homework' ? 'accent-bg text-white' : 'text-slate-400'}">Домашка</button>
+        <button data-ctype="announcements" class="ctype-btn py-2 rounded-lg text-[11px] font-semibold ${admin.ctype === 'announcements' ? 'accent-bg text-white' : 'text-slate-400'}">Объявления</button>
       </div>`;
-
     const loadEditor = () => {
       offRefs(adminRefs); adminRefs = [];
-      if (!admin.city || !admin.school || !admin.cls) { editor.innerHTML = emptyNote('Выберите город, школу и класс'); return; }
+      if (!admin.city || !admin.school || !admin.cls) { editor.innerHTML = emptyNote('Выберите класс'); return; }
       const node = db.ref(P.classNode(admin.city, admin.school, admin.cls));
-
       if (admin.ctype === 'schedule') {
         editor.innerHTML = subNav() + scheduleEditorForm();
         $$('.ctype-btn').forEach((b) => b.addEventListener('click', () => { admin.ctype = b.dataset.ctype; loadEditor(); }));
-        // Заполняем поля из БД и вешаем сохранение
         editor.querySelector('#sch-save').addEventListener('click', () => {
           const data = {};
           DAY_KEYS.forEach((d) => {
             const ta = editor.querySelector('#sch-' + d);
-            data[d] = ta.value.split('\n').map((s) => s.replace(/\r/g, '').trim()).filter(Boolean);
+            data[d] = ta.value.split('\n').map((s) => s.trim()).filter(Boolean);
           });
           node.child('schedule').set(data);
-          showToast('Расписание сохранено');
+          showToast('Сохранено');
         });
-        editor.querySelector('#sch-clear').addEventListener('click', () => {
-          askConfirm('Очистить всё расписание?', () => {
-            node.child('schedule').remove().then(() => showToast('Расписание очищено')).catch((err) => showToast('Ошибка: ' + (err.message || err)));
-          });
-        });
+        editor.querySelector('#sch-sync').addEventListener('click', () => syncFromNika(admin.city, admin.school, admin.cls));
         addRef(adminRefs, node.child('schedule')).on('value', (snap) => {
           const s = snap.val() || {};
           DAY_KEYS.forEach((d) => {
@@ -1768,58 +2137,51 @@
             if (ta) ta.value = Array.isArray(s[d]) ? s[d].join('\n') : '';
           });
         });
-      }
-      else if (admin.ctype === 'homework') {
-        editor.innerHTML = subNav() + homeworkEditorForm();
+      } else if (admin.ctype === 'homework') {
+        editor.innerHTML = subNav() + `
+          <div class="rounded-xl bg-slate-900 border border-slate-800 p-3 space-y-2 mb-3">
+            <input id="hw-new-subj" placeholder="Предмет" class="${aInput('w-full font-semibold')}">
+            <textarea id="hw-new-task" rows="2" placeholder="Задание" class="${aInput('w-full resize-none')}"></textarea>
+            <button id="hw-add" class="w-full rounded-lg px-3 py-2.5 text-sm font-bold accent-bg text-white">Добавить</button>
+          </div>
+          <div id="hw-list" class="space-y-2"></div>`;
         $$('.ctype-btn').forEach((b) => b.addEventListener('click', () => { admin.ctype = b.dataset.ctype; loadEditor(); }));
         editor.querySelector('#hw-add').addEventListener('click', () => {
           const s = editor.querySelector('#hw-new-subj').value.trim();
           const t = editor.querySelector('#hw-new-task').value;
-          if (!s) { showToast('Введите предмет'); return; }
+          if (!s) return;
           node.child('homework/' + s).set(t);
           editor.querySelector('#hw-new-subj').value = '';
           editor.querySelector('#hw-new-task').value = '';
         });
         addRef(adminRefs, node.child('homework')).on('value', (snap) => {
           const hw = snap.val() || {};
-          const entries = Object.entries(hw).sort((a, b) => a[0].localeCompare(b[0], 'ru'));
+          const entries = Object.entries(hw);
           const wrap = editor.querySelector('#hw-list');
           wrap.innerHTML = entries.length ? entries.map(([subj, task]) => `
             <div class="row rounded-xl bg-slate-900 border border-slate-800 p-3 space-y-2 fade-up">
-              <input data-hw-key="${esc(subj)}" value="${esc(subj)}" placeholder="Предмет" class="${aInput('w-full font-semibold')}">
-              <textarea data-hw-task rows="2" placeholder="Задание" class="${aInput('w-full resize-none')}">${esc(task || '')}</textarea>
+              <input data-hw-key="${esc(subj)}" value="${esc(subj)}" class="${aInput('w-full font-semibold')}">
+              <textarea data-hw-task rows="2" class="${aInput('w-full resize-none')}">${esc(task || '')}</textarea>
               <div class="flex gap-2">
-                <button data-hw-save data-key="${esc(subj)}" class="${aBtn('bg-emerald-600 hover:bg-emerald-500', 'Сохранить')}">Сохранить</button>
-                <button data-hw-del data-key="${esc(subj)}" class="${aBtn('bg-rose-600 hover:bg-rose-500', 'Удалить')}">Удалить</button>
+                <button data-hw-save data-key="${esc(subj)}" class="rounded-lg px-3 py-2 text-xs font-bold bg-emerald-600">Сохранить</button>
+                <button data-hw-del data-key="${esc(subj)}" class="rounded-lg px-3 py-2 text-xs font-bold bg-rose-600">Удалить</button>
               </div>
-            </div>`).join('') : emptyNote('Домашки нет');
+            </div>`).join('') : emptyNote('Пусто');
         });
-      }
-      else if (admin.ctype === 'announcements') {
-        editor.innerHTML = subNav() + announcementsEditorForm();
+      } else {
+        editor.innerHTML = subNav() + `
+          <div class="rounded-xl bg-slate-900 border border-slate-800 p-3 space-y-2 mb-3">
+            <textarea id="ann-text" rows="3" placeholder="Текст" class="${aInput('w-full resize-none')}"></textarea>
+            <button id="ann-save" class="w-full rounded-lg px-3 py-2.5 text-sm font-bold accent-bg text-white">Опубликовать</button>
+          </div>
+          <div id="ann-list" class="space-y-2"></div>`;
         $$('.ctype-btn').forEach((b) => b.addEventListener('click', () => { admin.ctype = b.dataset.ctype; loadEditor(); }));
-
-        const btn = editor.querySelector('#ann-save');
-        btn.addEventListener('click', () => {
+        editor.querySelector('#ann-save').addEventListener('click', () => {
           const text = editor.querySelector('#ann-text').value.trim();
-          if (!text) { showToast('Введите текст'); return; }
-          if (admin.annKey) {
-            // Редактирование существующего
-            node.child('announcements/' + admin.annKey).set({ text, createdAt: admin.annDate || Date.now() });
-            admin.annKey = admin.annDate = null;
-          } else {
-            node.child('announcements').push({ text, createdAt: Date.now() });
-          }
+          if (!text) return;
+          node.child('announcements').push({ text, createdAt: Date.now() });
           editor.querySelector('#ann-text').value = '';
-          btn.textContent = 'Опубликовать';
         });
-        editor.querySelector('#ann-cancel').addEventListener('click', () => {
-          admin.annKey = admin.annDate = null;
-          editor.querySelector('#ann-text').value = '';
-          editor.querySelector('#ann-save').textContent = 'Опубликовать';
-          editor.querySelector('#ann-cancel').classList.add('hidden');
-        });
-
         addRef(adminRefs, node.child('announcements')).on('value', (snap) => {
           const items = snapArr(snap).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
           const wrap = editor.querySelector('#ann-list');
@@ -1827,21 +2189,15 @@
             <div class="row rounded-xl bg-slate-900 border border-slate-800 p-3 space-y-2 fade-up">
               <p class="text-sm whitespace-pre-wrap break-words">${esc(a.text || '')}</p>
               <p class="text-[11px] text-slate-500">${fmtDate(a.createdAt)}</p>
-              <div class="flex gap-2">
-                <button data-ann-edit data-key="${esc(a.key)}" data-date="${a.createdAt || ''}" class="${aBtn('bg-sky-600 hover:bg-sky-500', 'Изменить')}">Изменить</button>
-                <button data-ann-del data-key="${esc(a.key)}" class="${aBtn('bg-rose-600 hover:bg-rose-500', 'Удалить')}">Удалить</button>
-              </div>
-            </div>`).join('') : emptyNote('Объявлений нет');
+              <button data-ann-del data-key="${esc(a.key)}" class="rounded-lg px-3 py-2 text-xs font-bold bg-rose-600">Удалить</button>
+            </div>`).join('') : emptyNote('Пусто');
         });
       }
     };
-
-    // Города
     addRef(adminRefs, db.ref(P.cities())).on('value', (snap) => {
       const cities = snapArr(snap);
       selCity.innerHTML = '<option value="">— город —</option>' + cities.map((c) => `<option value="${esc(c.key)}">${esc(c.name || '')}</option>`).join('');
       if (admin.city && cities.some((c) => c.key === admin.city)) selCity.value = admin.city;
-      // школы
       selSchool.innerHTML = '<option value="">— школа —</option>';
       selClass.innerHTML = '<option value="">— класс —</option>';
       if (admin.city) {
@@ -1856,393 +2212,245 @@
               if (admin.cls && classes.some((c) => c.key === admin.cls)) selClass.value = admin.cls;
               loadEditor();
             });
-          } else {
-            loadEditor();
-          }
+          } else loadEditor();
         });
-      } else {
-        loadEditor();
-      }
+      } else loadEditor();
     });
-
     selCity.addEventListener('change', () => { admin.city = selCity.value || null; admin.school = admin.cls = null; renderAdminPage('content'); });
     selSchool.addEventListener('change', () => { admin.school = selSchool.value || null; admin.cls = null; renderAdminPage('content'); });
     selClass.addEventListener('change', () => { admin.cls = selClass.value || null; renderAdminPage('content'); });
   }
 
-  /* Формы редактора содержимого */
   function scheduleEditorForm() {
-    const days = [
-      ['mon', 'Понедельник'], ['tue', 'Вторник'], ['wed', 'Среда'],
-      ['thu', 'Четверг'], ['fri', 'Пятница'], ['sat', 'Суббота'], ['sun', 'Воскресенье'],
-    ];
+    const days = [['mon','Пн'],['tue','Вт'],['wed','Ср'],['thu','Чт'],['fri','Пт'],['sat','Сб'],['sun','Вс']];
     return `
-      <div class="max-h-[45vh] overflow-y-auto pr-1 space-y-2">
-        ${days.map(([k, name]) => `
+      <div class="space-y-2 max-h-[40vh] overflow-y-auto pr-1">
+        ${days.map(([k, n]) => `
           <div>
-            <label class="text-xs text-slate-400 block mb-1">${name} <span class="text-slate-600">(урок на строке)</span></label>
-            <textarea id="sch-${k}" rows="3" placeholder="Например:&#10;Математика&#10;Русский язык" class="${aInput('w-full resize-none')}"></textarea>
+            <label class="text-xs text-slate-400 block mb-1">${n}</label>
+            <textarea id="sch-${k}" rows="3" class="${aInput('w-full resize-none')}"></textarea>
           </div>`).join('')}
       </div>
-      <div class="flex gap-2 mt-3">
-        <button id="sch-save" class="${aBtn('bg-emerald-600 hover:bg-emerald-500 flex-1 py-3 text-sm', 'Сохранить расписание')}">Сохранить расписание</button>
-        <button id="sch-clear" class="${aBtn('bg-rose-600/80 hover:bg-rose-500', 'Очистить всё')}">Очистить всё</button>
-      </div>`;
-  }
-  function homeworkEditorForm() {
-    return `
-      <div class="rounded-xl bg-slate-900 border border-slate-800 p-3 space-y-2 mb-3">
-        <input id="hw-new-subj" placeholder="Предмет" class="${aInput('w-full font-semibold')}">
-        <textarea id="hw-new-task" rows="2" placeholder="Задание" class="${aInput('w-full resize-none')}"></textarea>
-        <button id="hw-add" class="${aBtn('bg-indigo-600 hover:bg-indigo-500 w-full py-2.5 text-sm', 'Добавить домашка')}">Добавить</button>
-      </div>
-      <div id="hw-list" class="space-y-2"></div>`;
-  }
-  function announcementsEditorForm() {
-    return `
-      <div class="rounded-xl bg-slate-900 border border-slate-800 p-3 space-y-2 mb-3">
-        <p class="text-[11px] text-slate-500">Если текст содержит «Завтра контрольная» — всем придёт уведомление.</p>
-        <textarea id="ann-text" rows="3" placeholder="Текст объявления" class="${aInput('w-full resize-none')}"></textarea>
-        <div class="flex gap-2">
-          <button id="ann-save" class="${aBtn('bg-indigo-600 hover:bg-indigo-500 flex-1 py-2.5 text-sm', 'Опубликовать')}">Опубликовать</button>
-          <button id="ann-cancel" class="hidden ${aBtn('bg-slate-700 hover:bg-slate-600', 'Отмена')}">Отмена</button>
-        </div>
-      </div>
-      <div id="ann-list" class="space-y-2"></div>`;
+      <button id="sch-sync" class="w-full rounded-lg px-3 py-3 text-sm font-bold bg-sky-600 text-white mt-3 mb-2">🔄 Синхронизировать с Ника-Софт</button>
+      <button id="sch-save" class="w-full rounded-lg px-3 py-3 text-sm font-bold bg-emerald-600 text-white">Сохранить</button>`;
   }
 
-  // Экранирование HTML в значениях из БД
-  function esc(s) {
-    return String(s == null ? '' : s)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  function renderAdminPeople(body) {
+    body.innerHTML = `<p class="text-xs text-slate-500">Модерация (заглушка).</p>`;
+  }
+  function renderAdminStats(body) {
+    body.innerHTML = `<div id="stats-cards" class="grid grid-cols-3 gap-2">${spinner()}</div>`;
+    db.ref('/cities').once('value', (cs) => {
+      let c = 0, s = 0, cl = 0;
+      const cv = cs.val() || {};
+      Object.keys(cv).forEach((cid) => {
+        c++;
+        const schV = (cv[cid] || {}).schools || {};
+        Object.keys(schV).forEach((sid) => {
+          s++;
+          const clsV = (schV[sid] || {}).classes || {};
+          cl += Object.keys(clsV).length;
+        });
+      });
+      $('#stats-cards').innerHTML = `
+        <div class="rounded-2xl bg-slate-900 border border-slate-800 p-3"><div class="text-2xl font-extrabold">${c}</div><div class="text-[11px] text-slate-500">Города</div></div>
+        <div class="rounded-2xl bg-slate-900 border border-slate-800 p-3"><div class="text-2xl font-extrabold">${s}</div><div class="text-[11px] text-slate-500">Школы</div></div>
+        <div class="rounded-2xl bg-slate-900 border border-slate-800 p-3"><div class="text-2xl font-extrabold">${cl}</div><div class="text-[11px] text-slate-500">Классы</div></div>`;
+    });
   }
 
-  /* ---------- Обработчики кликов в админ-панели (делегирование) ---------- */
   function bindAdminActions() {
     $('#admin-body').addEventListener('click', (e) => {
       const t = e.target.closest('button[data-act]') ||
                 e.target.closest('button[data-hw-save]') ||
                 e.target.closest('button[data-hw-del]') ||
-                e.target.closest('button[data-ann-edit]') ||
                 e.target.closest('button[data-ann-del]');
       if (!t) return;
       const act = t.dataset.act;
-
-      // Города
       if (act === 'citySave') {
-        const key = t.dataset.key;
         const name = t.closest('.row').querySelector('[data-act="cityName"]').value.trim();
-        db.ref(P.cities() + '/' + key).update({ name });
-        return;
+        db.ref(P.cities() + '/' + t.dataset.key).update({ name });
       }
-      if (act === 'cityDelete') {
-        askConfirm('Удалить город и все данные внутри?', () => {
-          db.ref(P.cities() + '/' + t.dataset.key).remove().catch((err) => showToast('Ошибка: ' + (err.message || err)));
-        });
-        return;
-      }
-      // Школы
+      if (act === 'cityDelete') askConfirm('Удалить город?', () => db.ref(P.cities() + '/' + t.dataset.key).remove());
       if (act === 'schoolSave') {
         const cid = $('#school-city').value;
-        const key = t.dataset.key;
         const name = t.closest('.row').querySelector('[data-act="schoolName"]').value.trim();
-        db.ref(P.schools(cid) + '/' + key).update({ name });
-        return;
+        db.ref(P.schools(cid) + '/' + t.dataset.key).update({ name });
       }
-      if (act === 'schoolDelete') {
-        askConfirm('Удалить школу и все данные внутри?', () => {
-          db.ref(P.schools($('#school-city').value) + '/' + t.dataset.key).remove().catch((err) => showToast('Ошибка: ' + (err.message || err)));
-        });
-        return;
-      }
-      // Классы
+      if (act === 'schoolDelete') askConfirm('Удалить школу?', () => db.ref(P.schools($('#school-city').value) + '/' + t.dataset.key).remove());
       if (act === 'classSave') {
         const cid = $('#class-city').value, sid = $('#class-school').value;
         const name = t.closest('.row').querySelector('[data-act="className"]').value.trim();
         db.ref(P.classes(cid, sid) + '/' + t.dataset.key).update({ name });
-        return;
       }
-      if (act === 'classDelete') {
-        askConfirm('Удалить класс и все данные внутри?', () => {
-          db.ref(P.classes($('#class-city').value, $('#class-school').value) + '/' + t.dataset.key).remove()
-            .then(() => showToast('Класс удалён'))
-            .catch((err) => showToast('Ошибка: ' + (err.message || err)));
-        });
-        return;
-      }
-      // Люди и чат (вкладка people — выборка из выпадающих списков)
-      const selPeo = () => {
-        const cid = $('#people-city') && $('#people-city').value;
-        const sid = $('#people-school') && $('#people-school').value;
-        const clid = $('#people-class') && $('#people-class').value;
-        return (cid && sid && clid) ? P.classNode(cid, sid, clid) : null;
-      };
-      // Перезапрос списка модерации после изменения статуса пользователя
-      const reloadPeople = () => { if (admin.page === 'people') renderAdminPage('people'); };
-      if (act === 'mute1') {
-        HubModeration.muteHours(t.dataset.uid, 1).then(() => { showToast('Мут на 1 час'); reloadPeople(); })
-          .catch((err) => showToast('Нет прав: ' + (err.message || err)));
-        return;
-      }
-      if (act === 'mute24') {
-        HubModeration.muteHours(t.dataset.uid, 24).then(() => { showToast('Мут на 24 часа'); reloadPeople(); })
-          .catch((err) => showToast('Нет прав: ' + (err.message || err)));
-        return;
-      }
-      if (act === 'banForever') {
-        HubModeration.banForever(t.dataset.uid).then(() => { showToast('Пользователь забанен'); reloadPeople(); })
-          .catch((err) => showToast('Нет прав: ' + (err.message || err)));
-        return;
-      }
-      if (act === 'unban') {
-        HubModeration.unban(t.dataset.uid).then(() => { showToast('Разблокирован'); reloadPeople(); })
-          .catch((err) => showToast('Нет прав: ' + (err.message || err)));
-        return;
-      }
-      if (act === 'purgeUser') {
-        const path = selPeo();
-        if (!path) { showToast('Выберите класс'); return; }
-        const uidVal = t.dataset.uid;
-        const nickVal = t.dataset.nick;
-        askConfirm('Удалить ВСЕ сообщения пользователя «' + nickVal + '»?', () => {
-          const chatRef = db.ref(path + '/chat');
-          chatRef.once('value', (snap) => {
-            const updates = {};
-            const snapV = snap.val() || {};
-            Object.keys(snapV).forEach((k) => {
-              const m = snapV[k] || {};
-              // по UID (новые) или по нику (старые сообщения без uid)
-              if (m.uid === uidVal || (!m.uid && (m.nick || m.name) === nickVal)) updates['/chat/' + k] = null;
-            });
-            if (Object.keys(updates).length) {
-              db.ref(path).update(updates).then(() => { showToast('Сообщения удалены'); reloadPeople(); }).catch((err) => showToast('Ошибка: ' + (err.message || err)));
-            } else {
-              showToast('Сообщений от этого пользователя нет');
-            }
-          });
-        });
-        return;
-      }
-      if (act === 'delMsg') {
-        const path = selPeo();
-        if (!path) { showToast('Выберите класс'); return; }
-        askConfirm('Удалить это сообщение?', () => {
-          db.ref(path + '/chat/' + t.dataset.key).remove()
-            .then(() => forgetMsg(t.dataset.key))
-            .catch((err) => showToast('Ошибка: ' + (err.message || err)));
-        });
-        return;
-      }
-
-      // Статистика: «Интересное»
-      if (act === 'flagOpen') {
-        openClassChat(t.dataset.cid, t.dataset.sid, t.dataset.clid,
-          [t.dataset.cname, t.dataset.sname, t.dataset.clname].filter(Boolean).join(', '));
-        return;
-      }
-      if (act === 'flagIgnore') {
-        db.ref('/flagged_messages/' + t.dataset.cid + '/' + t.dataset.sid + '/' + t.dataset.clid + '/' + t.dataset.key)
-          .remove()
-          .then(() => renderAdminPage('stats'))
-          .catch((err) => showToast('Ошибка: ' + (err.message || err)));
-        return;
-      }
-      if (act === 'flagDel') {
-        askConfirm('Удалить это сообщение из чата и из «Интересного»?', () => {
-          const root = '/cities/' + t.dataset.cid + '/schools/' + t.dataset.sid + '/classes/' + t.dataset.clid + '/chat/' + t.dataset.key;
-          Promise.all([
-            db.ref(root).remove(),
-            db.ref('/flagged_messages/' + t.dataset.cid + '/' + t.dataset.sid + '/' + t.dataset.clid + '/' + t.dataset.key).remove(),
-          ]).then(() => renderAdminPage('stats'))
-            .catch((err) => showToast('Ошибка: ' + (err.message || err)));
-        });
-        return;
-      }
-
-      // Модерация автора помеченного сообщения («Интересное»): пишет в bannedUsers/{uid}
-      if (act === 'flagMute1' || act === 'flagMute24' || act === 'flagUnban' || act === 'flagWarn') {
-        const uidMod = t.dataset.uid;
-        if (!uidMod) { showToast('uid автора неизвестен'); return; }
-        const reasonFrom = (t.dataset.reason || '').slice(0, 200);
-        const toastAfter = (text) => {
-          showToast(text);
-          if (admin.page === 'stats') renderAdminPage('stats');
-        };
-        if (act === 'flagWarn') {
-          // Просто уведомление (без бана): пишем в warnings/{uid}, юзер увидит тост при заходе
-          const def = reasonFrom ? ('Читайте правила чата: нарушение «' + reasonFrom + '».') : 'Читайте правила чата: мат и оскорбления запрещены.';
-          let txt = null;
-          try { txt = window.prompt('Текст предупреждения для пользователя:', def); } catch (e) { txt = def; }
-          if (!txt) return;
-          db.ref('/warnings/' + uidMod).push({ text: String(txt).slice(0, 300), by: 'admin', at: Date.now() })
-            .then(() => toastAfter('Предупреждение отправлено'))
-            .catch((err) => showToast('Нет прав: ' + (err.message || err)));
-          return;
-        }
-        let job = null;
-        if (act === 'flagMute1') job = HubModeration.muteHours(uidMod, 1, reasonFrom || 'мут администратором');
-        else if (act === 'flagMute24') job = HubModeration.muteHours(uidMod, 24, reasonFrom || 'мут администратором');
-        else if (act === 'flagUnban') job = HubModeration.unban(uidMod);
-        if (job) {
-          job.then(() => toastAfter(act === 'flagUnban' ? 'Пользователь разбанен'
-            : (act === 'flagMute1' ? 'Мут на 1 час' : 'Мут на 24 часа')))
-            .catch((err) => showToast('Нет прав: ' + (err.message || err)));
-        }
-        return;
-      }
-
-      // Домашка (кнопки без data-act)
+      if (act === 'classDelete') askConfirm('Удалить класс?', () => db.ref(P.classes($('#class-city').value, $('#class-school').value) + '/' + t.dataset.key).remove());
       if ('hwSave' in t.dataset) {
-        const key = t.dataset.key;
         const row = t.closest('.row');
         const subj = row.querySelector('[data-hw-key]').value.trim();
         const task = row.querySelector('[data-hw-task]').value;
-        if (!subj) { showToast('Введите предмет'); return; }
+        if (!subj) return;
         const node = db.ref(P.classNode(admin.city, admin.school, admin.cls) + '/homework');
-        if (subj !== key) node.child(key).remove();
+        if (subj !== t.dataset.key) node.child(t.dataset.key).remove();
         node.child(subj).set(task);
-        return;
       }
-      if ('hwDel' in t.dataset) {
-        db.ref(P.classNode(admin.city, admin.school, admin.cls) + '/homework/' + t.dataset.key).remove();
-        return;
-      }
-      // Объявления
-      if ('annEdit' in t.dataset) {
-        const ed = $('#cont-editor');
-        const textarea = ed.querySelector('#ann-text');
-        admin.annKey = t.dataset.key;
-        admin.annDate = t.dataset.date ? Number(t.dataset.date) : Date.now();
-        textarea.value = t.closest('.row').querySelector('p').textContent.trim();
-        ed.querySelector('#ann-save').textContent = 'Сохранить изменения';
-        ed.querySelector('#ann-cancel').classList.remove('hidden');
-        return;
-      }
-      if ('annDel' in t.dataset) {
-        askConfirm('Удалить объявление?', () => {
-          db.ref(P.classNode(admin.city, admin.school, admin.cls) + '/announcements/' + t.dataset.key).remove();
-          if (admin.annKey === t.dataset.key) { admin.annKey = admin.annDate = null; }
-        });
-      }
+      if ('hwDel' in t.dataset) db.ref(P.classNode(admin.city, admin.school, admin.cls) + '/homework/' + t.dataset.key).remove();
+      if ('annDel' in t.dataset) askConfirm('Удалить?', () => db.ref(P.classNode(admin.city, admin.school, admin.cls) + '/announcements/' + t.dataset.key).remove());
     });
   }
 
   /* ============================================================
-     ПОДКЛЮЧЕНИЕ СОБЫТИЙ И ЗАПУСК
+     ИНИЦИАЛИЗАЦИЯ СОБЫТИЙ
      ============================================================ */
-  // Кнопка закрытия toast
   $('#toast-close').addEventListener('click', hideToast);
-
-  // Экран входа
   $('#back-btn').addEventListener('click', onBack);
   $('#change-btn').addEventListener('click', resetSelection);
-
-  // Вкладки
   $$('.tab-btn').forEach((b) => b.addEventListener('click', () => switchTab(b.dataset.tab)));
-
-  // Чат
   $('#chat-form').addEventListener('submit', sendMessage);
   $('#chat-nick').addEventListener('click', changeNick);
-  // Удаление сообщения администратором (альт-менедж)
-  $('#chat-messages').addEventListener('click', (e) => {
-    const btn = e.target.closest('.msg-del');
-    if (!btn) return;
-    if (!(admin.authorized && altMode())) return;
-    const wrap = btn.closest('[data-msg]');
-    if (!wrap) return;
-    askConfirm('Удалить это сообщение?', () => {
-      db.ref(curClassPath() + '/chat/' + wrap.dataset.msg).remove()
-        .then(() => forgetMsg(wrap.dataset.msg))
-        .catch((err) => showToast('Ошибка: ' + (err.message || err)));
-    });
+
+  // Ввод в чате: статус "печатает..."
+  $('#chat-input').addEventListener('input', () => {
+    if (!typingBeacon) startTypingBeacon();
+    const now = Date.now();
+    if (now - lastTypingSent > 2500) {
+      lastTypingSent = now;
+      const me = nick();
+      if (me && HubAuth.uid) {
+        db.ref(curClassPath() + '/typing/' + HubAuth.uid).set({
+          nick: me, at: firebase.database.ServerValue.TIMESTAMP
+        }).then(() => {
+          setTimeout(() => {
+            db.ref(curClassPath() + '/typing/' + HubAuth.uid).remove().catch(() => {});
+          }, 3000);
+        }).catch(() => {});
+      }
+    }
+    // Живой сброс edit, если очистили
+    if (editMsg && !$('#chat-input').value.trim()) clearEdit();
   });
 
-  // Ник
+  // Reply/Edit: закрытие
+  $('#chat-reply-close').addEventListener('click', clearReply);
+  $('#chat-edit-close').addEventListener('click', clearEdit);
+
+  // Стикеры
+  $('#sticker-btn').addEventListener('click', () => {
+    $('#sticker-panel').classList.toggle('hidden');
+  });
+
+  // Клики по сообщениям: реакция, reply, edit, del, fav
+  $('#chat-messages').addEventListener('click', (e) => {
+    const wrap = e.target.closest('[data-msg]');
+    if (!wrap) return;
+    const key = wrap.dataset.msg;
+
+    const fav = e.target.closest('.msg-fav');
+    if (fav) {
+      const p = wrap.querySelector('p');
+      toggleFav({ key, nick: wrap.getAttribute('data-nick'), text: p ? p.textContent : '', time: parseInt(wrap.getAttribute('data-time') || '0', 10) });
+      return;
+    }
+
+    const reply = e.target.closest('.msg-reply');
+    if (reply) {
+      const nk = wrap.getAttribute('data-nick') || '?';
+      const p = wrap.querySelector('p');
+      setReply(key, nk, p ? p.textContent : '');
+      return;
+    }
+
+    const react = e.target.closest('.msg-react');
+    if (react) {
+      showReactionsBar(key, wrap);
+      return;
+    }
+
+    const edit = e.target.closest('.msg-edit');
+    if (edit) {
+      const p = wrap.querySelector('p');
+      setEdit(key, p ? p.textContent : '');
+      return;
+    }
+
+    const del = e.target.closest('.msg-del');
+    if (del) {
+      askConfirm('Удалить сообщение?', () => {
+        db.ref(curClassPath() + '/chat/' + key).remove().then(() => forgetMsg(key));
+      });
+      return;
+    }
+  });
+
+  // Клик по реакции (изменить/удалить свою)
+  $('#chat-messages').addEventListener('click', (e) => {
+    const pill = e.target.closest('.reaction-pill');
+    if (!pill) return;
+    const wrap = pill.closest('[data-msg]');
+    if (!wrap) return;
+    toggleReaction(wrap.dataset.msg, pill.dataset.emoji);
+  });
+
   $('#nick-save').addEventListener('click', saveNick);
   $('#nick-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') saveNick(); });
-
-  // Секретный вход
-  bindLongPress($('#header-title'), openAdmin);
-  bindNTaps($('#logo'), 5, openAdmin);
-  // С главного заголовка экрана входа админка тоже доступна (для первичного заполнения данных)
-  bindLongPress($('#auth-title'), openAdmin);
-  bindNTaps($('#auth-logo'), 5, openAdmin);
-
-  // Модалка пароля администратора
   $('#pass-btn').addEventListener('click', tryLogin);
   $('#pass-cancel').addEventListener('click', closePassModal);
   $('#pass-overlay').addEventListener('click', closePassModal);
   $('#pass-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') tryLogin(); });
-
-  // Просмотр чата
-  $('#view-close').addEventListener('click', () => $('#view-modal').classList.add('hidden'));
-  $('#view-overlay').addEventListener('click', () => $('#view-modal').classList.add('hidden'));
-
-  // Админ-панель
   $('#admin-close').addEventListener('click', closeAdmin);
   $('#admin-overlay').addEventListener('click', closeAdmin);
   $$('#admin-nav button').forEach((b) => b.addEventListener('click', () => renderAdminPage(b.dataset.apage)));
   bindAdminActions();
 
-  // Старт приложения
+  $('#chat-search-btn').addEventListener('click', () => {
+    const box = $('#chat-search-box');
+    box.classList.toggle('hidden');
+    if (!box.classList.contains('hidden')) setTimeout(() => $('#chat-search-input').focus(), 100);
+    else { $('#chat-search-input').value = ''; applyChatSearch(); }
+  });
+  $('#chat-search-input').addEventListener('input', applyChatSearch);
+
+  $('#fav-close').addEventListener('click', () => { $('#fav-modal').classList.add('hidden'); $('#fav-modal').classList.remove('flex'); });
+  $('#fav-modal').addEventListener('click', (e) => {
+    if (e.target === $('#fav-modal')) { $('#fav-modal').classList.add('hidden'); $('#fav-modal').classList.remove('flex'); }
+  });
+
+  bindLongPress($('#header-title'), openAdmin);
+  bindNTaps($('#logo'), 5, openAdmin);
+  bindLongPress($('#auth-title'), openAdmin);
+  bindNTaps($('#auth-logo'), 5, openAdmin);
+
+  /* ---- Запуск ---- */
   function start() {
     initSeen();
     initFirebase();
-    if (!isConfigured()) {
-      // Показываем экран входа с подсказкой про конфиг
-      showAuth();
-      return;
-    }
+    if (!isConfigured()) { showAuth(); return; }
     loadSelection();
     const s = state.sel;
-    if (s && s.cid && s.sid && s.clid) {
-      showMainScreen();
-    } else {
-      showAuth();
-    }
-    // Анонимная авторизация Firebase: если пользователь уже входил,
-    // Firebase восстановит сессию автоматически. Присутствие и профиль
-    // users/{uid} запускаем только после готовности входа (правила требуют auth).
+    if (s && s.cid && s.sid && s.clid) showMainScreen();
+    else showAuth();
+    seedSchool25();
     HubAuth.start(() => {
-      startPresence(); // онлайн-присутствие и уникальные пользователи
-      ensureProfile(); // создаём/обновляем профиль (nick, class, deviceId, createdAt)
-      checkWarnings(); // показать предупреждения администратора (кнопка «Предупредить»)
-      document.dispatchEvent(new CustomEvent('hub-auth-done'));
+      startPresence();
+      ensureProfile();
+      checkWarnings();
     });
   }
-
   document.addEventListener('DOMContentLoaded', start);
 
-  // Регистрация Service Worker (PWA)
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js')
-        .then((reg) => {
-          // Принудительно проверяем наличие обновлённого sw.js при каждом заходе
-          if (reg.update) reg.update();
-        })
-        .catch(() => { /* работаем и без SW */ });
+      navigator.serviceWorker.register('sw.js').then((reg) => { if (reg.update) reg.update(); }).catch(() => {});
     });
   }
   </script>
 
   <script>
-    // Аварийная диагностика ДО и ПОСЛЕ основного скрипта: если что-то упало
-    // (в том числе ошибка парсинга основного скрипта), показываем сообщение
-    // вместо пустого экрана с одним логотипом.
     window.addEventListener('error', function (ev) {
       var msg = (ev && ev.message) || 'Неизвестная ошибка';
-      if (/script\.error\./i.test(msg)) msg = 'Ошибка стороннего скрипта (возможно, нет интернета для CDN)';
       var auth = document.getElementById('auth-screen');
       if (!auth || auth.classList.contains('hidden')) return;
       var d = document.getElementById('select-list');
-      var s = document.getElementById('select-status');
-      if (s) s.textContent = 'Что-то пошло не так.';
-      if (d) {
-        d.innerHTML = '<div class="text-center py-10 text-amber-400 text-sm fade-up">Ошибка: ' + msg +
-          '<br><span style="font-size:11px;opacity:.7">Обновите страницу (Ctrl+F5). Если повторяется — пришлите этот текст.</span></div>';
-      }
+      if (d) d.innerHTML = '<div class="text-center py-10 text-amber-400 text-sm">Ошибка: ' + msg + '</div>';
     });
   </script>
 </body>
