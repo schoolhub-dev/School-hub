@@ -419,7 +419,7 @@
   <noscript><p class="p-5 text-center text-slate-400">Для работы приложения включите JavaScript.</p></noscript>
 
   <!-- ======================= Скрипты ======================= -->
-  <script src="firebase-config.js?v=3"></script>
+  <script src="firebase-config.js?v=4"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
@@ -689,6 +689,45 @@
       }
     });
     return hits;
+  }
+
+  // ИИ-модерация (xKiro). Никогда не бросает ошибок:
+  // при сбое возвращает null и сообщение остаётся как есть.
+  async function aiModerate(text) {
+    const cfg = window.AI_CONFIG;
+    if (!cfg || !cfg.key) return null;
+    const payload = () => ({
+      model: cfg.model || 'deepseek/deepseek-chat',
+      temperature: 0,
+      max_tokens: 220,
+      messages: [
+        {
+          role: 'system',
+          content: 'Ты строгий модератор школьного чата. Определи, нарушает ли сообщение правила: мат (в т.ч. замаскированный: замена букв символами, латиницей, перестановка, "квас", "хрю", буквы-заглушки), оскорбление, травля, угрозы, грубость, спам/реклама, попытка обойти фильтр. Отвечай ТОЛЬКО валидным JSON: {"bad": true или false, "category": "мат|оскорбление|травля|угрозы|спам|другое|none", "reason": "краткая причина или пустая строка"}.'
+        },
+        { role: 'user', content: 'Сообщение для проверки (ник: @' + nick() + '):\n' + String(text).slice(0, 600) }
+      ]
+    });
+    const send = (extra) => fetch(cfg.base.replace(/\/+$/, '') + '/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + cfg.key },
+      body: JSON.stringify(Object.assign({ }, payload(), extra || {}))
+    });
+    try {
+      let res = await send({ response_format: { type: 'json_object' } });
+      if (res.status === 400) res = await send(null);
+      if (!res.ok) { console.warn('[aiModerate] HTTP', res.status); return null; }
+      const data = await res.json();
+      const content = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
+      const m = content.match(/\{[\s\S]*\}/);
+      if (!m) { console.warn('[aiModerate] no json in response:', content.slice(0, 200)); return null; }
+      const j = JSON.parse(m[0]);
+      if (typeof j.bad !== 'boolean') return null;
+      return { bad: j.bad, category: String(j.category || '').slice(0, 30), reason: String(j.reason || '').slice(0, 80) };
+    } catch (e) {
+      console.warn('[aiModerate] error:', e);
+      return null;
+    }
   }
 
   // Подсветка @упоминаний и переносов строк
@@ -1693,12 +1732,22 @@
         msg.flagged = true;
         msg.flagReason = badHits.slice(0, 3).join(', ');
       }
-      const chatRef = db.ref(curClassPath() + '/chat');
+      const chatPath = curClassPath();
+      const chatRef = db.ref(chatPath + '/chat');
       const pushed = chatRef.push(msg);
+      const flagPath = '/flagged_messages' + chatPath.slice('/cities'.length);
       if (badHits.length) {
-        db.ref('/flagged_messages' + curClassPath().slice('/cities'.length) + '/' + pushed.key)
-          .set(msg).catch(() => {});
+        db.ref(flagPath + '/' + pushed.key).set(msg).catch(() => {});
       }
+      // ИИ-модерация (фоново, не блокирует отправку)
+      aiModerate(text).then((v) => {
+        if (!v || !v.bad) return;
+        const aiReason = 'ИИ-' + (v.category || 'фильтр') + (v.reason ? ': ' + v.reason : '');
+        const flagReason = msg.flagReason ? msg.flagReason + '; ' + aiReason : aiReason;
+        chatRef.child(pushed.key).update({ flagged: true, flagReason: flagReason }).catch(() => {});
+        db.ref(flagPath + '/' + pushed.key)
+          .set(Object.assign({}, msg, { flagged: true, flagReason: flagReason })).catch(() => {});
+      });
       clearReply();
     });
     input.value = '';
@@ -2364,20 +2413,46 @@
         ...(blocked ? ['<div class="pt-1 text-[10px] text-slate-500">— появятся после публикации правил (README, раздел 5)</div>'] : []),
       ].join('');
 
-      // 📌 Интересное: помеченные фильтром сообщения
+      // 📌 Интересное: помеченные фильтром и ИИ сообщения.
+      // Источник 1 — копия /flagged_messages (если правила дают доступ).
+      // Источник 2 — флаги прямо из чатов под /cities (работает и при минимальных правилах).
       const fEl = $('#stats-flagged');
       const [fv, usv, bv] = await Promise.all([
         safe(db.ref('/flagged_messages')),
         safe(db.ref('/users')),
         safe(db.ref('/bannedUsers')),
       ]);
-      if (fv == null) { fEl.innerHTML = emptyNote('Помеченных сообщений нет — правила ещё не опубликованы (README, раздел 5)'); return; }
       const fEntries = [];
-      Object.keys(fv).forEach((cid) => {
-        Object.keys(fv[cid] || {}).forEach((sid) => {
-          Object.keys(fv[cid][sid] || {}).forEach((clid) => {
-            Object.keys(fv[cid][sid][clid] || {}).forEach((key) => {
-              fEntries.push({ cid, sid, clid, key, m: fv[cid][sid][clid][key] || {} });
+      const seen = {};
+      const pushF = (cid, sid, clid, key, m) => {
+        if (!(m && m.flagged)) return;
+        const id = cid + '/' + sid + '/' + clid + '/' + key;
+        if (seen[id]) return;
+        seen[id] = true;
+        fEntries.push({ cid: String(cid), sid: String(sid), clid: String(clid), key: String(key), m: m });
+      };
+      if (fv) {
+        Object.keys(fv).forEach((cid) => {
+          Object.keys(fv[cid] || {}).forEach((sid) => {
+            Object.keys(fv[cid][sid] || {}).forEach((clid) => {
+              Object.keys(fv[cid][sid][clid] || {}).forEach((key) => {
+                pushF(cid, sid, clid, key, fv[cid][sid][clid][key] || {});
+              });
+            });
+          });
+        });
+      }
+      Object.keys(cv || {}).forEach((cid) => {
+        const schools = (cv[cid] || {}).schools || {};
+        Object.keys(schools).forEach((sid) => {
+          const classes = (schools[sid] || {}).classes || {};
+          Object.keys(classes).forEach((clid) => {
+            const cls = classes[clid] || {};
+            const chat = cls.chat || {};
+            const ignored = cls._flags || {};
+            Object.keys(chat).forEach((key) => {
+              const m = chat[key];
+              if (m && m.flagged && !(ignored[key] && ignored[key].ignored)) pushF(cid, sid, clid, key, m);
             });
           });
         });
@@ -2416,7 +2491,7 @@
             </span>
           </div>
         </div>`;
-      }).join('');
+      }).join('') + (fv == null ? '<div class="pt-2 text-[10px] text-amber-400/80">Флаги собраны из самих чатов: чтение/запись /flagged_messages запрещены текущими правилами. Опубликуйте правила (README, раздел 5) — появятся копии и заработают кнопки модерации.</div>' : '');
     })();
   }
 
@@ -2487,10 +2562,13 @@
           askConfirm('Удалить сообщение?', () => {
             db.ref(P.classNode(f.cid, f.sid, f.clid) + '/chat/' + f.key).remove()
               .catch((e) => showToast('Не удалось удалить: ' + ((e && e.message) ? e.message : 'нет прав')));
+            db.ref(P.classNode(f.cid, f.sid, f.clid) + '/_flags/' + f.key).remove().catch(() => {});
             db.ref('/flagged_messages/' + f.cid + '/' + f.sid + '/' + f.clid + '/' + f.key).remove().catch(() => {});
             renderAdminPage('stats');
           });
         } else {
+          db.ref(P.classNode(f.cid, f.sid, f.clid) + '/_flags/' + f.key)
+            .set({ ignored: true, at: firebase.database.ServerValue.TIMESTAMP }).catch(() => {});
           db.ref('/flagged_messages/' + f.cid + '/' + f.sid + '/' + f.clid + '/' + f.key).remove().catch(() => {});
           renderAdminPage('stats');
         }
