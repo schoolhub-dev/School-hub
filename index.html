@@ -112,10 +112,6 @@
     }
     .reactions-bar button:hover { background: rgba(99,102,241,.2); }
 
-    /* Стикеры */
-    .sticker-btn { font-size: 24px; padding: 6px; border-radius: 8px; cursor: pointer; transition: background .1s; }
-    .sticker-btn:hover { background: rgba(99,102,241,.2); }
-
     /* Reply-превью в сообщении */
     .reply-preview {
       border-left: 3px solid #6366f1; padding: 3px 8px;
@@ -152,14 +148,6 @@
       font-size: 10px; font-weight: 700;
       display: flex; align-items: center; justify-content: center;
     }
-
-    /* Стикеры панель */
-    #sticker-panel {
-      display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px;
-      padding: 8px; background: #1e293b; border-radius: 12px;
-      margin-bottom: 8px; max-height: 200px; overflow-y: auto;
-    }
-    html:not(.dark) #sticker-panel { background: #fff; border: 1px solid #e2e8f0; }
 
     .msg-hidden { display: none !important; }
     .msg-highlight { background: rgba(251,191,36,.25) !important; }
@@ -325,13 +313,7 @@
           <button id="chat-edit-close" class="text-slate-400 hover:text-rose-400 font-bold px-2">✕</button>
         </div>
 
-        <!-- Панель стикеров -->
-        <div id="sticker-panel" class="hidden"></div>
-
         <form id="chat-form" class="flex gap-2 mt-3 pt-3 border-t border-slate-800 bg-slate-950/90 backdrop-blur">
-          <button type="button" id="sticker-btn" class="shrink-0 h-11 w-11 rounded-xl bg-slate-800 flex items-center justify-center hover:bg-slate-700 active:scale-95 transition text-lg" aria-label="Стикеры">
-            😊
-          </button>
           <input id="chat-input" type="text" maxlength="500" autocomplete="off"
                  placeholder="Сообщение… (@ник — упомянуть)"
                  class="flex-1 min-w-0 rounded-xl bg-slate-800 border border-slate-700 px-4 py-2.5 text-sm placeholder-slate-500 outline-none focus:border-indigo-500 transition">
@@ -945,7 +927,6 @@
     $('#chat-nick').textContent = nick() || 'Ученик';
     ensureProfile();
     startClock();
-    paintStickerPanel();
   }
 
   function loadMainData() {
@@ -1491,17 +1472,6 @@
       if (s.val() === emoji) ref.remove();
       else ref.set(emoji);
     });
-  }
-
-  /* ---- Стикеры ---- */
-  const STICKERS = ['😀','😂','😍','🥳','😎','🤔','😢','😡','👍','👎','❤️','🔥','💯','🎉','✨','🙏','👋','🤝','💪','🧠','📚','✏️','⚽','🎮','🍕','🍎','☕','🌙','☀️','⭐','🎵','🎬','🐱','🐶','🌈','🏆','🥇','🚀','💡','✅'];
-  function paintStickerPanel() {
-    const el = $('#sticker-panel');
-    el.innerHTML = STICKERS.map((s) => `<span class="sticker-btn" data-sticker="${s}">${s}</span>`).join('');
-    el.querySelectorAll('.sticker-btn').forEach((b) => b.addEventListener('click', () => {
-      $('#chat-input').value += b.dataset.sticker;
-      $('#chat-input').focus();
-    }));
   }
 
   /* ---- Статус "печатает..." ---- */
@@ -2332,11 +2302,6 @@
   // Reply/Edit: закрытие
   $('#chat-reply-close').addEventListener('click', clearReply);
   $('#chat-edit-close').addEventListener('click', clearEdit);
-
-  // Стикеры
-  $('#sticker-btn').addEventListener('click', () => {
-    $('#sticker-panel').classList.toggle('hidden');
-  });
 
   // Клики по сообщениям: реакция, reply, edit, del, fav
   $('#chat-messages').addEventListener('click', (e) => {
