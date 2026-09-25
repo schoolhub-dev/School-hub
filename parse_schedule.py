@@ -22,6 +22,20 @@ parse_schedule.py — выгрузка расписания из Google Табл
   --sheet "<подстрока>" — старый режим: разбирать конкретную «недельную»
        вкладку (например "неделя (2 четверть)") из таблицы.
 
+РЕЖИМ ВСЕХ КЛАССОВ (--all-classes / --grade / --classes):
+  За один проход собирает расписания нескольких классов из тех же
+  вкладок текущей недели и сохраняет их:
+    schedule_all.json            — { "week": "...", "classes": { "7А": {...}, ... } }
+    schedule_<КЛАСС>.json        — по одному файлу на класс
+  --all-classes — все классы, найденные в шапках вкладок недели,
+  --grade 7     — только параллель (находит классы и фильтрует по номеру),
+  --classes 7А,7Б,7В — явный список (через запятую).
+  Если колонка класса не найдена ни в одной вкладке — класс пропускается
+  с предупреждением. Нельзя комбинировать multi-режим с --sheet.
+  С флагом --push каждое расписание заливается в Firebase
+  (cities/{cid}/schools/{sid}/classes/{clid}/schedule, узел ищется по имени
+  класса); классы, отсутствующие в Firebase, пропускаются с предупреждением.
+
 Источники (по порядку):
   0. requests -> export?format=xlsx (все листы воркбука, без авторизации)
   1. requests -> pandas.read_html (/edit, /htmlview ...)
@@ -37,6 +51,9 @@ parse_schedule.py — выгрузка расписания из Google Табл
     python parse_schedule.py --week --push "URL"
     python parse_schedule.py --list "URL"
     python parse_schedule.py --sheet "2 четверть" "URL"
+    python parse_schedule.py --all-classes "URL"
+    python parse_schedule.py --all-classes --grade 7 "URL"
+    python parse_schedule.py --classes 7А,7Б,7В --push "URL"
     python parse_schedule.py --local schedule.csv
 """
 
@@ -235,6 +252,53 @@ def select_week_tabs(sheets, week_start, week_end, year):
     for key, dt, nm in good:
         by_date.setdefault(dt, (key, nm))
     return [(key, dt, nm, True) for dt, (key, nm) in sorted(by_date.items())]
+
+
+# ---------------- Режим всех классов (--all-classes / --grade / --classes) --
+
+def normalize_class_display(cell):
+    """'7 а' / '7А' / '11 Б' -> '7А' / '11Б' (нормализованное имя класса)."""
+    m = CLASS_CELL.match(str(cell or "").strip())
+    return (m.group(1) + m.group(2).upper()) if m else None
+
+
+def grade_of(name):
+    m = re.match(r"^(\d{1,2})", str(name or "").strip())
+    return m.group(1) if m else None
+
+
+def discover_classes(matrices):
+    """Собирает имена классов из шапок (строки с 3+ ячейками вида «7 а»)."""
+    found = {}
+    for m in matrices:
+        for r in m[:12]:
+            hits = [d for c in r if c and (d := normalize_class_display(c))]
+            if len(hits) >= 3:
+                for d in hits:
+                    found[d] = True
+    def sort_key(n):
+        return (int(grade_of(n) or 0), n[-1:])
+    return sorted(found, key=sort_key)
+
+
+def build_class_weeks(picked, by_name, class_list):
+    """Собирает {класс: {mon:[...], ...}} для всех классов по вкладкам недели.
+
+    Возвращает (results, missing), где missing — классы без колонки в таблице.
+    """
+    results, missing = {}, []
+    for cl in class_list:
+        days = {k: [] for k in HUB_KEYS}
+        col_found = False
+        for key, _dt, nm, _s in picked:
+            lessons, has_col = extract_class_day(by_name.get(nm, []), cl)
+            col_found = col_found or has_col
+            days[key] = lessons
+        if not col_found:
+            missing.append(cl)
+            continue
+        results[cl] = days
+    return results, missing
 
 
 # ---------------- Попытка 0: XLSX-экспорт всего воркбука ----------------
@@ -597,18 +661,26 @@ def load_api_key(arg):
     return "AIzaSyAWWpIGsIDNE1lR7OeW9Mx3e7Af7tMmcXo"
 
 
-def push_to_firebase(schedule, class_name, api_key, db_url):
+def firebase_base(db_url):
+    return db_url.rstrip("/") + "/"
+
+
+def firebase_token(api_key):
     import requests
-    print(f"Загружаю расписание «{class_name}» в Firebase…")
     r = requests.post(
         "https://identitytoolkit.googleapis.com/v1/accounts:signUp",
         params={"key": api_key}, json={"returnSecureToken": True}, timeout=30)
     if r.status_code != 200:
         raise RuntimeError(f"Не удалось авторизоваться: {r.status_code} {r.text[:160]}")
-    token = r.json().get("idToken")
-    base = db_url.rstrip("/") + "/"
+    return r.json().get("idToken")
+
+
+def firebase_class_nodes(db_url, token):
+    """Возвращает (nodes, base): nodes[NAME_норм] = cities/{c}/schools/{s}/classes/{cl}/schedule."""
+    import requests
+    base = firebase_base(db_url)
     cities = requests.get(base + "cities.json?shallow=true", timeout=30).json() or {}
-    match = None
+    nodes = {}
     for cid in cities:
         schools = requests.get(f"{base}cities/{cid}/schools.json?shallow=true",
                                timeout=30).json() or {}
@@ -618,22 +690,54 @@ def push_to_firebase(schedule, class_name, api_key, db_url):
             for clid in classes:
                 nm = requests.get(f"{base}cities/{cid}/schools/{sid}/classes/{clid}/name.json",
                                   timeout=30).json()
-                if (nm or "").strip().upper() == (class_name or "").strip().upper():
-                    match = (cid, sid, clid)
-                    break
-            if match:
-                break
-        if match:
-            break
-    if not match:
-        raise RuntimeError(f"Класс «{class_name}» не найден в Firebase.")
-    cid, sid, clid = match
-    node = f"cities/{cid}/schools/{sid}/classes/{clid}/schedule"
+                key = "".join((nm or "").split()).upper()
+                if key:
+                    nodes[key] = f"cities/{cid}/schools/{sid}/classes/{clid}/schedule"
+    return nodes, base
+
+
+def _push_schedule(base, node, schedule, token):
+    import requests
     resp = requests.patch(base + node + ".json", params={"auth": token},
                           json=schedule, timeout=30)
     if resp.status_code != 200:
         raise RuntimeError(f"Firebase вернул {resp.status_code}: {resp.text[:160]}")
+
+
+def push_to_firebase(schedule, class_name, api_key, db_url):
+    print(f"Загружаю расписание «{class_name}» в Firebase…")
+    token = firebase_token(api_key)
+    nodes, base = firebase_class_nodes(db_url, token)
+    node = nodes.get("".join((class_name or "").split()).upper())
+    if not node:
+        raise RuntimeError(f"Класс «{class_name}» не найден в Firebase.")
+    _push_schedule(base, node, schedule, token)
     print(f"OK: {node} обновлён.")
+
+
+def push_all_schedules(schedules, api_key, db_url):
+    """Загружает расписания всех классов: {имя: {mon..sun}} -> /schedule."""
+    print("Загружаю расписания в Firebase…")
+    token = firebase_token(api_key)
+    nodes, base = firebase_class_nodes(db_url, token)
+    ok, missing = [], []
+    for cl, days in schedules.items():
+        node = nodes.get("".join(cl.split()).upper())
+        if not node:
+            missing.append(cl)
+            continue
+        try:
+            _push_schedule(base, node, days, token)
+            ok.append(cl)
+        except Exception as e:
+            missing.append(cl)
+            print(f"  {cl}: ошибка загрузки: {e}")
+    print(f"Загружено: {len(ok)} из {len(schedules)}.")
+    if ok:
+        print("OK: " + ", ".join(ok))
+    for cl in missing:
+        print(f"  {cl}: не найден в Firebase или ошибка — пропущен.")
+    return not missing
 
 
 def parse_local_csv(path):
@@ -668,6 +772,12 @@ def main(argv=None):
     ap.add_argument("url", nargs="?", help="Ссылка на Google-таблицу")
     ap.add_argument("--class", dest="class_name", default="7А",
                     help="Класс (по умолчанию 7А)")
+    ap.add_argument("--all-classes", action="store_true",
+                    help="Обработать все классы, найденные во вкладках недели")
+    ap.add_argument("--grade", default=None,
+                    help="Только классы этой параллели (например 7)")
+    ap.add_argument("--classes", default=None,
+                    help="Конкретный список классов через запятую (7А,7Б,7В)")
     ap.add_argument("--week", action="store_true",
                     help="Принудительно взять текущую неделю (по умолчанию и так)")
     ap.add_argument("--date", default=None,
@@ -739,6 +849,80 @@ def main(argv=None):
                 print(f"{k:3d}  {name}")
             return 0
         sheets = load_xlsx_sheets(xlsx)
+
+        # ---- режим всех классов: --all-classes / --grade / --classes ----
+        multi = bool(args.all_classes or args.grade or args.classes)
+        if multi and args.sheet:
+            print("Флаги --all-classes/--grade/--classes не поддерживаются вместе с --sheet.")
+            return 2
+        if multi:
+            picked = select_week_tabs(sheets, monday, sunday, anchor.year)
+            if not picked:
+                parsed_all = [r for r in (parse_tab_date(nm) for nm in names) if r]
+                avail = sorted({(key, dt) for key, dt in parsed_all}, key=lambda x: x[1])
+                avail_txt = ", ".join(
+                    f"{DAY_NAMES[key]} {fmt_date(dt)}" for key, dt in avail[:30])
+                print(f"\nНе найдено расписание на текущую неделю. "
+                      f"Доступные даты: {avail_txt}.")
+                return 1
+
+            span_f = f"{picked[0][1].day:02d}.{picked[0][1].month:02d}" \
+                     f"–{picked[-1][1].day:02d}.{picked[-1][1].month:02d}"
+            print(f"Ищу вкладки за неделю {span_f}")
+            print("Найдено: " + ", ".join(nm for _k, _d, nm, _s in picked))
+            loose_names = [nm for _k, _d, nm, s in picked if not s]
+            if loose_names:
+                print("Внимание: у вкладок " + ", ".join(loose_names)
+                      + " дата не совпадает с днём недели в названии (беру их как есть).")
+
+            by_name = {nm: m for nm, m in sheets}
+            tab_names = [nm for _k, _d, nm, _s in picked]
+
+            # список классов
+            if args.classes:
+                clist = [c for c in
+                         (normalize_class_display(c) or c.strip()
+                          for c in args.classes.split(",")) if c]
+            else:
+                clist = discover_classes([by_name[nm] for nm in tab_names])
+                if args.grade:
+                    g = str(args.grade).strip()
+                    clist = [c for c in clist if grade_of(c) == g]
+            if not clist:
+                print("Не найдено классов для обработки.")
+                return 1
+
+            print("Обрабатываю " + "… ".join(clist) + "…")
+            results, missing = build_class_weeks(picked, by_name, clist)
+            for cl in missing:
+                print(f"  {cl}: класс не найден в вкладках недели — пропускаю.")
+            if not results:
+                print("\nНи один класс не распознан в таблице.")
+                return 1
+            for cl, days in results.items():
+                total = sum(len(days[k]) for k in HUB_KEYS)
+                print(f"  {cl}: {total} уроков за неделю")
+                if days["sat"]:
+                    print(f"    {DAY_NAMES['sat']}: " + " | ".join(days["sat"]))
+
+            with open("schedule_all.json", "w", encoding="utf-8") as f:
+                json.dump({"week": span_f, "classes": results}, f,
+                          ensure_ascii=False, indent=2)
+            print("Записал: schedule_all.json")
+            for cl, days in results.items():
+                name = "".join(ch for ch in cl if ch.isalnum())
+                with open(f"schedule_{name}.json", "w", encoding="utf-8") as f:
+                    json.dump({"class": cl, "days": days}, f,
+                              ensure_ascii=False, indent=2)
+            print("Записал: schedule_<класс>.json для каждого класса.")
+
+            if args.push:
+                try:
+                    push_all_schedules(results, load_api_key(args.api_key),
+                                       args.database_url)
+                except Exception as e:
+                    print(f"Firebase-загрузка не удалась: {e}")
+            return 0
 
         # ---- старый режим: конкретная «недельная» вкладка ----
         if args.sheet:
