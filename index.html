@@ -313,7 +313,7 @@
           <button id="chat-edit-close" class="text-slate-400 hover:text-rose-400 font-bold px-2">✕</button>
         </div>
 
-        <form id="chat-form" class="flex gap-2 mt-3 pt-3 border-t border-slate-800 bg-slate-950/90 backdrop-blur">
+        <form id="chat-form" class="flex gap-2 mt-3 pt-3 bg-slate-950/90 backdrop-blur">
           <input id="chat-input" type="text" maxlength="500" autocomplete="off"
                  placeholder="Сообщение… (@ник — упомянуть)"
                  class="flex-1 min-w-0 rounded-xl bg-slate-800 border border-slate-700 px-4 py-2.5 text-sm placeholder-slate-500 outline-none focus:border-indigo-500 transition">
@@ -1277,7 +1277,7 @@
 
     // Кнопка редактирования (только для своих)
     const editBtn = mine ? `<button class="msg-edit text-[10px] opacity-70 hover:opacity-100 px-1 rounded" title="Редактировать">✎</button>` : '';
-    const delBtn = mine ? `<button class="msg-del text-[10px] opacity-70 hover:opacity-100 px-1 rounded" title="Удалить">✕</button>` : '';
+    const delBtn = (mine || admin.authorized || altMode()) ? `<button class="msg-del text-[10px] opacity-70 hover:opacity-100 px-1 rounded" title="Удалить">✕</button>` : '';
     const reactBtn = `<button class="msg-react text-[10px] opacity-70 hover:opacity-100 px-1 rounded" title="Реакция">☺</button>`;
     const replyBtn = `<button class="msg-reply text-[10px] opacity-70 hover:opacity-100 px-1 rounded" title="Ответить">↩</button>`;
 
@@ -2209,24 +2209,116 @@
     body.innerHTML = `<p class="text-xs text-slate-500">Модерация (заглушка).</p>`;
   }
   function renderAdminStats(body) {
-    body.innerHTML = `<div id="stats-cards" class="grid grid-cols-3 gap-2">${spinner()}</div>`;
-    db.ref('/cities').once('value', (cs) => {
+    body.innerHTML = `<div id="stats-cards" class="grid grid-cols-3 gap-2">${spinner()}</div>
+      <div id="stats-extra" class="mt-3 rounded-2xl bg-slate-900 border border-slate-800 p-4">${spinner()}</div>
+      <div class="mt-3 rounded-2xl bg-slate-900 border border-slate-800 p-4">
+        <div class="font-bold text-sm mb-2">📌 Интересное</div>
+        <div id="stats-flagged">${spinner()}</div>
+      </div>`;
+
+    const safe = (ref) => ref.once('value').then((s) => s.val() || {}).catch(() => null);
+    const dayMs = 86400000;
+
+    (async () => {
+      const cv = await safe(db.ref('/cities'));
       let c = 0, s = 0, cl = 0;
-      const cv = cs.val() || {};
-      Object.keys(cv).forEach((cid) => {
+      const classRefs = [], classNames = {};
+      const meta = cv || {};
+      Object.keys(meta).forEach((cid) => {
         c++;
-        const schV = (cv[cid] || {}).schools || {};
+        const cn = meta[cid] || {};
+        const schV = cn.schools || {};
         Object.keys(schV).forEach((sid) => {
           s++;
-          const clsV = (schV[sid] || {}).classes || {};
-          cl += Object.keys(clsV).length;
+          const sn = schV[sid] || {};
+          Object.keys(sn.classes || {}).forEach((clid) => {
+            cl++;
+            classRefs.push(db.ref(P.classNode(cid, sid, clid)));
+            classNames[cid + '/' + sid + '/' + clid] = { cname: cn.name || cid, sname: sn.name || sid, clname: ((sn.classes || {})[clid] || {}).name || clid };
+          });
         });
       });
       $('#stats-cards').innerHTML = `
         <div class="rounded-2xl bg-slate-900 border border-slate-800 p-3"><div class="text-2xl font-extrabold">${c}</div><div class="text-[11px] text-slate-500">Города</div></div>
         <div class="rounded-2xl bg-slate-900 border border-slate-800 p-3"><div class="text-2xl font-extrabold">${s}</div><div class="text-[11px] text-slate-500">Школы</div></div>
         <div class="rounded-2xl bg-slate-900 border border-slate-800 p-3"><div class="text-2xl font-extrabold">${cl}</div><div class="text-[11px] text-slate-500">Классы</div></div>`;
-    });
+
+      const latestMsg = (ref) => ref.orderByChild('time').limitToLast(1).once('value')
+        .then((sn) => { let latest = 0; sn.forEach((ch) => { latest = Math.max(latest, Number((ch.val() && ch.val().time) || 0)); }); return latest; })
+        .catch(() => null);
+      const [ov, uv, actL] = await Promise.all([
+        safe(db.ref('/online')),
+        safe(db.ref('/unique')),
+        Promise.all(classRefs.map(latestMsg)),
+      ]);
+      const row = (label, val) => `
+        <div class="flex items-center justify-between py-2 border-b border-slate-800/60 last:border-0">
+          <span class="text-xs text-slate-400">${label}</span>
+          ${val == null ? '<span class="text-[11px] text-rose-400">доступ запрещён правилами</span>' : `<span class="text-sm font-bold">${val}</span>`}
+        </div>`;
+      const now5 = Date.now() - 300000;
+      const now24 = Date.now() - dayMs;
+      $('#stats-extra').innerHTML = [
+        row('Онлайн сейчас (5 мин)', ov == null ? null : Object.values(ov).filter((t) => Number(t) > now5).length),
+        row('Уникальные пользователи (всего)', uv == null ? null : Object.keys(uv).length),
+        row('Уникальные (за 24 ч)', uv == null ? null : Object.values(uv).filter((t) => Number(t) > now24).length),
+        row('Активные классы (24 ч)', actL == null ? null : actL.filter((t) => t != null && t > now24).length),
+      ].join('');
+
+      // 📌 Интересное: помеченные фильтром сообщения
+      const fEl = $('#stats-flagged');
+      const [fv, usv, bv] = await Promise.all([
+        safe(db.ref('/flagged_messages')),
+        safe(db.ref('/users')),
+        safe(db.ref('/bannedUsers')),
+      ]);
+      if (fv == null) { fEl.innerHTML = emptyNote('Раздел «Интересное» не доступен — опубликуйте правила из rules.json'); return; }
+      const fEntries = [];
+      Object.keys(fv).forEach((cid) => {
+        Object.keys(fv[cid] || {}).forEach((sid) => {
+          Object.keys(fv[cid][sid] || {}).forEach((clid) => {
+            Object.keys(fv[cid][sid][clid] || {}).forEach((key) => {
+              fEntries.push({ cid, sid, clid, key, m: fv[cid][sid][clid][key] || {} });
+            });
+          });
+        });
+      });
+      fEntries.sort((a, b) => (a.m.time || 0) - (b.m.time || 0));
+      if (!fEntries.length) { fEl.innerHTML = emptyNote('Помеченных сообщений нет'); return; }
+      const users = usv || {};
+      const deviceToUid = {}, usersById = {};
+      Object.keys(users).forEach((uid) => { const pr = users[uid] || {}; usersById[uid] = pr; if (pr.deviceId) deviceToUid[pr.deviceId] = uid; });
+      const bans = bv || {};
+      fEl.innerHTML = fEntries.map((f) => {
+        const uid = f.m.uid || deviceToUid[f.m.deviceId] || '';
+        const nick2 = (uid && usersById[uid] && usersById[uid].nick) || f.m.nick || f.m.name || 'Ученик';
+        const st = uid ? HubModeration.statusOf(bans[uid] || null) : { label: 'не определён', cls: 'text-slate-500' };
+        const mn = classNames[f.cid + '/' + f.sid + '/' + f.clid] || { cname: f.cid, sname: f.sid, clname: f.clid };
+        const fdata = JSON.stringify({ cid: f.cid, sid: f.sid, clid: f.clid, key: f.key, cname: mn.cname, sname: mn.sname, clname: mn.clname });
+        const dis = uid ? '' : ' opacity-40 pointer-events-none';
+        const bt = (label, act, extra) => `<button data-act="${act}" ${extra} class="rounded-lg bg-slate-800 hover:bg-slate-700 px-2.5 py-1.5 text-[11px] font-semibold">${label}</button>`;
+        return `
+        <div class="border-b border-slate-800/60 py-2.5">
+          <div class="flex items-center justify-between gap-2 flex-wrap">
+            <span class="text-xs font-bold">${esc(nick2)} <span class="text-[10px] text-slate-500">${esc(mn.cname)}, ${esc(mn.sname)}, ${esc(mn.clname)}</span></span>
+            <span class="text-[10px] text-slate-500">${fmtDate(f.m.time)}</span>
+          </div>
+          <p class="text-sm mt-1 break-words">${esc(f.m.text || '')}</p>
+          <div class="text-[11px] mt-1 ${st.cls}">${uid ? 'UID: ' + esc(uid).slice(0, 14) + '…' : 'UID не определён'} · ${esc(st.label)}</div>
+          <div class="flex gap-1.5 mt-2 flex-wrap">
+            ${bt('Открыть чат', 'flagOpen', `data-f="${esc(fdata)}"`)}
+            ${bt('Игнорировать', 'flagIgnore', `data-f="${esc(fdata)}"`)}
+            ${bt('Удалить', 'flagDel', `data-f="${esc(fdata)}"`)}
+            <span class="flex gap-1.5 flex-wrap${dis}">
+              ${bt('Мут 1 час', 'flagMute1', `data-uid="${esc(uid)}"`)}
+              ${bt('Мут 24 часа', 'flagMute24', `data-uid="${esc(uid)}"`)}
+              ${bt('Разбанить', 'flagUnban', `data-uid="${esc(uid)}"`)}
+              ${bt('Предупредить', 'flagWarn', `data-uid="${esc(uid)}"`)}
+            </span>
+          </div>
+        </div>`;
+      }).join('');
+    })();
   }
 
   function bindAdminActions() {
@@ -2265,6 +2357,53 @@
       }
       if ('hwDel' in t.dataset) db.ref(P.classNode(admin.city, admin.school, admin.cls) + '/homework/' + t.dataset.key).remove();
       if ('annDel' in t.dataset) askConfirm('Удалить?', () => db.ref(P.classNode(admin.city, admin.school, admin.cls) + '/announcements/' + t.dataset.key).remove());
+
+      // ---- «Интересное»: модерация авторов и сообщений ----
+      if (act === 'flagMute1' || act === 'flagMute24') {
+        const uid = t.dataset.uid;
+        if (!uid) { showToast('Нет UID автора'); return; }
+        HubModeration.muteHours(uid, act === 'flagMute1' ? 1 : 24, 'мут администратором')
+          .then(() => { showToast('Мут применён'); renderAdminPage('stats'); })
+          .catch((e) => showToast('Не удалось замутить: ' + ((e && e.message) ? e.message : 'нет прав')));
+      }
+      if (act === 'flagUnban') {
+        const uid = t.dataset.uid;
+        if (!uid) return;
+        HubModeration.unban(uid)
+          .then(() => { showToast('Бан снят'); renderAdminPage('stats'); })
+          .catch((e) => showToast('Не удалось снять бан: ' + ((e && e.message) ? e.message : 'нет прав')));
+      }
+      if (act === 'flagWarn') {
+        const uid = t.dataset.uid;
+        if (!uid) { showToast('Нет UID автора'); return; }
+        const text = window.prompt('Текст предупреждения:');
+        if (text == null) return;
+        db.ref('/warnings/' + uid).push({ text: String(text).slice(0, 300), at: firebase.database.ServerValue.TIMESTAMP })
+          .then(() => showToast('Предупреждение отправлено'))
+          .catch((e) => showToast('Не удалось отправить: ' + ((e && e.message) ? e.message : 'нет прав')));
+      }
+      if (act === 'flagIgnore' || act === 'flagDel') {
+        const f = JSON.parse(t.dataset.f || '{}');
+        if (act === 'flagDel') {
+          askConfirm('Удалить сообщение?', () => {
+            db.ref(P.classNode(f.cid, f.sid, f.clid) + '/chat/' + f.key).remove()
+              .catch((e) => showToast('Не удалось удалить: ' + ((e && e.message) ? e.message : 'нет прав')));
+            db.ref('/flagged_messages/' + f.cid + '/' + f.sid + '/' + f.clid + '/' + f.key).remove().catch(() => {});
+            renderAdminPage('stats');
+          });
+        } else {
+          db.ref('/flagged_messages/' + f.cid + '/' + f.sid + '/' + f.clid + '/' + f.key).remove().catch(() => {});
+          renderAdminPage('stats');
+        }
+      }
+      if (act === 'flagOpen') {
+        const f = JSON.parse(t.dataset.f || '{}');
+        $('#admin-panel').classList.add('hidden');
+        state.sel = { cid: f.cid, cname: f.cname, sid: f.sid, sname: f.sname, clid: f.clid, clname: f.clname };
+        saveSelection();
+        showMainScreen();
+        switchTab('chat');
+      }
     });
   }
 
@@ -2340,7 +2479,9 @@
     const del = e.target.closest('.msg-del');
     if (del) {
       askConfirm('Удалить сообщение?', () => {
-        db.ref(curClassPath() + '/chat/' + key).remove().then(() => forgetMsg(key));
+        db.ref(curClassPath() + '/chat/' + key).remove()
+          .then(() => forgetMsg(key))
+          .catch((e) => showToast('Не удалось удалить: ' + ((e && e.message) ? e.message : 'нет прав')));
       });
       return;
     }
