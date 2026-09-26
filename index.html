@@ -667,9 +667,6 @@
     return `<span class="avatar ${sizeCls}" style="background:hsl(${hue},55%,45%);color:#fff">${esc(initial)}</span>`;
   }
 
-  // Классы школы №12 (собрано по файлам расписания schedule_*.json).
-  const SCHOOL_CLASSES = ['1А', '1Б', '1В', '2А', '2Б', '2В', '3А', '3Б', '3В', '4А', '4В', '4Г', '5а', '5б', '5в', '5г', '5д', '5и', '6а', '6б', '6в', '6г', '6д', '7а', '7б', '7в', '7г', '7Д', '8а', '8б', '8в', '8г', '8д', '9а', '9б', '9в', '9г', '10а', '10б', '11а', '11б'];
-
   const P = {
     cities: () => '/cities',
     schools: (cid) => `/cities/${cid}/schools`,
@@ -2886,7 +2883,7 @@
         <input id="class-name" placeholder="Класс" class="${aInput('flex-1 min-w-0')}">
         <button class="rounded-lg px-3 py-2 text-xs font-bold accent-bg text-white">Добавить</button>
       </form>
-      <button data-act="addAllClasses" class="mt-2 w-full rounded-lg bg-slate-700 hover:bg-slate-600 px-3 py-2 text-xs font-bold">➕ Создать все классы школы №12</button>
+      <button data-act="del7Lower" class="mt-2 w-full rounded-lg bg-rose-700/80 hover:bg-rose-700 px-3 py-2 text-xs font-bold">🗑 Удалить 7-е классы со строчной буквой (оставить 7А–7Д)</button>
       <div id="class-list" class="mt-3 space-y-2"></div>`;
     const renderList = () => {
       const cid = $('#class-city').value, sid = $('#class-school').value;
@@ -3633,17 +3630,17 @@
         db.ref(P.classes(cid, sid) + '/' + t.dataset.key).update({ name });
       }
       if (act === 'classDelete') askConfirm('Удалить класс?', () => db.ref(P.classes($('#class-city').value, $('#class-school').value) + '/' + t.dataset.key).remove());
-      if (act === 'addAllClasses') {
+      if (act === 'del7Lower') {
         const cid = $('#class-city').value, sid = $('#class-school').value;
         if (!cid || !sid) { showToast('Выберите город и школу'); return; }
         if (!isAdmin()) { showToast('Нет прав администратора'); return; }
-        askConfirm('Создать в школе все классы №12 (' + SCHOOL_CLASSES.length + ' шт.)?', () => {
-          db.ref(P.classes(cid, sid)).once('value', (sn) => {
-            const existing = new Set(Object.values(sn.val() || {}).map((v) => String((v && v.name) || '').trim()));
-            const missing = SCHOOL_CLASSES.filter((n) => !existing.has(n));
-            if (!missing.length) { showToast('Все классы уже есть'); return; }
-            Promise.all(missing.map((n) => db.ref(P.classes(cid, sid)).push({ name: n })))
-              .then(() => { renderAdminPage('classes'); showToast('Создано классов: ' + missing.length); })
+        db.ref(P.classes(cid, sid)).once('value', (sn) => {
+          const items = Object.entries(sn.val() || {});
+          const low = items.filter(([, v]) => /^7[а-яё]$/.test(String((v && v.name) || '').trim()));
+          if (!low.length) { showToast('Строчных 7-х классов нет'); return; }
+          askConfirm('Удалить (' + low.length + '): ' + low.map(([, v]) => v.name).join(', ') + '?', () => {
+            Promise.all(low.map(([k]) => db.ref(P.classes(cid, sid) + '/' + k).remove()))
+              .then(() => { renderAdminPage('classes'); showToast('Удалено седьмых классов: ' + low.length); })
               .catch((e) => showToast('Ошибка: ' + ((e && e.message) ? e.message : e)));
           });
         });
