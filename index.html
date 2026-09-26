@@ -709,6 +709,7 @@
     bdays: 'sh_bdays',
     dnd: 'sh_dnd',
     lastRead: 'sh_last_read',
+    lastParse: 'sh_last_parse',
   };
 
   const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
@@ -1100,6 +1101,7 @@
     const el = $('#settings-unread');
     if (!el) return;
     if (!window.HubAuth || !HubAuth.uid) { el.classList.add('hidden'); return; }
+    ensureScheduleAutoCheck();
     const src = isAdmin()
       ? db.ref('/admin_messages').once('value').then((s) => flattenMsgs(s.val()))
       : db.ref('/admin_messages/' + HubAuth.uid).once('value').then((s) => flattenMsgs(s.val()));
@@ -2001,6 +2003,10 @@
         <button data-sview="tomorrow" class="sview flex-1 py-2 rounded-lg text-xs font-bold ${scheduleView === 'tomorrow' ? 'accent-bg text-white' : 'text-slate-400'}">Завтра</button>
         <button data-sview="week" class="sview flex-1 py-2 rounded-lg text-xs font-bold ${scheduleView === 'week' ? 'accent-bg text-white' : 'text-slate-400'}">Неделя</button>
       </div>`;
+    const refreshBtn = isAdmin() ? `
+      <button id="sch-refresh" class="w-full rounded-xl bg-slate-900 border border-slate-800 py-2.5 text-xs font-bold hover:bg-slate-800 active:scale-95 transition">
+        🔄 Обновить расписание
+      </button>` : '';
     const dayBlock = (key, title, dayName) => {
       const lessons = Array.isArray(data[key]) ? data[key] : [];
       const inner = lessons.length
@@ -2024,8 +2030,10 @@
       body = order.map((k) => dayBlock(k, DAY_NAMES[DAY_KEYS.indexOf(k)], '')).join('');
     }
     const copyBtn = `<button id="sch-copy" class="w-full rounded-xl bg-slate-800 hover:bg-slate-700 py-2.5 text-xs font-bold">📋 Скопировать расписание</button>`;
-    el.innerHTML = head + body + copyBtn;
+    el.innerHTML = (head + (refreshBtn ? '<div>' + refreshBtn + '</div>' : '')) + body + copyBtn;
     $$('.sview').forEach((b) => b.addEventListener('click', () => { scheduleView = b.dataset.sview; paintSchedule(); }));
+    const rf = $('#sch-refresh');
+    if (rf) rf.addEventListener('click', () => requestScheduleParse('manual'));
     $('#sch-copy').addEventListener('click', copySchedule);
   }
   function copySchedule() {
@@ -2043,6 +2051,105 @@
     const txt = lines.join('\n') || 'Расписание пусто';
     navigator.clipboard.writeText(txt).then(() => showToast('Расписание скопировано'))
       .catch(() => showToast('Не удалось скопировать'));
+  }
+
+  /* ---- Автообновление расписания (прокси на Deno) ----
+     Воркер-прокси парсит расписание Google Sheets / Ника-Софт и заливает в Firebase.
+     Адрес воркера — aiConfig.workerUrl в firebase-config.js. */
+  let schRefreshTimer = null;   // id интервала автопроверки
+  const PARSE_ENDPOINTS = ['/parse/google', '/parse/nikasoft'];
+  const PARSE_WINDOW_MS = 4 * 60 * 1000;   // не чаще раза в 4 минуты
+  // Запуск автопроверки каждые 5 минут (только для админов, пауза при скрытой вкладке).
+  function ensureScheduleAutoCheck() {
+    if (!isAdmin()) {
+      if (schRefreshTimer !== null) { clearInterval(schRefreshTimer); schRefreshTimer = null; }
+      return;
+    }
+    if (schRefreshTimer !== null) return;
+    schRefreshTimer = setInterval(() => {
+      if (document.visibilityState === 'visible' && !state.parseInProgress) {
+        requestScheduleParse('auto');
+      }
+    }, 5 * 60 * 1000);
+  }
+
+  // Пометка кнопки «Проверяем обновления…», пока идёт запрос.
+  function paintParseStatus(mode, busy) {
+    const b = $('#sch-refresh');
+    if (!b) return;
+    b.disabled = busy;
+    b.textContent = busy ? 'Проверяем обновления…' : '🔄 Обновить расписание';
+    b.classList.toggle('opacity-60', busy);
+  }
+
+  // mode: 'manual' — по кнопке (тосты), 'auto' — фоновая проверка (тихо).
+  function requestScheduleParse(mode) {
+    if (!isAdmin()) return;
+    if (state.parseInProgress) return;   // предыдущий запрос ещё не завершился
+    const s = state.sel;
+    if (!s || !s.cid || !s.sid || !s.clid) return;
+    const nowMs = Date.now();
+    let last = 0;
+    try { last = parseInt(localStorage.getItem(LS.lastParse), 10) || 0; } catch (e) { last = 0; }
+    if (nowMs - last < PARSE_WINDOW_MS) {
+      if (mode !== 'auto') showToast('Расписание уже проверялось недавно, попробуйте позже');
+      return;
+    }
+    const cfg = window.AI_CONFIG;
+    const baseUrl = ((cfg && cfg.workerUrl) || '').trim().replace(/\/+$/, '');
+    if (!baseUrl) {
+      console.error('[schParse] aiConfig.workerUrl не задан в firebase-config.js');
+      if (mode !== 'auto') showToast('Не удалось обновить расписание, попробуйте позже');
+      return;
+    }
+    state.parseInProgress = true;
+    localStorage.setItem(LS.lastParse, String(nowMs));
+    paintParseStatus(mode, true);
+    const payload = {
+      cid: s.cid, sid: s.sid, clid: s.clid,
+      city: s.cname || '', school: s.sname || '',
+      className: s.clname || '', class: s.clname || '',
+    };
+    const call = (path) => {
+      const ac = new AbortController();
+      const to = setTimeout(() => ac.abort(), 30000);
+      return fetch(baseUrl + path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: ac.signal,
+      }).then((res) => {
+        clearTimeout(to);
+        if (!res.ok) throw new Error(path + ' → HTTP ' + res.status);
+        return res.json();
+      }, () => {
+        clearTimeout(to);
+        throw new Error(path + ' → timeout');
+      });
+    };
+    Promise.allSettled([call(PARSE_ENDPOINTS[0]), call(PARSE_ENDPOINTS[1])]).then((results) => {
+      let updated = 0, errors = 0;
+      results.forEach((r) => {
+        if (r.status === 'fulfilled') {
+          const v = Number(r.value && r.value.updated) || 0;
+          updated += v;
+          console.log('[schParse]', r.value, 'updated:', v);
+        } else {
+          errors++;
+          console.error('[schParse] ошибка воркера:', r.reason);
+        }
+      });
+      state.parseInProgress = false;
+      paintParseStatus(mode, false);
+      if (updated > 0) {
+        showToast(mode === 'auto' ? 'Расписание обновилось' : 'Расписание обновлено');
+        if (typeof paintSchedule === 'function') paintSchedule();
+      } else if (errors > 0) {
+        showToast('Не удалось обновить расписание, попробуйте позже');
+      } else if (mode !== 'auto') {
+        showToast('Без изменений');
+      }
+    });
   }
 
   /* ---- Домашка ---- */
