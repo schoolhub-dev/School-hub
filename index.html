@@ -299,15 +299,6 @@
         <div id="chat-messages" class="chat-scroll space-y-3 overflow-y-auto pr-1"></div>
         <div id="typing-indicator"></div>
 
-        <!-- Статус ИИ-модерации -->
-        <div id="moderate-pending" class="hidden items-center gap-2 px-3 py-1.5 mb-2 rounded-lg bg-indigo-500/15 text-xs text-indigo-300">
-          <svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
-          </svg>
-          Проверяем сообщение…
-        </div>
-
         <!-- Reply-превью -->
         <div id="chat-reply-box" class="hidden">
           <div class="flex-1 min-w-0">
@@ -707,7 +698,7 @@
   // Запрос идёт через Cloudflare Worker-прокси (обход CORS), см. worker.js.
   // Адрес воркера — aiConfig.workerUrl в firebase-config.js.
   let __lastModeration = null; // детали последнего вердикта (для записи флагов)
-  async function moderateMessage(text) {
+  async function moderateMessage(text, out) {
     const cfg = window.AI_CONFIG;
     console.log('Модерация: отправляю запрос к xKiro...', text);
     let verdict;
@@ -718,6 +709,10 @@
       verdict = 'REVIEW';
     }
     console.log('Ответ модерации:', verdict);
+    if (out && __lastModeration) {
+      out.category = __lastModeration.category || '';
+      out.reason = __lastModeration.reason || '';
+    }
     return verdict;
   }
   // Диспетчер: сначала Cloudflare Worker-прокси, если задан aiConfig.workerUrl
@@ -1777,45 +1772,51 @@ __lastModeration = {
     });
   }
 
-  /* ---- Отправка сообщения (ИИ-модерация до записи в Firebase) ---- */
-  let sendBusy = false; // защита от двойной отправки
-  function setSendBusy(b) {
-    sendBusy = b;
-    const btn = $('#chat-send-btn');
-    if (btn) btn.disabled = b;
-    const input = $('#chat-input');
-    if (input) input.disabled = b;
-    const pend = $('#moderate-pending');
-    if (pend) {
-      if (b) { pend.classList.remove('hidden'); pend.classList.add('flex'); }
-      else { pend.classList.add('hidden'); pend.classList.remove('flex'); }
+  /* ---- Отправка сообщения (мгновенно; ИИ-модерация — фоном) ---- */
+  // Обратите внимание: сообщение сразу пишется в chat, а проверка xKiro идёт
+  // параллельно и не блокирует UI. Если ИИ определит нарушение — копия
+  // сохраняется в /flagged_messages/{city}/{school}/{class}/{messageId}.
+  function writeFlaggedCopy(text, chatPath, messageId, details) {
+    const parts = (chatPath || '').split('/'); // cities/{cid}/schools/{sid}/classes/{clid}
+    let cid = '', sid = '', clid = '';
+    parts.forEach(function (p, i) {
+      if (p === 'cities') cid = parts[i + 1];
+      else if (p === 'schools') sid = parts[i + 1];
+      else if (p === 'classes') clid = parts[i + 1];
+    });
+    if (!cid || !sid || !clid) {
+      console.error('[flagAfter] не распознан путь чата:', chatPath);
+      return;
     }
-  }
-  // Запись отклонённого/отложенного сообщения в /flagged_messages (в чат НЕ пишется)
-  function writeFlaggedRecord(text, details, status) {
-    const s = state.sel;
     const rec = {
+      text: text,
+      nick: nick(),
       uid: HubAuth.uid,
       deviceId: deviceId(),
-      nick: nick(),
-      text: text,
       time: Date.now(),
-      class: (s && s.clname) || '',
+      timestamp: firebase.database.ServerValue.TIMESTAMP,
+      messageId: messageId,
+      moderationStatus: 'flagged',
+      category: (details && details.category) || '',
+      reason: (details && details.reason) || '',
       flagged: true,
-      moderationStatus: status, // 'rejected' | 'flagged'
-      reason: 'ai_moderation',
     };
-    if (details && details.category) rec.aiCategory = details.category;
-    if (details && details.reason) rec.aiReason = details.reason;
-    const flagPath = '/flagged_messages' + curClassPath().slice('/cities'.length);
-    return db.ref(flagPath).push(rec).catch((err) => {
-      showToast('Ошибка записи модерации: ' + ((err && err.message) || err));
-    });
+    return db.ref('/flagged_messages/' + cid + '/' + sid + '/' + clid + '/' + messageId)
+      .set(rec)
+      .catch((err) => console.error('[flagAfter] не удалось записать флаг:', err));
+  }
+  // Фоновая проверка: при bad=true пишем копию в flagged_messages. При OK — тишина.
+  function flagAfterModeration(text, chatPath, messageId) {
+    const details = {};
+    moderateMessage(text, details)
+      .then(function (verdict) {
+        if (verdict === 'BAN') return writeFlaggedCopy(text, chatPath, messageId, details);
+      })
+      .catch((err) => console.error('Ошибка модерации:', err));
   }
 
-  async function sendMessage(e) {
+  function sendMessage(e) {
     e.preventDefault();
-    if (sendBusy) return;
     const input = $('#chat-input');
     const text = input.value.trim();
     if (!text) return;
@@ -1827,51 +1828,35 @@ __lastModeration = {
       ensureProfile();
       const s = state.sel;
       const chatPath = curClassPath();
-      setSendBusy(true);
-      Promise.resolve()
-        .then(() => moderateMessage(text))
-        .then((verdict) => {
-          if (verdict !== 'OK') {
-            writeFlaggedRecord(text, __lastModeration, verdict === 'BAN' ? 'rejected' : 'flagged');
-            showToast(verdict === 'BAN' ? 'Сообщение отклонено модератором' : 'Сообщение отправлено на проверку');
-            return;
-          }
-          if (editMsg) {
-            return db.ref(chatPath + '/chat/' + editMsg.key).update({
-              text: text,
-              edited: true,
-              editedAt: Date.now(),
-            }).then(() => {
-              clearEdit();
-              input.value = '';
-              showToast('Сообщение изменено');
-            }).catch((err2) => showToast('Ошибка: ' + (err2.message || err2)));
-          }
-          const msg = {
-            uid: HubAuth.uid,
-            deviceId: deviceId(),
-            nick: me,
-            text: text,
-            time: Date.now(),
-            class: (s && s.clname) || ''
-          };
-          if (replyTo) {
-            msg.replyTo = { key: replyTo.key, nick: replyTo.nick, text: replyTo.text };
-          }
-          db.ref(chatPath + '/chat').push(msg);
-          clearReply();
+      if (editMsg) {
+        db.ref(chatPath + '/chat/' + editMsg.key).update({
+          text: text,
+          edited: true,
+          editedAt: Date.now(),
+        }).then(() => {
+          clearEdit();
           input.value = '';
-          setTimeout(refreshChat, 500);
-        })
-        .catch((err3) => {
-          // Внезапный сбой до записи — считаем REVIEW, в чат не пишем
-          console.error('Ошибка модерации:', err3);
-          writeFlaggedRecord(text, { reason: 'client_error' }, 'flagged');
-          showToast('Сообщение отправлено на проверку');
-        })
-        .finally(() => {
-          setSendBusy(false);
-        });
+          showToast('Сообщение изменено');
+          flagAfterModeration(text, chatPath, editMsg.key);
+        }).catch((err2) => showToast('Ошибка: ' + (err2.message || err2)));
+        return;
+      }
+      const msg = {
+        uid: HubAuth.uid,
+        deviceId: deviceId(),
+        nick: me,
+        text: text,
+        time: Date.now(),
+        class: (s && s.clname) || ''
+      };
+      if (replyTo) {
+        msg.replyTo = { key: replyTo.key, nick: replyTo.nick, text: replyTo.text };
+      }
+      const pushed = db.ref(chatPath + '/chat').push(msg);
+      clearReply();
+      input.value = '';
+      setTimeout(refreshChat, 500);
+      flagAfterModeration(text, chatPath, pushed.key);
     });
   }
 
@@ -2600,11 +2585,13 @@ __lastModeration = {
           </div>
           <p class="text-sm mt-1 break-words">${esc(f.m.text || '')}</p>
           <div class="text-[11px] mt-1 ${st.cls}">${uid ? 'UID: ' + esc(uid).slice(0, 14) + '…' : 'UID не определён'} · ${esc(st.label)}</div>
-          ${f.m.moderationStatus === 'rejected'
-            ? '<div class="text-[11px] mt-1 text-rose-400">Отклонено ИИ-модератором' + (f.m.aiCategory ? (': ' + esc(f.m.aiCategory)) : '') + (f.m.aiReason ? (' — ' + esc(f.m.aiReason)) : '') + '</div>'
-            : (f.m.moderationStatus === 'flagged'
-              ? '<div class="text-[11px] mt-1 text-amber-400">На проверке (ИИ) · ответа нет или сбой</div>'
-              : '')}
+          ${(f.m.moderationStatus === 'flagged' || f.m.moderationStatus === 'rejected')
+            ? '<div class="text-[11px] mt-1 text-amber-400">' +
+              (f.m.moderationStatus === 'rejected' ? 'Отклонено ИИ · ' : 'Помечено ИИ · ') +
+              (f.m.category || f.m.aiCategory ? ('Категория: ' + esc(f.m.category || f.m.aiCategory)) : 'Категория: не указана') +
+              (f.m.reason || f.m.aiReason ? (' — ' + esc(f.m.reason || f.m.aiReason)) : '') +
+              '</div>'
+            : ''}
           <div class="flex gap-1.5 mt-2 flex-wrap">
             ${bt('Открыть чат', 'flagOpen', `data-f="${esc(fdata)}"`)}
             ${bt('Игнорировать', 'flagIgnore', `data-f="${esc(fdata)}"`)}
