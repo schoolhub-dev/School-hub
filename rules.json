@@ -86,6 +86,21 @@
         },
         "mutedUntil": {
           ".write": "auth != null && (root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true)"
+        },
+        "uname": {
+          ".write": "auth != null && $uid === auth.uid"
+        },
+        "unameLower": {
+          ".write": "auth != null && $uid === auth.uid"
+        },
+        "passHash": {
+          ".write": "auth != null && $uid === auth.uid"
+        },
+        "salt": {
+          ".write": "auth != null && $uid === auth.uid"
+        },
+        "regAt": {
+          ".write": "auth != null && $uid === auth.uid"
         }
       }
     },
@@ -114,6 +129,23 @@
       "$uid": {
         ".read": "auth != null && (auth.uid === $uid || root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true)",
         ".write": "auth != null && (auth.uid === $uid || root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true)"
+      }
+    },
+    "unames": {
+      "$uname": {
+        ".read": "auth != null",
+        ".write": "auth != null && ((!data.exists() && newData.child('uid').val() === auth.uid) || (data.exists() && data.child('uid').val() === auth.uid))"
+      }
+    },
+    "dms": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        "$peer": {
+          ".read": "auth != null && (auth.uid === $uid || auth.uid === $peer)",
+          "$key": {
+            ".write": "auth != null && (auth.uid === $uid || auth.uid === $peer) && newData.child('from').val() === auth.uid && (!root.child('bannedUsers').child(auth.uid).exists() || (root.child('bannedUsers').child(auth.uid).hasChild('until') && root.child('bannedUsers').child(auth.uid).child('until').val() > 0 && root.child('bannedUsers').child(auth.uid).child('until').val() < now) || root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true)"
+          }
+        }
       }
     }
   }
