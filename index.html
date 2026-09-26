@@ -18,9 +18,13 @@
     tailwind.config = { darkMode: 'class' };
     (function () {
       var saved = localStorage.getItem('sh_theme') || 'dark';
-      document.documentElement.classList.toggle('dark', saved === 'dark');
+      // 'coder20' — серое оформление поверх тёмной палитры
+      document.documentElement.classList.toggle('dark', saved !== 'light');
+      document.documentElement.classList.toggle('theme-coder20', saved === 'coder20');
       var accent = localStorage.getItem('sh_accent') || 'indigo';
       document.documentElement.setAttribute('data-accent', accent);
+      var mc = document.querySelector('meta[name="theme-color"]');
+      if (mc) mc.setAttribute('content', saved === 'coder20' ? '#111827' : (saved === 'light' ? '#f8fafc' : '#0f172a'));
     })();
   </script>
 
@@ -46,6 +50,12 @@
     .avatar-sm { width: 28px; height: 28px; font-size: 12px; }
     .avatar-md { width: 40px; height: 40px; font-size: 16px; }
     .avatar-lg { width: 64px; height: 64px; font-size: 24px; }
+    /* Аватар-эмодзи (выбирается пользователем) */
+    .avatar-emoji { line-height: 1; background: none !important; }
+    .avatar-sm.avatar-emoji { font-size: 15px; }
+    .avatar-md.avatar-emoji { font-size: 21px; }
+    .avatar-lg.avatar-emoji { font-size: 32px; }
+    .avatar.clickable { cursor: pointer; }
 
     .accent-dot { width: 36px; height: 36px; border-radius: 9999px; border: 3px solid transparent; cursor: pointer; transition: transform .15s; }
     .accent-dot:hover { transform: scale(1.1); }
@@ -155,6 +165,104 @@
     .msg-hidden { display: none !important; }
     .msg-highlight { background: rgba(251,191,36,.25) !important; }
     .msg-flagmark { font-size: 10px; opacity: .8; }
+
+    /* Галочка администратора у ника в чате */
+    .admin-ck {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 13px; height: 13px; border-radius: 9999px;
+      background: #10b981; color: #fff;
+      font-size: 9px; font-weight: 800; line-height: 1;
+      flex-shrink: 0; vertical-align: middle;
+    }
+    .admin-ck.hidden { display: none !important; }
+
+    /* Закреплённое сообщение */
+    .pin-flag { font-size: 10px; }
+    .msg-pinned-bubble { box-shadow: 0 0 0 1.5px rgba(251,191,36,.55); }
+    .pin-jump-flash { animation: fade-up .3s ease-out; background: rgba(251,191,36,.3) !important; border-radius: 12px; }
+
+    /* Медиа в объявлениях */
+    .ann-media { margin-top: 10px; }
+    .ann-media img, .ann-media video { width: 100%; max-height: 320px; border-radius: 12px; display: block; background: #0f172a; }
+    .ann-media img { cursor: zoom-in; }
+    .ann-media-cap { font-size: 10px; color: #64748b; margin-top: 4px; }
+
+    /* Предпросмотр вложения перед публикацией */
+    .ann-draft-prev img, .ann-draft-prev video { width: 100%; max-height: 200px; border-radius: 12px; display: block; }
+
+    /* Обратный отсчёт до конца урока */
+    #lesson-bar { }
+    .lesson-fill { height: 100%; border-radius: 9999px; background: linear-gradient(90deg,#6366f1,#22d3ee); transition: width .4s linear; }
+    .lesson-fill.warn { background: linear-gradient(90deg,#f59e0b,#f43f5e); }
+
+    /* Сетка выбора эмодзи-аватара */
+    .emoji-pick {
+      width: 42px; height: 42px; border-radius: 12px; font-size: 22px; line-height: 1;
+      background: rgba(148,163,184,.08); border: 1px solid transparent; cursor: pointer;
+    }
+    .emoji-pick:hover { background: rgba(148,163,184,.18); }
+    .emoji-pick.active { border-color: #6366f1; background: rgba(99,102,241,.15); }
+    .emoji-pick:focus-visible { outline: 2px solid #6366f1; outline-offset: 2px; }
+
+    /* ============================================================
+       ТЕМА coder20: всё серое, приложение слева, «обруч» с часами
+       ============================================================ */
+    /* Фильтр вешаем на ПРЯМЫХ потомков body: их собственное позиционирование
+       (fixed/sticky у модалок) не ломается, в отличие от filter на html/body. */
+    html.theme-coder20 body > * { filter: grayscale(1); }
+    /* выбор цвета акцента остаётся цветным, иначе кружки не различить */
+    html.theme-coder20 .accent-dot { filter: grayscale(0); }
+
+    html.theme-coder20 #main-screen,
+    html.theme-coder20 #auth-screen { position: relative; --c20-aside: clamp(228px, 32vw, 420px); }
+
+    .c20-aside { display: none; }
+
+    @media (min-width: 600px) {
+      /* прижимаем содержимое к левому краю */
+      html.theme-coder20 #main-screen > *:not(.c20-aside),
+      html.theme-coder20 #auth-screen > *:not(.c20-aside) {
+        width: calc(100% - var(--c20-aside));
+        max-width: none;
+        margin-left: 0;
+        margin-right: auto;
+      }
+      /* освободившееся место занимает обруч */
+      html.theme-coder20 .c20-aside {
+        display: flex;
+        position: absolute;
+        top: 0; right: 0; bottom: 0;
+        width: var(--c20-aside);
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        padding: 20px 16px;
+        border-left: 1px solid rgba(148,163,184,.16);
+        pointer-events: none;
+      }
+    }
+
+    .c20-dial { position: relative; width: 100%; max-width: 260px; aspect-ratio: 1 / 1; }
+    .c20-svg { width: 100%; height: 100%; display: block; overflow: visible; }
+    .c20-track { fill: none; stroke: rgba(148,163,184,.26); stroke-width: 2; }
+    .c20-tick { stroke: rgba(148,163,184,.45); stroke-width: 2; stroke-linecap: round; }
+    .c20-arc {
+      fill: none; stroke: #e2e8f0; stroke-width: 5; stroke-linecap: round;
+      stroke-dasharray: 565.4867; stroke-dashoffset: 565.4867;
+      transition: stroke-dashoffset .95s linear;
+    }
+    .c20-center {
+      position: absolute; inset: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; text-align: center; padding: 14%;
+    }
+    .c20-time {
+      font-size: clamp(19px, 3vw, 30px); font-weight: 800; line-height: 1;
+      letter-spacing: -.02em; font-variant-numeric: tabular-nums; color: #f1f5f9;
+    }
+    .c20-sec { margin-top: 5px; font-size: 11px; color: #94a3b8; font-variant-numeric: tabular-nums; }
+    .c20-date { margin-top: 9px; font-size: 11px; line-height: 1.3; color: #cbd5e1; }
+    .c20-legend { font-size: 10px; letter-spacing: .2em; text-transform: uppercase; color: #64748b; }
 
     /* ==== Светлая тема ==== */
     html:not(.dark) body { background: #f8fafc; color: #0f172a; }
@@ -340,18 +448,28 @@
             <span id="settings-unread" class="unread-badge hidden"></span>
           </button>
         </nav>
+
+        <!-- Обратный отсчёт до конца урока -->
+        <div id="lesson-bar" class="hidden mx-3 mb-2 rounded-xl bg-slate-900/80 border border-slate-800 px-3 py-2"></div>
       </div>
     </div>
 
     <main class="flex-1 w-full max-w-md mx-auto px-4 py-4 pb-safe">
       <section id="tab-schedule" class="tab space-y-4"></section>
       <section id="tab-homework" class="tab hidden space-y-3"></section>
-      <section id="tab-announcements" class="tab hidden space-y-3"></section>
+      <section id="tab-announcements" class="tab hidden space-y-3">
+        <div id="ann-admin-box" class="hidden"></div>
+        <div id="ann-list" class="space-y-3"></div>
+      </section>
       <section id="tab-chat" class="tab hidden flex flex-col">
         <div class="flex items-center justify-between mb-2">
           <p class="text-xs text-slate-400">Ты в чате как <button id="chat-nick" class="font-bold accent-text underline decoration-dotted">—</button></p>
-          <button id="chat-search-btn" class="text-xs text-slate-400 hover:text-slate-200 px-2 py-1 rounded">🔍 Поиск</button>
+          <div class="flex items-center gap-2">
+            <span id="chat-online" class="text-[11px] font-semibold text-slate-400 flex items-center gap-1" title="Сколько сейчас онлайн">🔴 —</span>
+            <button id="chat-search-btn" class="text-xs text-slate-400 hover:text-slate-200 px-2 py-1 rounded">🔍 Поиск</button>
+          </div>
         </div>
+        <div id="chat-pinned" class="hidden space-y-2 mb-2"></div>
         <div id="chat-search-box" class="chat-search hidden">
           <input id="chat-search-input" type="text" placeholder="Поиск по сообщениям…"
                  class="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-sm placeholder-slate-500 outline-none focus:border-indigo-500">
@@ -482,6 +600,30 @@
     </div>
   </div>
 
+  <!-- Просмотр фото/видео на весь экран -->
+  <div id="media-modal" class="hidden fixed inset-0 z-[80] bg-black/90 backdrop-blur-sm p-3 flex items-center justify-center">
+    <button id="media-close" class="absolute top-3 right-4 h-10 w-10 rounded-full bg-white/10 text-white text-lg font-bold" aria-label="Закрыть">✕</button>
+    <div id="media-body" class="max-h-full w-full max-w-3xl overflow-auto"></div>
+  </div>
+
+  <!-- Карточка пользователя (аватар, bio) -->
+  <div id="user-modal" class="hidden fixed inset-0 z-[75] bg-black/70 backdrop-blur-sm p-4 flex items-center justify-center">
+    <div class="w-full max-w-xs rounded-2xl bg-slate-900 border border-slate-800 p-5 shadow-2xl relative">
+      <button id="user-close" class="absolute top-2.5 right-3 h-8 w-8 rounded-full bg-slate-800 flex items-center justify-center font-bold hover:bg-slate-700" aria-label="Закрыть">✕</button>
+      <div class="flex flex-col items-center text-center">
+        <div id="user-avatar"></div>
+        <div class="flex items-center gap-1.5 mt-3">
+          <span id="user-nick" class="font-bold text-base truncate"></span>
+          <span id="user-admin" class="admin-ck hidden" title="Администратор">✓</span>
+        </div>
+        <div id="user-class" class="text-[11px] text-slate-500 mt-0.5"></div>
+        <p id="user-bio" class="text-xs text-slate-300 mt-3 break-words whitespace-pre-wrap w-full"></p>
+        <p id="user-bio-empty" class="hidden text-xs text-slate-600 mt-3">Пользователь ничего о себе не написал</p>
+        <div id="user-admin-note" class="hidden mt-3 w-full rounded-lg bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-2 text-[11px] text-emerald-300">👑 Администратор класса</div>
+      </div>
+    </div>
+  </div>
+
   <noscript><p class="p-5 text-center text-slate-400">Для работы приложения включите JavaScript.</p></noscript>
 
   <!-- ======================= Скрипты ======================= -->
@@ -527,10 +669,109 @@
     bdays: 'sh_bdays',
     dnd: 'sh_dnd',
     lastRead: 'sh_last_read',
+    avatar: 'sh_avatar',
+    bio: 'sh_bio',
   };
 
   const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
   const DAY_NAMES = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
+
+  /* ============================================================
+     ТЕМЫ ОФОРМЛЕНИЯ: dark | light | coder20
+     coder20 — полностью серое оформление, содержимое прижато влево,
+     а справа в свободном месте стоит «обруч» с временем и датой.
+     ============================================================ */
+  const THEMES = ['dark', 'light', 'coder20'];
+  const THEME_LABELS = { dark: '🌙 Тёмная', light: '☀️ Светлая', coder20: '◴ coder20' };
+  const C20_R = 90;                       // радиус обруча в координатах viewBox
+  const C20_CIRC = 2 * Math.PI * C20_R;   // длина его окружности
+
+  function isCoder20() { return document.documentElement.classList.contains('theme-coder20'); }
+  function curTheme() {
+    const t = localStorage.getItem(LS.theme);
+    return THEMES.indexOf(t) === -1 ? 'dark' : t;
+  }
+  // Применить тему: dark | light | coder20
+  function applyTheme(theme) {
+    const t = THEMES.indexOf(theme) === -1 ? 'dark' : theme;
+    localStorage.setItem(LS.theme, t);
+    const root = document.documentElement;
+    root.classList.toggle('dark', t !== 'light');
+    root.classList.toggle('theme-coder20', t === 'coder20');
+    const mc = document.querySelector('meta[name="theme-color"]');
+    if (mc) mc.setAttribute('content', t === 'coder20' ? '#111827' : (t === 'light' ? '#f8fafc' : '#0f172a'));
+    if (t === 'coder20') { mountCoder20(); startCoder20(); }
+    else stopCoder20();
+    return t;
+  }
+
+  /* ---- «Обруч» с часами ---- */
+  const C20_TICKS = (function () {
+    let s = '';
+    for (let i = 0; i < 12; i++) s += '<line class="c20-tick" x1="100" y1="3" x2="100" y2="15" transform="rotate(' + (i * 30) + ' 100 100)"></line>';
+    return s;
+  })();
+  const C20_RING_HTML = `
+    <div class="c20-aside">
+      <div class="c20-dial">
+        <svg viewBox="0 0 200 200" class="c20-svg" aria-hidden="true">
+          <circle class="c20-track" cx="100" cy="100" r="${C20_R}"></circle>
+          ${C20_TICKS}
+          <circle class="c20-arc" cx="100" cy="100" r="${C20_R}" transform="rotate(-90 100 100)"></circle>
+        </svg>
+        <div class="c20-center">
+          <div class="c20-time">--:--</div>
+          <div class="c20-sec">-- сек</div>
+          <div class="c20-date">—</div>
+        </div>
+      </div>
+      <div class="c20-legend">coder20</div>
+    </div>`;
+  // Обруч нужен на обоих экранах (вход и основной) — вставляем один раз в каждый.
+  function mountCoder20() {
+    ['#auth-screen', '#main-screen'].forEach((sel) => {
+      const host = $(sel);
+      if (!host || host.querySelector('.c20-aside')) return;
+      host.insertAdjacentHTML('beforeend', C20_RING_HTML);
+    });
+  }
+  function tickCoder20() {
+    const d = new Date();
+    const p2 = (n) => String(n).padStart(2, '0');
+    const time = p2(d.getHours()) + ':' + p2(d.getMinutes());
+    const sec = p2(d.getSeconds());
+    let date;
+    try {
+      date = d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })
+          + ', ' + d.toLocaleDateString('ru-RU', { weekday: 'long' });
+    } catch (e) {
+      date = p2(d.getDate()) + '.' + p2(d.getMonth() + 1) + '.' + d.getFullYear();
+    }
+    // Дуга показывает ход секунд внутри текущей минуты.
+    const off = (C20_CIRC * (1 - (d.getSeconds() + d.getMilliseconds() / 1000) / 60)).toFixed(2);
+    $$('.c20-aside').forEach((a) => {
+      const t = a.querySelector('.c20-time');
+      if (t) t.textContent = time;
+      const s = a.querySelector('.c20-sec');
+      if (s) s.textContent = sec + ' сек';
+      const dt = a.querySelector('.c20-date');
+      if (dt) dt.textContent = date;
+      const arc = a.querySelector('.c20-arc');
+      if (arc) arc.setAttribute('stroke-dashoffset', off);
+    });
+  }
+  let c20Timer = null;
+  function startCoder20() {
+    mountCoder20();
+    tickCoder20();
+    if (c20Timer) return;
+    c20Timer = setInterval(tickCoder20, 1000);
+  }
+  function stopCoder20() {
+    if (!c20Timer) return;
+    clearInterval(c20Timer);
+    c20Timer = null;
+  }
 
   const state = { sel: {}, step: 1 };
   const admin = {
@@ -584,6 +825,36 @@
   function nick() { return localStorage.getItem(LS.nick) || ''; }
   function setNick(n) { localStorage.setItem(LS.nick, n); }
 
+  /* ---- Аватар-эмодзи и «О себе» ---- */
+  const BIO_MAX = 140;
+  // Принимаем только короткий «emoji» без HTML-символов (вставляется в innerHTML).
+  function safeEmoji(v) {
+    const s = String(v == null ? '' : v).trim();
+    if (!s) return '';
+    if (/[<>&"'\\`]/.test(s)) return '';
+    if (Array.from(s).length > 4) return '';
+    return s;
+  }
+  function myAvatar() { return safeEmoji(localStorage.getItem(LS.avatar)); }
+  function setMyAvatar(e) {
+    const v = safeEmoji(e);
+    if (v) localStorage.setItem(LS.avatar, v);
+    else localStorage.removeItem(LS.avatar);
+  }
+  function myBio() { return String(localStorage.getItem(LS.bio) || '').slice(0, BIO_MAX); }
+  function setMyBio(t) { localStorage.setItem(LS.bio, String(t == null ? '' : t).slice(0, BIO_MAX)); }
+  // Набор эмодзи для выбора аватара
+  const AVATAR_EMOJI = [
+    '😀','😎','🤓','🧐','😴','🤔','😇','🙃','😌','🥳','🤩','😇',
+    '🐱','🐶','🦊','🐼','🐸','🐵','🦉','🐧','🦁','🐯','🐰','🐻',
+    '⚽','🏀','🏈','🎾','🎯','🎮','🎧','🎸','🎤','🏆','🚀','⚡',
+    '🔥','⭐','🌟','💎','🍀','🌈','☀️','🌙','🍎','🍕','🍔','🍩',
+    '👾','🤖','👻','💀','🎃','🦄','🐉','🍄','🌵','🌻','🌊','❄️',
+  ];
+  function randomAvatar() {
+    return AVATAR_EMOJI[Math.floor(Math.random() * AVATAR_EMOJI.length)];
+  }
+
   function ensureProfile() {
     if (!window.HubAuth || !HubAuth.uid) return;
     const s = state.sel;
@@ -591,7 +862,25 @@
       nick: nick() || 'Ученик',
       class: (s && s.clname) ? s.clname : null,
       deviceId: deviceId(),
+      avatar: myAvatar(),
+      bio: myBio(),
     }).catch(() => {});
+  }
+  // Сохранить «О себе»/аватар. Локально — мгновенно (интерфейс обновляется сразу),
+  // синхронизация с базой уходит фоном: если нет прав/сети, честно предупреждаем.
+  function saveProfileExtras(patch) {
+    if (Object.prototype.hasOwnProperty.call(patch, 'bio')) setMyBio(patch.bio);
+    if (Object.prototype.hasOwnProperty.call(patch, 'avatar')) setMyAvatar(patch.avatar);
+    const uid = (window.HubAuth && HubAuth.uid) || '';
+    const jobs = [];
+    if (uid && Object.prototype.hasOwnProperty.call(patch, 'bio')) jobs.push(db.ref('/users/' + uid + '/bio').set(myBio()));
+    if (uid && Object.prototype.hasOwnProperty.call(patch, 'avatar')) jobs.push(db.ref('/users/' + uid + '/avatar').set(myAvatar()));
+    if (jobs.length) {
+      Promise.all(jobs)
+        .then(() => { ensureProfile(); })
+        .catch(() => showToast('Сохранено только на этом устройстве'));
+    }
+    return Promise.resolve();
   }
 
   function checkWarnings() {
@@ -659,12 +948,15 @@
     for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 360;
     return h;
   }
-  function avatarHtml(name, size) {
+  // emoji — необязательный эмодзи-аватар; если его нет, рисуем первую букву ника.
+  function avatarHtml(name, size, emoji) {
     const n = String(name || '?').trim() || '?';
+    const sizeCls = size === 'sm' ? 'avatar-sm' : size === 'lg' ? 'avatar-lg' : 'avatar-md';
+    const em = safeEmoji(emoji);
+    if (em) return `<span class="avatar ${sizeCls} avatar-emoji" title="${esc(n)}">${esc(em)}</span>`;
     const initial = n[0].toUpperCase();
     const hue = avatarHue(n);
-    const sizeCls = size === 'sm' ? 'avatar-sm' : size === 'lg' ? 'avatar-lg' : 'avatar-md';
-    return `<span class="avatar ${sizeCls}" style="background:hsl(${hue},55%,45%);color:#fff">${esc(initial)}</span>`;
+    return `<span class="avatar ${sizeCls}" style="background:hsl(${hue},55%,45%);color:#fff" title="${esc(n)}">${esc(initial)}</span>`;
   }
 
   const P = {
@@ -681,6 +973,57 @@
   function curClassKey() {
     const s = state.sel;
     return `${s.cid}|${s.sid}|${s.clid}`;
+  }
+
+  /* ============================================================
+     ГАЛОЧКА АДМИНИСТРАТОРА В ЧАТЕ
+     Список UID админов: /roles/{uid} === 'admin' + /admins/{uid} === true
+     + HARDCODE_ADMIN_UIDS. У ника автора рисуется галочка (✓).
+     ============================================================ */
+  const adminUidSet = new Set();
+  function isAdminUid(uid) {
+    if (!uid) return false;
+    if (HARDCODE_ADMIN_UIDS.indexOf(uid) !== -1) return true;
+    if (window.HubAuth && HubAuth.uid && uid === HubAuth.uid && isAdmin()) return true;
+    return adminUidSet.has(uid);
+  }
+  // Разовая загрузка ветки /admins (живая подписка на /roles — в loadMainData)
+  function loadAdminsBranch() {
+    return db.ref('/admins').once('value').then((s) => {
+      const v = s.val() || {};
+      Object.keys(v).forEach((uid) => { if (v[uid] === true) adminUidSet.add(uid); });
+      paintAdminChecks();
+    }).catch(() => {});
+  }
+  // Показать/скрыть галочки по текущему списку админов (без перерисовки чата)
+  function paintAdminChecks() {
+    $$('#chat-messages [data-uid]').forEach((el) => {
+      const ck = el.querySelector('.admin-ck');
+      if (!ck) return;
+      ck.classList.toggle('hidden', !isAdminUid(el.getAttribute('data-uid')));
+    });
+  }
+
+  /* ============================================================
+     ЗАПРЕЩЁННЫЕ ФРАЗЫ ДЛЯ ЧАТА
+     Такое нельзя скидывать в чат (например, пароль админа).
+     Сравнение устойчиво к регистру, пробелам и лишним символам.
+     ============================================================ */
+  const FORBIDDEN_TEXTS = [
+    '7G_Nkdk_$ch00l_Hub_#2026_xX',
+  ];
+  function squeezeText(s) {
+    return String(s == null ? '' : s).toLowerCase().replace(/[^0-9a-zа-яё]+/gi, '');
+  }
+  const FORBIDDEN_NORM = FORBIDDEN_TEXTS.map(squeezeText).filter(Boolean);
+  // Возвращает найденную запрещённую фразу (в исходном виде) или null
+  function forbiddenHit(text) {
+    const t = squeezeText(text);
+    if (!t) return null;
+    for (let i = 0; i < FORBIDDEN_NORM.length; i++) {
+      if (t.indexOf(FORBIDDEN_NORM[i]) !== -1) return FORBIDDEN_TEXTS[i];
+    }
+    return null;
   }
 
   /* ============================================================
@@ -1490,6 +1833,16 @@
     addRef(mainRefs, root.child('chat')).on('child_changed', onChatChanged);
     addRef(mainRefs, root.child('chat')).on('child_removed', (snap) => forgetMsg(snap.key));
     addRef(mainRefs, root.child('typing')).on('value', onTypingUpdate);
+    addRef(mainRefs, root.child('lessons')).on('value', renderLessons);
+    // Счётчик активных онлайн в шапке чата
+    addRef(mainRefs, db.ref('/online')).on('value', onOnlineUpdate);
+    // Галочки админов: живая подписка на /roles
+    addRef(mainRefs, db.ref('/roles')).on('value', (snap) => {
+      const rv = snap.val() || {};
+      Object.keys(rv).forEach((uid) => { if (rv[uid] === 'admin') adminUidSet.add(uid); });
+      paintAdminChecks();
+    });
+    loadAdminsBranch();
     refreshChat();
     startChatPoll();
     updateUnreadBadge();
@@ -1529,6 +1882,189 @@
     if (!already && CTRL_RE.test(a.text)) showToast(a.text);
   }
 
+  /* ============================================================
+     ЗВОНКИ И ОБРАТНЫЙ ОТСЧЁТ ДО КОНЦА УРОКА
+     Расписание звонков лежит в classes/{class}/lessons — массив
+     строк "HH:MM-HH:MM". Если ветки нет, берём стандартные звонки.
+     ============================================================ */
+  const DEFAULT_BELLS = [
+    '08:00-08:45', '08:55-09:40', '09:50-10:35', '10:55-11:40',
+    '11:50-12:35', '12:45-13:30', '13:40-14:25',
+  ];
+  let bellsCache = null;   // null = ветки нет, используем стандартные
+  let lessonTimer = null;
+  let lessonTick = 0;
+
+  function renderLessons(snap) { bellsCache = snap.val() || null; tickLessonClock(); }
+  function bellList() {
+    const raw = Array.isArray(bellsCache) ? bellsCache : (bellsCache ? Object.values(bellsCache) : null);
+    if (raw) {
+      const parsed = raw.map(parseBell).filter(Boolean);
+      if (parsed.length) return parsed;
+    }
+    return DEFAULT_BELLS.map(parseBell).filter(Boolean);
+  }
+  // "08:00-08:45" -> { s: 480, e: 525 }
+  function parseBell(str) {
+    const m = String(str || '').match(/^\s*(\d{1,2})\s*:\s*(\d{2})\s*[-–—]\s*(\d{1,2})\s*:\s*(\d{2})\s*$/);
+    if (!m) return null;
+    const s = Number(m[1]) * 60 + Number(m[2]);
+    const e = Number(m[3]) * 60 + Number(m[4]);
+    if (!(e > s) || s > 24 * 60) return null;
+    return { s: s, e: e };
+  }
+  function todayLessons() {
+    const d = scheduleCache || {};
+    const k = DAY_KEYS[new Date().getDay()];
+    return Array.isArray(d[k]) ? d[k] : [];
+  }
+  function fmtCountdown(ms) {
+    const sec = Math.max(0, Math.round(ms / 1000));
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const s = sec % 60;
+    const p = (n) => String(n).padStart(2, '0');
+    return h > 0 ? `${h}:${p(m)}:${p(s)}` : `${p(m)}:${p(s)}`;
+  }
+  // Текущее состояние уроков: внутри урока / перерыв / до первого / после последнего
+  function lessonStatus() {
+    const bells = bellList();
+    const subjects = todayLessons();
+    if (!subjects.length) return { state: 'noday', total: 0 };
+    const now = new Date();
+    const cur = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
+    for (let i = 0; i < bells.length; i++) {
+      const b = bells[i];
+      if (i >= subjects.length) break;
+      const subj = subjects[i];
+      if (cur >= b.s && cur < b.e) {
+        return { state: 'lesson', idx: i, total: bells.length, subject: subj, left: (b.e - cur) * 60000, span: (b.e - b.s) * 60000, done: (cur - b.s) * 60000 };
+      }
+      if (cur < b.s) {
+        return { state: 'before', idx: i, total: bells.length, subject: subj, left: (b.s - cur) * 60000, span: (bells[i - 1] ? (b.s - bells[i - 1].e) : 45) * 60000 };
+      }
+    }
+    return { state: 'after', total: bells.length };
+  }
+  function tickLessonClock() {
+    lessonTick = (lessonTick || 0) + 1;
+    const bar = $('#lesson-bar');
+    // Карточку на вкладке «Расписание» обновляем реже — раз в 15 сек
+    if (lessonTick % 15 === 1) {
+      const card = $('#lesson-card');
+      if (card) card.innerHTML = lessonStatusCardInner();
+    }
+    if (!bar) return;
+    if ($('#main-screen').classList.contains('hidden')) { bar.classList.add('hidden'); return; }
+    const st = lessonStatus();
+    if (st.state === 'noday') { bar.classList.add('hidden'); bar.innerHTML = ''; return; }
+    bar.classList.remove('hidden');
+    if (st.state === 'lesson') {
+      const pct = Math.max(0, Math.min(100, (st.done / st.span) * 100));
+      bar.innerHTML = `
+        <div class="flex items-center gap-2">
+          <span class="text-[13px]">⏳</span>
+          <span class="text-[11px] font-bold truncate">До конца урока${st.subject ? ': ' + esc(st.subject) : ''}</span>
+          <span class="ml-auto text-[13px] font-extrabold tabular-nums accent-text">${fmtCountdown(st.left)}</span>
+        </div>
+        <div class="mt-1.5 h-1 w-full rounded-full bg-slate-800 overflow-hidden">
+          <div class="lesson-fill${st.left < 5 * 60000 ? ' warn' : ''}" style="width:${pct.toFixed(1)}%"></div>
+        </div>`;
+    } else if (st.state === 'before') {
+      bar.innerHTML = `
+        <div class="flex items-center gap-2">
+          <span class="text-[13px]">⏰</span>
+          <span class="text-[11px] font-bold truncate">До урока${st.subject ? ': ' + esc(st.subject) : ''}</span>
+          <span class="ml-auto text-[13px] font-extrabold tabular-nums accent-text">${fmtCountdown(st.left)}</span>
+        </div>`;
+    } else {
+      bar.innerHTML = `<div class="flex items-center gap-2"><span class="text-[13px]">🌙</span><span class="text-[11px] font-bold text-slate-400">Уроки закончились</span></div>`;
+    }
+  }
+  function startLessonClock() {
+    if (lessonTimer) return;
+    tickLessonClock();
+    lessonTimer = setInterval(tickLessonClock, 1000);
+  }
+  // Карточка отсчёта на вкладке «Расписание» (та же логика, что у верхней плашки)
+  function lessonStatusCard() {
+    return `<div id="lesson-card">${lessonStatusCardInner()}</div>`;
+  }
+  function lessonStatusCardInner() {
+    const st = lessonStatus();
+    if (st.state === 'noday') {
+      return `<div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
+        <div class="flex items-center gap-2"><span class="text-base">😌</span>
+          <div><div class="font-bold text-sm">Сегодня уроков нет</div>
+          <div class="text-[11px] text-slate-500">Отсчёт до конца урока появится в день занятий</div></div>
+        </div></div>`;
+    }
+    if (st.state === 'after') {
+      return `<div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
+        <div class="flex items-center gap-2"><span class="text-base">🌙</span>
+          <div><div class="font-bold text-sm">Уроки закончились</div>
+          <div class="text-[11px] text-slate-500">Отличный день!</div></div>
+        </div></div>`;
+    }
+    const isLesson = st.state === 'lesson';
+    const pct = isLesson ? Math.max(0, Math.min(100, (st.done / st.span) * 100)) : 0;
+    return `
+      <div class="rounded-2xl bg-slate-900 border ${isLesson ? 'accent-border' : 'border-slate-800'} p-4 fade-up">
+        <div class="flex items-center gap-2">
+          <span class="text-base">${isLesson ? '⏳' : '⏰'}</span>
+          <div class="min-w-0 flex-1">
+            <div class="font-bold text-sm truncate">${isLesson ? 'До конца урока' : 'До урока'}${st.subject ? ': ' + esc(st.subject) : ''}</div>
+            <div class="text-[11px] text-slate-500">Урок ${(st.idx + 1)} из ${st.total}</div>
+          </div>
+          <span class="text-2xl font-extrabold tabular-nums accent-text">${fmtCountdown(st.left)}</span>
+        </div>
+        ${isLesson ? `<div class="mt-2 h-1.5 w-full rounded-full bg-slate-800 overflow-hidden">
+          <div class="lesson-fill${st.left < 5 * 60000 ? ' warn' : ''}" style="width:${pct.toFixed(1)}%"></div></div>` : ''}
+      </div>`;
+  }
+
+  /* ============================================================
+     КАРТОЧКА ПОЛЬЗОВАТЕЛЯ: аватар, ник, класс, «О себе»
+     ============================================================ */
+  function closeUserCard() {
+    const m = $('#user-modal');
+    if (!m) return;
+    m.classList.add('hidden');
+    m.classList.remove('flex');
+  }
+  function openUserCard(uid, fallbackNick) {
+    const m = $('#user-modal');
+    if (!m) return;
+    const u = String(uid || '');
+    const isMe = !!(window.HubAuth && HubAuth.uid && u === HubAuth.uid);
+    const name = isMe ? (nick() || 'Ученик') : (fallbackNick || 'Ученик');
+    const adminOn = isAdminUid(u);
+    $('#user-avatar').innerHTML = avatarHtml(name, 'lg', isMe ? myAvatar() : '');
+    $('#user-nick').textContent = name;
+    $('#user-admin').classList.toggle('hidden', !adminOn);
+    $('#user-admin-note').classList.toggle('hidden', !adminOn);
+    const bio = $('#user-bio'), bioEmpty = $('#user-bio-empty');
+    bio.textContent = '';
+    bio.classList.add('hidden');
+    bioEmpty.classList.add('hidden');
+    $('#user-class').textContent = '';
+    m.classList.remove('hidden');
+    m.classList.add('flex');
+    if (!u) return;
+    const job = isMe
+      ? Promise.resolve({ nick: nick(), class: (state.sel || {}).clname, bio: myBio(), avatar: myAvatar() })
+      : HubAuth.fetchProfile(u);
+    job.then((p) => {
+      if (!p) return;
+      if (!isMe) $('#user-avatar').innerHTML = avatarHtml(p.nick || name, 'lg', p.avatar);
+      const cls = p.class || (p.homeClass && p.homeClass.clname) || '';
+      if (cls) $('#user-class').textContent = cls;
+      const b = String(p.bio || '').trim().slice(0, BIO_MAX);
+      if (b) { bio.textContent = b; bio.classList.remove('hidden'); }
+      else bioEmpty.classList.remove('hidden');
+    }).catch(() => {});
+  }
+
   /* ---- Вкладки ---- */
   function switchTab(name) {
     $$('.tab-btn').forEach((b) => {
@@ -1544,7 +2080,11 @@
       refreshChat();
       markChatRead();
       paintChatPermissions();
+      paintPinnedBar();
+      paintOnlineCount();
     }
+    if (name === 'announcements') paintAnnCompose();
+    if (name === 'schedule') tickLessonClock();
     if (name === 'settings') { renderSettingsTab(); paintAdminBadge(); }
   }
 
@@ -1554,6 +2094,8 @@
   function renderSchedule(snap) {
     scheduleCache = snap.val() || {};
     paintSchedule();
+    // Отсчёт зависит от расписания на сегодня — обновляем сразу
+    tickLessonClock();
   }
   function paintSchedule() {
     const data = scheduleCache;
@@ -1589,7 +2131,7 @@
       body = order.map((k) => dayBlock(k, DAY_NAMES[DAY_KEYS.indexOf(k)], '')).join('');
     }
     const copyBtn = `<button id="sch-copy" class="w-full rounded-xl bg-slate-800 hover:bg-slate-700 py-2.5 text-xs font-bold">📋 Скопировать расписание</button>`;
-    el.innerHTML = head + body + copyBtn;
+    el.innerHTML = lessonStatusCard() + head + body + copyBtn;
     $$('.sview').forEach((b) => b.addEventListener('click', () => { scheduleView = b.dataset.sview; paintSchedule(); }));
     $('#sch-copy').addEventListener('click', copySchedule);
   }
@@ -1752,30 +2294,306 @@
     }));
   }
 
-  /* ---- Объявления ---- */
+  /* ============================================================
+     ОБЪЯВЛЕНИЯ: публикация (только админ) + фото/видео + закрепление
+     Запись: { text, createdAt, author, authorUid, pinned?, media? }
+     media: { kind: 'image'|'video', mime, name, size, data } — data-URL.
+     ============================================================ */
   let annCache = [];
+  const ANN_IMG_MAX_OUT = 900 * 1024;    // ~900 КБ после сжатия (base64)
+  const ANN_VIDEO_MAX = 3 * 1024 * 1024; // 3 МБ на видео
+  let annDraft = null;                   // черновик вложения для формы объявления
+
+  function fmtBytes(n) {
+    const v = Number(n) || 0;
+    if (v < 1024) return v + ' Б';
+    if (v < 1024 * 1024) return Math.round(v / 1024) + ' КБ';
+    return (v / (1024 * 1024)).toFixed(1) + ' МБ';
+  }
+  function readFileDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onerror = () => reject(new Error('Не удалось прочитать файл'));
+      r.onload = () => resolve(String(r.result || ''));
+      r.readAsDataURL(file);
+    });
+  }
+  // Сжатие фото через canvas: не шире 1280px, JPEG quality 0.72
+  function compressImageFile(file, maxSide, quality) {
+    return new Promise((resolve, reject) => {
+      readFileDataUrl(file).then((dataUrl) => {
+        const img = new Image();
+        img.onerror = () => reject(new Error('Не удалось открыть фото'));
+        img.onload = () => {
+          let w = img.naturalWidth || img.width;
+          let h = img.naturalHeight || img.height;
+          if (!w || !h) return reject(new Error('Пустое изображение'));
+          const k = Math.min(1, (maxSide || 1280) / Math.max(w, h));
+          w = Math.max(1, Math.round(w * k));
+          h = Math.max(1, Math.round(h * k));
+          const c = document.createElement('canvas');
+          c.width = w; c.height = h;
+          const ctx = c.getContext('2d');
+          ctx.fillStyle = '#0f172a';
+          ctx.fillRect(0, 0, w, h);
+          ctx.drawImage(img, 0, 0, w, h);
+          let out = '';
+          try { out = c.toDataURL('image/jpeg', quality || 0.72); } catch (e) { out = ''; }
+          if (!out || out.indexOf('data:image/') !== 0) return reject(new Error('Не удалось сжать фото'));
+          resolve(out);
+        };
+        img.src = dataUrl;
+      }).catch(reject);
+    });
+  }
+  // Файл → вложение объявления (фото сжимается, видео копируется как есть)
+  function prepareAnnMedia(file) {
+    return new Promise((resolve, reject) => {
+      if (!file) return reject(new Error('Файл не выбран'));
+      const type = String(file.type || '');
+      const base = { name: String(file.name || 'файл').slice(0, 60), size: file.size || 0 };
+      if (/^video\//i.test(type)) {
+        if (base.size > ANN_VIDEO_MAX) {
+          return reject(new Error('Видео слишком большое — максимум ' + fmtBytes(ANN_VIDEO_MAX)));
+        }
+        readFileDataUrl(file)
+          .then((d) => resolve(Object.assign({}, base, { kind: 'video', mime: type, data: d })))
+          .catch(() => reject(new Error('Не удалось прочитать видео')));
+        return;
+      }
+      if (/^image\//i.test(type)) {
+        compressImageFile(file, 1280, 0.72)
+          .then((d) => {
+            if (d.length > ANN_IMG_MAX_OUT) {
+              throw new Error('Фото слишком большое — выберите снимок поменьше');
+            }
+            resolve(Object.assign({}, base, { kind: 'image', mime: 'image/jpeg', data: d, size: d.length }));
+          })
+          .catch(reject);
+        return;
+      }
+      reject(new Error('Можно прикладывать только фото или видео'));
+    });
+  }
+  // Безопасная вставка вложения в HTML (пропускаем только наши data-URL)
+  function safeDataUrl(url, kind) {
+    const s = String(url || '');
+    if (kind === 'video') return /^data:video\//i.test(s) ? s : '';
+    if (kind === 'image') return /^data:image\//i.test(s) ? s : '';
+    return '';
+  }
+  function annMediaHtml(a) {
+    const m = a && a.media;
+    if (!m || !m.data) return '';
+    const cap = `<p class="ann-media-cap">${m.kind === 'video' ? '🎬 Видео' : '🖼 Фото'}${m.name ? ' · ' + esc(m.name) : ''}${m.size ? ' · ' + fmtBytes(m.size) : ''}</p>`;
+    if (m.kind === 'video') {
+      const src = safeDataUrl(m.data, 'video');
+      if (!src) return '';
+      return `<div class="ann-media"><video src="${src}" controls playsinline preload="metadata"></video>${cap}</div>`;
+    }
+    const src = safeDataUrl(m.data, 'image');
+    if (!src) return '';
+    return `<div class="ann-media"><img src="${src}" alt="Фото объявления" loading="lazy" class="ann-open" data-media="1">${cap}</div>`;
+  }
+  function annCardHtml(a, opts) {
+    const isCtrl = (txt) => CTRL_RE.test(txt || '');
+    const pinned = !!(opts && opts.pinned);
+    const txt = a.text ? `<p class="text-sm whitespace-pre-wrap break-words ${isCtrl(a.text) ? 'text-amber-200 font-semibold' : 'text-slate-200'}">${esc(a.text)}</p>` : '';
+    const who = (a.author || a.authorUid)
+      ? `<p class="text-[10px] text-slate-500 mt-1">${esc(a.author || 'Администратор')}${a.authorUid ? ' · админ' : ''}</p>` : '';
+    // Кнопка удаления — только у администратора
+    const delBtn = (isAdmin() && a.key)
+      ? `<button class="ann-del shrink-0 rounded-lg bg-slate-800/80 hover:bg-rose-600 px-2 py-1 text-[11px] font-bold text-rose-400 hover:text-white" title="Удалить объявление">✕</button>` : '';
+    if (pinned) {
+      return `
+        <div class="rounded-2xl p-4 border-2 accent-border bg-amber-500/5 fade-up" data-ann-key="${esc(a.key || '')}">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="text-xs font-bold text-amber-400">📌 ЗАКРЕПЛЕНО</span>
+            <span class="ml-auto">${delBtn}</span>
+          </div>
+          ${txt}
+          ${annMediaHtml(a)}
+          <p class="text-[11px] text-slate-500 mt-2">${fmtDate(a.createdAt)}</p>
+          ${who}
+        </div>`;
+    }
+    return `
+      <div class="rounded-2xl p-4 border fade-up ${isCtrl(a.text) ? 'bg-amber-500/10 border-amber-500/40' : 'bg-slate-900 border-slate-800'}" data-ann-key="${esc(a.key || '')}">
+        <div class="flex items-start gap-2">
+          <div class="min-w-0 flex-1">${txt}</div>
+          <span class="shrink-0">${delBtn}</span>
+        </div>
+        ${annMediaHtml(a)}
+        <p class="text-[11px] text-slate-500 mt-2">${fmtDate(a.createdAt)}</p>
+        ${who}
+      </div>`;
+  }
+  // Удаление объявления (админ)
+  function deleteAnnouncement(key) {
+    if (!isAdmin()) { showToast('Удалять объявления может только администратор'); return; }
+    if (!key) return;
+    askConfirm('Удалить объявление?', () => {
+      db.ref(curClassPath() + '/announcements/' + key).remove()
+        .then(() => showToast('Объявление удалено'))
+        .catch((err) => showToast('Не удалось удалить: ' + ((err && err.message) ? err.message : 'нет прав')));
+    });
+  }
+  function bindAnnDeleteClicks(scope) {
+    const root = scope || document;
+    root.querySelectorAll('.ann-del').forEach((b) => {
+      const card = b.closest('[data-ann-key]');
+      if (!card) return;
+      deleteAnnouncement(card.getAttribute('data-ann-key'));
+    });
+  }
+
   function renderAnnouncements(snap) {
     annCache = snapArr(snap).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
     paintAnnouncements();
   }
   function paintAnnouncements() {
-    const el = $('#tab-announcements');
-    if (!annCache.length) { el.innerHTML = emptyNote('Объявлений пока нет'); return; }
-    const [first, ...rest] = annCache;
-    const isCtrl = (txt) => CTRL_RE.test(txt || '');
-    const pinned = `
-      <div class="rounded-2xl p-4 border-2 accent-border bg-amber-500/5 fade-up">
-        <div class="flex items-center gap-2 mb-2"><span class="text-xs font-bold text-amber-400">📌 ЗАКРЕПЛЕНО</span></div>
-        <p class="text-sm whitespace-pre-wrap break-words ${isCtrl(first.text) ? 'text-amber-200 font-semibold' : 'text-slate-200'}">${esc(first.text)}</p>
-        <p class="text-[11px] text-slate-500 mt-2">${fmtDate(first.createdAt)}</p>
-      </div>`;
-    const listHtml = rest.length ? rest.map((a) => `
-      <div class="rounded-2xl p-4 border fade-up ${isCtrl(a.text) ? 'bg-amber-500/10 border-amber-500/40' : 'bg-slate-900 border-slate-800'}">
-        <p class="text-sm whitespace-pre-wrap break-words ${isCtrl(a.text) ? 'text-amber-200 font-semibold' : 'text-slate-200'}">${esc(a.text)}</p>
-        <p class="text-[11px] text-slate-500 mt-2">${fmtDate(a.createdAt)}</p>
-      </div>`).join('') : '';
-    el.innerHTML = pinned + listHtml + buildCalendar();
+    const el = $('#ann-list') || $('#tab-announcements');
+    if (!el) return;
+    paintAnnCompose();
+    if (!annCache.length) { el.innerHTML = emptyNote('Объявлений пока нет') + buildCalendar(); return; }
+    // Реально закреплённые (pinned: true) — сверху. Если их нет, сохраняем
+    // старое поведение: самое свежее объявление показывается как закреплённое.
+    const pinnedList = annCache.filter((a) => a.pinned === true);
+    const shown = pinnedList.length ? pinnedList : [annCache[0]];
+    const rest = annCache.filter((a) => shown.indexOf(a) === -1);
+    el.innerHTML = shown.map((a) => annCardHtml(a, { pinned: true })).join('')
+      + (rest.length ? rest.map((a) => annCardHtml(a, { pinned: false })).join('') : '')
+      + buildCalendar();
+    bindAnnMediaClicks(el);
+    bindAnnDeleteClicks(el);
   }
+
+  /* ---- Форма объявлений для админа (вкладка «Объявления») ---- */
+  function paintAnnCompose() {
+    const host = $('#ann-admin-box');
+    if (!host) return;
+    if (!isAdmin()) { host.classList.add('hidden'); host.innerHTML = ''; host.dataset.ready = '0'; return; }
+    if (host.dataset.ready === '1') { host.classList.remove('hidden'); return; }
+    host.dataset.ready = '1';
+    host.classList.remove('hidden');
+    host.innerHTML = `
+      <div class="rounded-2xl bg-slate-900 border border-emerald-500/30 p-4 fade-up">
+        <div class="font-bold text-sm mb-2">📣 Новое объявление <span class="text-[10px] text-emerald-400">режим администратора</span></div>
+        <textarea id="ann-form-text" rows="2" maxlength="1000" placeholder="Текст объявления…"
+                  class="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-sm resize-none outline-none focus:border-indigo-500"></textarea>
+        <div class="flex items-center gap-2 mt-2 flex-wrap">
+          <label class="shrink-0 cursor-pointer rounded-lg bg-slate-800 hover:bg-slate-700 px-3 py-2 text-xs font-semibold">
+            📎 Фото или видео
+            <input id="ann-form-file" type="file" accept="image/*,video/*" class="hidden">
+          </label>
+          <span id="ann-form-fileinfo" class="text-[11px] text-slate-500 truncate">Фото сжимается, видео — до 3 МБ</span>
+          <button id="ann-form-clear" class="hidden shrink-0 rounded-lg bg-slate-800 px-2.5 py-2 text-xs font-bold text-rose-400">✕</button>
+        </div>
+        <div id="ann-form-preview" class="ann-draft-prev mt-2 hidden"></div>
+        <div class="flex gap-2 mt-3">
+          <button id="ann-form-send" class="flex-1 rounded-xl accent-bg text-white py-2.5 text-sm font-bold hover:opacity-90">Опубликовать</button>
+          <button id="ann-form-pin" class="shrink-0 rounded-xl bg-slate-800 hover:bg-slate-700 px-3 text-xs font-bold" title="Опубликовать сразу закреплённым">📌 Закрепить</button>
+        </div>
+      </div>`;
+    const fileInput = $('#ann-form-file');
+    fileInput.addEventListener('change', () => {
+      const f = fileInput.files && fileInput.files[0];
+      if (!f) return;
+      const info = $('#ann-form-fileinfo');
+      info.textContent = 'Обработка…';
+      prepareAnnMedia(f)
+        .then((m) => {
+          annDraft = m;
+          info.textContent = (m.kind === 'video' ? '🎬 ' : '🖼 ') + m.name + ' · ' + fmtBytes(m.size);
+          const prev = $('#ann-form-preview');
+          prev.classList.remove('hidden');
+          prev.innerHTML = m.kind === 'video'
+            ? `<video src="${safeDataUrl(m.data, 'video')}" controls playsinline preload="metadata"></video>`
+            : `<img src="${safeDataUrl(m.data, 'image')}" alt="Предпросмотр">`;
+          $('#ann-form-clear').classList.remove('hidden');
+        })
+        .catch((err) => {
+          annDraft = null;
+          info.textContent = err && err.message ? err.message : 'Не удалось добавить файл';
+          $('#ann-form-preview').classList.add('hidden');
+          $('#ann-form-preview').innerHTML = '';
+          $('#ann-form-clear').classList.add('hidden');
+          showToast(err && err.message ? err.message : 'Не удалось добавить файл');
+        })
+        .then(() => { fileInput.value = ''; });
+    });
+    $('#ann-form-clear').addEventListener('click', () => {
+      annDraft = null;
+      fileInput.value = '';
+      $('#ann-form-preview').classList.add('hidden');
+      $('#ann-form-preview').innerHTML = '';
+      $('#ann-form-clear').classList.add('hidden');
+      $('#ann-form-fileinfo').textContent = 'Фото сжимается, видео — до 3 МБ';
+    });
+    $('#ann-form-send').addEventListener('click', () => publishAnnouncement(false));
+    $('#ann-form-pin').addEventListener('click', () => publishAnnouncement(true));
+  }
+  // Публикация объявления из формы вкладки «Объявления»
+  function publishAnnouncement(pin) {
+    if (!isAdmin()) { showToast('Объявления публикует только администратор'); return; }
+    const ta = $('#ann-form-text');
+    const text = ta ? ta.value.trim().slice(0, 1000) : '';
+    if (!text && !annDraft) { showToast('Введите текст или прикрепите фото/видео'); return; }
+    publishAnnRecord({ text, pin: !!pin });
+  }
+  // Общая запись объявления в Firebase (форма вкладки «Объявления» и админ-панель)
+  function publishAnnRecord(opts) {
+    const o = opts || {};
+    const text = String(o.text || '').trim().slice(0, 1000);
+    const media = o.media || null;
+    if (!text && !media) { showToast('Введите текст или прикрепите фото/видео'); return Promise.resolve(); }
+    const rec = {
+      text: text,
+      createdAt: Date.now(),
+      author: (window.HubAuth && HubAuth.uid) ? (nick() || 'Администратор') : 'Администратор',
+      authorUid: (window.HubAuth && HubAuth.uid) || '',
+      pinned: !!o.pin,
+    };
+    if (media && media.data) {
+      rec.media = { kind: media.kind, mime: media.mime || '', name: media.name || '', size: media.size || 0, data: media.data };
+    }
+    const btn = o.btn;
+    if (btn) btn.disabled = true;
+    const path = o.path || curClassPath();
+    return db.ref(path + '/announcements').push(rec)
+      .then(() => { showToast(o.pin ? 'Объявление опубликовано и закреплено' : 'Объявление опубликовано'); })
+      .catch((err) => showToast('Ошибка публикации: ' + ((err && err.message) ? err.message : 'нет прав')))
+      .then(() => { if (btn) btn.disabled = false; });
+  }
+  // Клик по фото объявления — просмотр во весь экран
+  function bindAnnMediaClicks(scope) {
+    const root = scope || document;
+    root.querySelectorAll('img.ann-open').forEach((img) => {
+      if (img.dataset.bound === '1') return;
+      img.dataset.bound = '1';
+      img.addEventListener('click', () => openMediaModal(img.getAttribute('src'), 'image'));
+    });
+  }
+  function openMediaModal(src, kind) {
+    const safe = safeDataUrl(src, kind);
+    if (!safe) return;
+    const m = $('#media-modal');
+    const body = $('#media-body');
+    body.innerHTML = kind === 'video'
+      ? `<video src="${safe}" controls playsinline class="w-full rounded-xl"></video>`
+      : `<img src="${safe}" alt="Фото" class="w-full rounded-xl">`;
+    m.classList.remove('hidden');
+    m.classList.add('flex');
+  }
+  function closeMediaModal() {
+    const m = $('#media-modal');
+    if (!m) return;
+    m.classList.add('hidden');
+    m.classList.remove('flex');
+    const body = $('#media-body');
+    if (body) body.innerHTML = '';
+  }
+
 
   function buildCalendar() {
     const now = new Date();
@@ -1868,7 +2686,7 @@
       arr = arr.filter((f) => f.key !== msg.key);
       showToast('Удалено из избранного');
     } else {
-      arr.push({ key: msg.key, nick: msg.nick, text: msg.text, time: msg.time, classKey: curClassKey() });
+      arr.push({ key: msg.key, nick: msg.nick, text: msg.text, time: msg.time, classKey: curClassKey(), avatar: msg.avatar || '' });
       showToast('Добавлено в избранное');
     }
     localStorage.setItem(LS.fav, JSON.stringify(arr));
@@ -1899,6 +2717,7 @@
     div.setAttribute('data-nick', mname);
     div.setAttribute('data-text', (m.text || '').toLowerCase());
     if (m.uid) div.setAttribute('data-uid', m.uid);
+    div.setAttribute('data-pinned', m.pinned ? '1' : '0');
 
     const star = isFav(key) ? '★' : '☆';
 
@@ -1921,23 +2740,32 @@
     const reactBtn = (canWrite || adminOn) ? `<button class="msg-react text-[10px] opacity-70 hover:opacity-100 px-1 rounded" title="Реакция">☺</button>` : '';
     const replyBtn = (canWrite || adminOn) ? `<button class="msg-reply text-[10px] opacity-70 hover:opacity-100 px-1 rounded" title="Ответить">↩</button>` : '';
     const muteBtn = (adminOn && m.uid) ? `<button class="msg-mute text-[10px] opacity-70 hover:opacity-100 px-1 rounded" title="Модерация (мут)">🔨</button>` : '';
-    const adminBadge = (adminOn && m.uid && window.HubAuth && m.uid === HubAuth.uid)
-      ? '<span class="text-[10px]" title="Администратор">🛡️</span>' : '';
+    // Закрепление сообщения — только для админа
+    const pinBtn = adminOn
+      ? `<button class="msg-pin text-[10px] px-1 rounded ${m.pinned ? 'text-amber-400' : 'opacity-70 hover:opacity-100'}" title="${m.pinned ? 'Открепить' : 'Закрепить'}">📌</button>` : '';
+    // Галочка администратора — видна всем, у кого есть uid
+    const adminBadge = m.uid
+      ? `<span class="admin-ck ${isAdminUid(m.uid) ? '' : 'hidden'}" title="Администратор">✓</span>`
+      : '';
+    // Метка закреплённого сообщения
+    const pinMark = m.pinned ? '<span class="pin-flag" title="Закреплено администратором">📌</span>' : '';
 
     // Показываем "изменено"
     const editedMark = m.edited ? '<span class="msg-edited">(изменено)</span>' : '';
 
     div.innerHTML = `
       <div class="chat-bubble-row flex items-start gap-2 max-w-[85%] ${mine ? 'flex-row-reverse' : ''}">
-        ${avatarHtml(mname, 'sm')}
-        <div class="${mine ? 'accent-bg text-white' : 'bg-slate-800'} rounded-2xl px-3.5 py-2 min-w-0 flex-1">
+        ${avatarHtml(mname, 'sm', mine ? (m.avatar || myAvatar()) : m.avatar)}
+        <div class="${mine ? 'accent-bg text-white' : 'bg-slate-800'} rounded-2xl px-3.5 py-2 min-w-0 flex-1${m.pinned ? ' msg-pinned-bubble' : ''}">
           <div class="flex items-center gap-1 mb-0.5 flex-wrap">
             <span class="text-[11px] font-bold" style="color:${mine ? '#e0e7ff' : nickColor(mname)}">${esc(mname)}</span>
             ${adminBadge}
+            ${pinMark}
             ${editedMark}
             ${m.flagged ? `<span class="msg-flagmark" title="Помечено фильтром: ${esc(m.flagReason || '')}">⚠</span>` : ''}
             <span class="ml-auto flex items-center gap-0.5">
               <button class="msg-fav text-[12px] opacity-70 hover:opacity-100 px-1 rounded" title="Избранное">${star}</button>
+              ${pinBtn}
               ${replyBtn}
               ${reactBtn}
               ${muteBtn}
@@ -1951,6 +2779,16 @@
           <div class="text-[10px] opacity-60 mt-1 text-right">${fmtDate(m.time || Date.now())}</div>
         </div>
       </div>`;
+    // Тап по аватару — карточка пользователя (ник, класс, «О себе»)
+    const av = div.querySelector('.avatar');
+    if (av) {
+      if (m.uid) {
+        av.classList.add('clickable');
+        av.addEventListener('click', (e) => { e.stopPropagation(); openUserCard(m.uid, mname); });
+      } else {
+        av.style.cursor = 'default';
+      }
+    }
     return div;
   }
 
@@ -1965,6 +2803,7 @@
     chatMaxCount = Math.max(chatMaxCount, box.querySelectorAll('[data-msg]').length);
     scrollChat();
     applyChatSearch();
+    paintPinnedBar();
     // Счётчик непрочитанных, если вкладка чата не открыта и сообщение не от меня
     if ($('#tab-chat').classList.contains('hidden') && !isMine(m)) {
       incrementUnread();
@@ -1978,10 +2817,80 @@
     const box = $('#chat-messages');
     const el = box.querySelector('[data-msg="' + key + '"]');
     if (!el) return;
-    // Пересобираем сообщение (могло измениться: текст, reactions, edited)
+    // Пересобираем сообщение (могло измениться: текст, reactions, edited, закрепление)
     const newEl = renderMessageEl(key, m);
     el.replaceWith(newEl);
     applyChatSearch();
+    paintPinnedBar();
+  }
+
+  /* ============================================================
+     ЗАКРЕПЛЁННЫЕ СООБЩЕНИЯ ЧАТА
+     Поле pinned хранится прямо в записи сообщения (/chat/{key}/pinned).
+     Кто угодно может его технически поставить, но кнопка есть только
+     у админа (плюс проверка isAdmin() в обработчике).
+     ============================================================ */
+  function togglePin(key) {
+    if (!isAdmin()) { showToast('Закреплять сообщения может только администратор'); return; }
+    const el = document.querySelector('#chat-messages [data-msg="' + key + '"]');
+    const on = el && el.getAttribute('data-pinned') === '1';
+    const patch = on
+      ? { pinned: false, pinnedBy: '', pinnedByUid: '', pinnedAt: 0 }
+      : {
+          pinned: true,
+          pinnedBy: nick() || 'Администратор',
+          pinnedByUid: (window.HubAuth && HubAuth.uid) || '',
+          pinnedAt: Date.now(),
+        };
+    db.ref(curClassPath() + '/chat/' + key).update(patch)
+      .then(() => showToast(on ? 'Сообщение откреплено' : 'Сообщение закреплено'))
+      .catch((err) => showToast('Не удалось изменить закрепление: ' + ((err && err.message) ? err.message : 'нет прав')));
+  }
+  // Блок «Закреплено» над чатом: собираем из уже отрисованных сообщений
+  function paintPinnedBar() {
+    const bar = $('#chat-pinned');
+    const box = $('#chat-messages');
+    if (!bar || !box) return;
+    const items = [];
+    box.querySelectorAll('[data-msg][data-pinned="1"]').forEach((el) => {
+      items.push({
+        key: el.getAttribute('data-msg'),
+        nick: el.getAttribute('data-nick') || 'Ученик',
+        text: el.getAttribute('data-text') || '',
+        time: parseInt(el.getAttribute('data-time') || '0', 10) || 0,
+      });
+    });
+    if (!items.length) {
+      bar.innerHTML = '';
+      bar.classList.add('hidden');
+      return;
+    }
+    const adminOn = isAdmin();
+    bar.classList.remove('hidden');
+    bar.innerHTML = items.map((p) => `
+      <div class="rounded-xl border border-amber-500/40 bg-amber-500/10 p-2.5 fade-up" data-pin-card="${esc(p.key)}">
+        <div class="text-[10px] font-bold text-amber-400">📌 ЗАКРЕПЛЕНО</div>
+        <div class="flex items-start gap-2 mt-1">
+          <div class="min-w-0 flex-1">
+            <div class="text-[11px] font-bold">${esc(p.nick)}</div>
+            <p class="text-xs text-slate-200 break-words">${esc(p.text)}</p>
+          </div>
+          <button class="pin-jump shrink-0 rounded-lg bg-slate-800 hover:bg-slate-700 px-2 py-1 text-[11px] font-bold" title="Перейти к сообщению">↓</button>
+          ${adminOn ? `<button class="pin-unpin shrink-0 rounded-lg bg-slate-800 hover:bg-slate-700 px-2 py-1 text-[11px] font-bold text-rose-400" title="Открепить">✕</button>` : ''}
+        </div>
+      </div>`).join('');
+  }
+  function jumpToMsg(key) {
+    const el = document.querySelector('#chat-messages [data-msg="' + key + '"]');
+    if (!el) return;
+    el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    el.classList.add('msg-highlight');
+    const bub = el.querySelector('.chat-bubble-row > .rounded-2xl');
+    if (bub) {
+      bub.classList.add('pin-jump-flash');
+      setTimeout(() => bub.classList.remove('pin-jump-flash'), 1600);
+    }
+    setTimeout(() => el.classList.remove('msg-highlight'), 1600);
   }
 
   let chatMaxCount = 0;
@@ -1996,6 +2905,7 @@
       const div = renderMessageEl(m.key, m);
       box.appendChild(div);
     });
+    paintPinnedBar();
     if (!$('#tab-chat').classList.contains('hidden')) scrollChat();
     return true;
   }
@@ -2038,6 +2948,7 @@
     const el = box.querySelector('[data-msg="' + key + '"]');
     if (el) el.remove();
     chatMaxCount = box.querySelectorAll('[data-msg]').length;
+    paintPinnedBar();
   }
   function scrollChat() {
     const box = $('#chat-messages');
@@ -2076,12 +2987,14 @@
     $('#chat-edit-text').textContent = text.slice(0, 120);
     $('#chat-edit-box').classList.remove('hidden');
     $('#chat-input').value = text;
+    lastGoodChatText = text;
     $('#chat-input').focus();
   }
   function clearEdit() {
     editMsg = null;
     $('#chat-edit-box').classList.add('hidden');
     $('#chat-input').value = '';
+    lastGoodChatText = '';
   }
 
   /* ---- Реакции ---- */
@@ -2164,6 +3077,29 @@
     else if (users.length === 2) el.textContent = users[0] + ' и ' + users[1] + ' печатают…';
     else el.textContent = users.length + ' человека печатают…';
   }
+
+  /* ---- Счётчик «кто сейчас онлайн» ---- */
+  // /online/{deviceId} = timestamp сервера, обновляется раз в 30 сек (startPresence).
+  let onlineSnap = {};
+  const ONLINE_WINDOW = 5 * 60 * 1000;   // считаем «активными» последние 5 минут
+  function countOnline() {
+    const now = Date.now();
+    let n = 0;
+    Object.keys(onlineSnap).forEach((k) => {
+      const t = Number(onlineSnap[k]);
+      if (t > 0 && now - t < ONLINE_WINDOW) n++;
+    });
+    return n;
+  }
+  function paintOnlineCount() {
+    const el = $('#chat-online');
+    if (!el) return;
+    const n = countOnline();
+    if (!n) { el.textContent = '🔴 0 онлайн'; el.className = 'text-[11px] font-semibold text-slate-500 flex items-center gap-1'; return; }
+    el.textContent = '🟢 ' + n + ' онлайн';
+    el.className = 'text-[11px] font-semibold text-emerald-400 flex items-center gap-1';
+  }
+  function onOnlineUpdate(snap) { onlineSnap = snap.val() || {}; paintOnlineCount(); }
 
   /* ---- Счётчик непрочитанных ---- */
   function getLastRead() {
@@ -2279,6 +3215,12 @@
     const input = $('#chat-input');
     const text = input.value.trim();
     if (!text) return;
+    // Запрещённые фразы (например, пароль админа) в чат скидывать нельзя
+    if (forbiddenHit(text)) {
+      showToast('Такое сообщение нельзя отправлять в чат');
+      input.focus();
+      return;
+    }
     if (!canWriteHere()) { showToast('Ты можешь писать только в своём классе'); return; }
     if (!nick()) { showToast('Сначала задайте ник'); askNickIfNeeded(); return; }
     if (!HubAuth.uid || !HubAuth.ready) { showToast('Авторизация ещё не готова'); return; }
@@ -2297,6 +3239,7 @@
         }).then(() => {
           clearEdit();
           input.value = '';
+          lastGoodChatText = '';
           showToast('Сообщение изменено');
           console.log('sendMessage: вызываю flagAfterModeration (edit)');
           flagAfterModeration(text, chatPath, editMsg.key);
@@ -2311,12 +3254,15 @@
         time: Date.now(),
         class: (s && s.clname) || ''
       };
+      const av = myAvatar();
+      if (av) msg.avatar = av;
       if (replyTo) {
         msg.replyTo = { key: replyTo.key, nick: replyTo.nick, text: replyTo.text };
       }
       const pushed = db.ref(chatPath + '/chat').push(msg);
       clearReply();
       input.value = '';
+      lastGoodChatText = '';
       setTimeout(refreshChat, 500);
       console.log('sendMessage: вызываю flagAfterModeration (new)');
       flagAfterModeration(text, chatPath, pushed.key);
@@ -2337,6 +3283,9 @@
     closeNickModal();
     $('#chat-nick').textContent = nick();
     ensureProfile();
+    // Перерисовать «Настройки»: там аватар и имя в карточке профиля
+    const st = $('#tab-settings');
+    if (st && !st.classList.contains('hidden')) renderSettingsTab();
   }
   function closeNickModal() {
     const modal = $('#nick-modal');
@@ -2412,6 +3361,10 @@
   function enableAdminMode() {
     showToast('Режим администратора включён');
     renderSettingsTab();
+    paintAnnCompose();
+    const au = (window.HubAuth && HubAuth.uid) || '';
+    if (au) adminUidSet.add(au);
+    paintAdminChecks();
     if (!$('#main-screen').classList.contains('hidden')) refreshChat();
   }
   function exitAdminMode() {
@@ -2419,6 +3372,8 @@
     sessionStorage.removeItem('sh_admin_auth');
     setAltMode(false);
     renderSettingsTab();
+    paintAnnCompose();
+    paintAdminChecks();
     showToast('Режим администратора выключен');
   }
 
@@ -2518,12 +3473,41 @@
     el.innerHTML = `
       <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
         <div class="flex items-center gap-3">
-          ${avatarHtml(n, 'lg')}
+          <div id="profile-avatar"></div>
           <div class="flex-1 min-w-0">
             <div class="font-bold text-base truncate">${esc(n)}</div>
             <div class="text-[11px] text-slate-500 truncate">${esc(s.cname || '')}, ${esc(s.sname || '')}, ${esc(s.clname || '')}</div>
-            <button id="profile-edit-nick" class="text-[11px] accent-text underline mt-1">Изменить ник</button>
+            <div class="flex gap-3 mt-1">
+              <button id="profile-edit-nick" class="text-[11px] accent-text underline">Изменить ник</button>
+              <button id="profile-edit-avatar" class="text-[11px] accent-text underline">Сменить аватар</button>
+            </div>
           </div>
+        </div>
+        <div id="profile-bio" class="hidden"></div>
+      </div>
+
+      <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
+        <div class="flex items-center justify-between gap-2 mb-2">
+          <div class="font-bold text-sm">📝 О себе</div>
+          <span id="bio-counter" class="text-[10px] text-slate-500">0/${BIO_MAX}</span>
+        </div>
+        <textarea id="bio-input" rows="2" maxlength="${BIO_MAX}" placeholder="Расскажи пару слов о себе — это видно по тапу на аватар в чате…"
+                  class="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-xs resize-none outline-none focus:border-indigo-500">${esc(myBio())}</textarea>
+        <div class="flex gap-2 mt-2">
+          <button id="bio-save" class="flex-1 rounded-lg accent-bg text-white px-3 py-2 text-xs font-bold hover:opacity-90">Сохранить</button>
+          <button id="bio-clear" class="rounded-lg bg-slate-800 hover:bg-slate-700 px-3 py-2 text-xs font-semibold">Очистить</button>
+        </div>
+      </div>
+
+      <div id="avatar-picker" class="hidden rounded-2xl bg-slate-900 border border-indigo-500/40 p-4 fade-up">
+        <div class="flex items-center justify-between gap-2 mb-2">
+          <div class="font-bold text-sm">😀 Аватар</div>
+          <button id="avatar-picker-close" class="text-slate-400 hover:text-white font-bold px-1">✕</button>
+        </div>
+        <div id="avatar-grid" class="grid grid-cols-6 gap-2 max-h-56 overflow-y-auto pr-1"></div>
+        <div class="flex gap-2 mt-3">
+          <button id="avatar-random" class="flex-1 rounded-lg bg-slate-800 hover:bg-slate-700 px-3 py-2 text-xs font-bold">🎲 Случайный</button>
+          <button id="avatar-reset" class="rounded-lg bg-slate-800 hover:bg-slate-700 px-3 py-2 text-xs font-semibold">Буква ника</button>
         </div>
       </div>
 
@@ -2559,15 +3543,17 @@
       </div>
 
       <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
-        <div class="flex items-center justify-between gap-3">
-          <div>
-            <div class="font-bold text-sm">Тема оформления</div>
-            <p class="text-[11px] text-slate-500 mt-0.5">Светлая или тёмная</p>
-          </div>
-          <button id="theme-toggle" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold">
-            ${theme === 'dark' ? '🌙 Тёмная' : '☀️ Светлая'}
-          </button>
+        <div class="font-bold text-sm">Тема оформления</div>
+        <p class="text-[11px] text-slate-500 mt-0.5 mb-3">Тёмная, светлая или coder20 — серое оформление с часами</p>
+        <div class="grid grid-cols-3 gap-2">
+          ${THEMES.map((t) => `
+            <button data-theme-set="${t}"
+                    class="theme-btn px-2 py-2.5 rounded-xl text-[11px] font-bold flex flex-col items-center gap-1 transition active:scale-95 ${theme === t ? 'accent-bg text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}">
+              <span class="text-base leading-none">${t === 'dark' ? '🌙' : (t === 'light' ? '☀️' : '◴')}</span>
+              <span>${t === 'dark' ? 'Тёмная' : (t === 'light' ? 'Светлая' : 'coder20')}</span>
+            </button>`).join('')}
         </div>
+        <p class="text-[10px] text-slate-600 mt-2.5 leading-snug">В теме coder20 интерфейс становится серым и уезжает влево, а справа появляется круглый циферблат с временем и датой.</p>
       </div>
 
       <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
@@ -2625,17 +3611,90 @@
         </div>
         <button id="admin-full-btn" class="w-full rounded-xl bg-slate-800 hover:bg-slate-700 py-3 text-sm font-bold fade-up">Полная админ-панель</button>
         <button id="admin-exit-btn" class="w-full rounded-xl bg-rose-600/80 hover:bg-rose-600 py-3 text-sm font-bold fade-up">Выйти из режима администратора</button>
-      ` : ''}`;
+      ` : ''}
+
+      <p class="text-center text-[10px] text-slate-500 pt-1 pb-2 fade-up">Developers: ZakveZ,coder20</p>
+`;
 
     $('#profile-edit-nick').addEventListener('click', changeNick);
-    $('#theme-toggle').addEventListener('click', () => {
-      const cur = localStorage.getItem(LS.theme) || 'dark';
-      const next = cur === 'dark' ? 'light' : 'dark';
-      localStorage.setItem(LS.theme, next);
-      document.documentElement.classList.toggle('dark', next === 'dark');
-      renderSettingsTab();
-      showToast(next === 'dark' ? 'Тёмная тема' : 'Светлая тема');
+
+    /* ---- «О себе» и аватар-эмодзи ---- */
+    const bioInput = $('#bio-input');
+    const bioCounter = $('#bio-counter');
+    const paintBioCounter = () => { if (bioCounter) bioCounter.textContent = bioInput.value.length + '/' + BIO_MAX; };
+    paintBioCounter();
+    bioInput.addEventListener('input', paintBioCounter);
+    $('#bio-save').addEventListener('click', () => {
+      const v = bioInput.value.slice(0, BIO_MAX);
+      saveProfileExtras({ bio: v })
+        .then(() => { showToast('О себе сохранено'); renderSettingsTab(); })
+        .catch(() => showToast('Не удалось сохранить «О себе»'));
     });
+    $('#bio-clear').addEventListener('click', () => {
+      saveProfileExtras({ bio: '' })
+        .then(() => { showToast('«О себе» очищено'); renderSettingsTab(); })
+        .catch(() => showToast('Не удалось очистить «О себе»'));
+    });
+
+    const paintProfileAvatar = () => {
+      const box = $('#profile-avatar');
+      if (box) box.innerHTML = avatarHtml(n, 'lg', myAvatar());
+      const pb = $('#profile-bio');
+      if (pb) {
+        const b = myBio();
+        pb.className = b ? 'mt-3 text-xs text-slate-300 break-words whitespace-pre-wrap border-t border-slate-800 pt-2' : 'hidden';
+        pb.textContent = b;
+      }
+    };
+    paintProfileAvatar();
+    const paintAvatarGrid = () => {
+      const grid = $('#avatar-grid');
+      if (!grid) return;
+      const cur = myAvatar();
+      grid.innerHTML = AVATAR_EMOJI.map((e) =>
+        `<button class="emoji-pick${e === cur ? ' active' : ''}" data-emoji="${esc(e)}" title="Аватар ${esc(e)}">${esc(e)}</button>`
+      ).join('');
+      grid.querySelectorAll('.emoji-pick').forEach((b) => b.addEventListener('click', () => {
+        const e = b.dataset.emoji;
+        saveProfileExtras({ avatar: e })
+          .then(() => { showToast('Аватар изменён'); paintProfileAvatar(); paintAvatarGrid(); })
+          .catch(() => showToast('Не удалось сохранить аватар'));
+      }));
+    };
+    const pickToggle = () => {
+      const box = $('#avatar-picker');
+      if (!box) return;
+      if (box.classList.contains('hidden')) { box.classList.remove('hidden'); paintAvatarGrid(); box.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+      else box.classList.add('hidden');
+    };
+    $('#profile-edit-avatar').addEventListener('click', pickToggle);
+    $('#avatar-picker-close').addEventListener('click', () => { const b = $('#avatar-picker'); if (b) b.classList.add('hidden'); });
+    $('#avatar-random').addEventListener('click', () => {
+      let e = randomAvatar();
+      if (e === myAvatar()) e = AVATAR_EMOJI[(AVATAR_EMOJI.indexOf(e) + 1) % AVATAR_EMOJI.length];
+      saveProfileExtras({ avatar: e })
+        .then(() => { showToast('Аватар изменён'); paintProfileAvatar(); paintAvatarGrid(); })
+        .catch(() => showToast('Не удалось сохранить аватар'));
+    });
+    $('#avatar-reset').addEventListener('click', () => {
+      saveProfileExtras({ avatar: '' })
+        .then(() => { showToast('Аватар сброшен'); paintProfileAvatar(); paintAvatarGrid(); })
+        .catch(() => showToast('Не удалось сбросить аватар'));
+    });
+    // Аватар в карточке профиля открывает ту же карточку пользователя
+    const profAv = $('#profile-avatar .avatar');
+    if (profAv) {
+      profAv.classList.add('clickable');
+      profAv.addEventListener('click', () => {
+        if (window.HubAuth && HubAuth.uid) openUserCard(HubAuth.uid, n);
+      });
+    }
+
+    $$('.theme-btn').forEach((b) => b.addEventListener('click', () => {
+      const t = applyTheme(b.dataset.themeSet);
+      renderSettingsTab();
+      showToast('Тема: ' + THEME_LABELS[t]);
+    }));
     $$('.accent-dot').forEach((d) => d.addEventListener('click', () => {
       const key = d.dataset.accent;
       localStorage.setItem(LS.accent, key);
@@ -2751,7 +3810,7 @@
     el.innerHTML = arr.map((f) => `
       <div class="rounded-xl bg-slate-800 p-3 fade-up">
         <div class="flex items-center gap-2 mb-1">
-          ${avatarHtml(f.nick || '?', 'sm')}
+          ${avatarHtml(f.nick || '?', 'sm', f.avatar)}
           <span class="text-[11px] font-bold">${esc(f.nick || 'Ученик')}</span>
           <span class="text-[10px] text-slate-500 ml-auto">${fmtDate(f.time)}</span>
           <button class="fav-del text-slate-400 hover:text-rose-400" data-key="${esc(f.key)}">✕</button>
@@ -2937,10 +3996,11 @@
     const editor = $('#cont-editor');
     const selCity = $('#cont-city'), selSchool = $('#cont-school'), selClass = $('#cont-class');
     const subNav = () => `
-      <div class="grid grid-cols-3 gap-1 px-1 py-2 mb-3 bg-slate-800/50 rounded-xl">
+      <div class="grid grid-cols-4 gap-1 px-1 py-2 mb-3 bg-slate-800/50 rounded-xl">
         <button data-ctype="schedule" class="ctype-btn py-2 rounded-lg text-[11px] font-semibold ${admin.ctype === 'schedule' ? 'accent-bg text-white' : 'text-slate-400'}">Расписание</button>
         <button data-ctype="homework" class="ctype-btn py-2 rounded-lg text-[11px] font-semibold ${admin.ctype === 'homework' ? 'accent-bg text-white' : 'text-slate-400'}">Домашка</button>
         <button data-ctype="announcements" class="ctype-btn py-2 rounded-lg text-[11px] font-semibold ${admin.ctype === 'announcements' ? 'accent-bg text-white' : 'text-slate-400'}">Объявления</button>
+        <button data-ctype="bells" class="ctype-btn py-2 rounded-lg text-[11px] font-semibold ${admin.ctype === 'bells' ? 'accent-bg text-white' : 'text-slate-400'}">Звонки</button>
       </div>`;
     const loadEditor = () => {
       offRefs(adminRefs); adminRefs = [];
@@ -2965,6 +4025,99 @@
             const ta = editor.querySelector('#sch-' + d);
             if (ta) ta.value = Array.isArray(s[d]) ? s[d].join('\n') : '';
           });
+        });
+      } else if (admin.ctype === 'bells') {
+        editor.innerHTML = subNav() + `
+          <div class="rounded-xl bg-slate-900 border border-slate-800 p-3 space-y-2 mb-3">
+            <div class="text-[11px] text-slate-400 leading-snug">
+              Расписание звонков для обратного отсчёта «До конца урока». По умолчанию используются
+              стандартные 7 уроков. Номера строк соответствуют номерам уроков в расписании.
+            </div>
+            <div class="grid grid-cols-[auto_1fr_14px_1fr] gap-2 items-center text-[10px] font-bold text-slate-500">
+              <span>№</span><span>Начало</span><span></span><span>Конец</span>
+            </div>
+            <div id="bells-rows" class="space-y-2"></div>
+            <div class="flex gap-2 pt-1">
+              <button id="bells-add" class="rounded-lg bg-slate-800 hover:bg-slate-700 px-3 py-2 text-xs font-bold">+ Урок</button>
+              <button id="bells-save" class="flex-1 rounded-lg accent-bg text-white px-3 py-2 text-xs font-bold">Сохранить</button>
+            </div>
+            <div class="flex gap-2">
+              <button id="bells-default" class="flex-1 rounded-lg bg-slate-800 hover:bg-slate-700 px-3 py-2 text-xs font-semibold">Вернуть стандартные</button>
+              <button id="bells-clear" class="rounded-lg bg-slate-800 hover:bg-slate-700 px-3 py-2 text-xs font-semibold">Очистить</button>
+            </div>
+          </div>
+          <div id="bells-hint" class="text-[11px] text-slate-500 px-1"></div>`;
+        $$('.ctype-btn').forEach((b) => b.addEventListener('click', () => { admin.ctype = b.dataset.ctype; loadEditor(); }));
+        const rowsWrap = editor.querySelector('#bells-rows');
+        const hint = editor.querySelector('#bells-hint');
+        let rows = DEFAULT_BELLS.slice();
+        const paintRows = () => {
+          rowsWrap.innerHTML = rows.map((r, i) => {
+            const m = String(r).match(/^\s*(\d{1,2}:\d{2})\s*[-–—]\s*(\d{1,2}:\d{2})\s*$/);
+            const s = m ? m[1] : '08:00';
+            const e = m ? m[2] : '08:45';
+            return `
+              <div class="grid grid-cols-[auto_1fr_14px_1fr_auto] gap-2 items-center" data-row="${i}">
+                <span class="text-[11px] font-bold text-slate-400 w-4 text-center">${i + 1}</span>
+                <input data-bs value="${esc(s)}" inputmode="numeric" placeholder="08:00" class="${aInput('text-center py-1.5 text-xs')}">
+                <span class="text-slate-500 text-xs text-center">–</span>
+                <input data-be value="${esc(e)}" inputmode="numeric" placeholder="08:45" class="${aInput('text-center py-1.5 text-xs')}">
+                <button data-bdel class="rounded-lg bg-slate-800 hover:bg-rose-600 px-2 py-1.5 text-[11px] font-bold text-rose-400">✕</button>
+              </div>`;
+          }).join('');
+          rowsWrap.querySelectorAll('[data-bdel]').forEach((b) => b.addEventListener('click', () => {
+            rows = rows.filter((_, i) => i !== Number(b.closest('[data-row]').getAttribute('data-row')));
+            paintRows();
+          }));
+        };
+        paintRows();
+        const save = () => {
+          const out = [];
+          let bad = 0;
+          rowsWrap.querySelectorAll('[data-row]').forEach((row) => {
+            const s = row.querySelector('[data-bs]').value.trim();
+            const e = row.querySelector('[data-be]').value.trim();
+            const bell = s + '-' + e;
+            if (!parseBell(bell)) { bad++; return; }
+            out.push(s + '-' + e);
+          });
+          if (bad) { showToast('Проверь время: нужен формат ЧЧ:ММ'); return; }
+          if (!out.length) { showToast('Нужно хотя бы одно время урока'); return; }
+          node.child('lessons').set(out)
+            .then(() => { rows = out.slice(); showToast('Звонки сохранены'); tickLessonClock(); })
+            .catch((err) => showToast('Ошибка: ' + ((err && err.message) ? err.message : 'нет прав')));
+        };
+        editor.querySelector('#bells-save').addEventListener('click', save);
+        editor.querySelector('#bells-add').addEventListener('click', () => {
+          const last = String(rows[rows.length - 1] || '08:00-08:45').split('-');
+          const addMin = (hm, add) => {
+            const p = String(hm).trim().split(':');
+            let m = Number(p[0]) * 60 + Number(p[1]) + add;
+            return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+          };
+          const s = addMin(last[1] || '08:45', 10);
+          rows.push(s + '-' + addMin(s, 45));
+          paintRows();
+        });
+        editor.querySelector('#bells-default').addEventListener('click', () => {
+          node.child('lessons').set(DEFAULT_BELLS.slice())
+            .then(() => { rows = DEFAULT_BELLS.slice(); paintRows(); showToast('Возвращены стандартные звонки'); tickLessonClock(); })
+            .catch((err) => showToast('Ошибка: ' + ((err && err.message) ? err.message : 'нет прав')));
+        });
+        editor.querySelector('#bells-clear').addEventListener('click', () => {
+          node.child('lessons').remove()
+            .then(() => { rows = []; paintRows(); showToast('Звонки очищены — снова стандартные'); tickLessonClock(); })
+            .catch((err) => showToast('Ошибка: ' + ((err && err.message) ? err.message : 'нет прав')));
+        });
+        addRef(adminRefs, node.child('lessons')).on('value', (snap) => {
+          const v = snap.val();
+          const arr = Array.isArray(v) ? v : (v ? Object.values(v) : null);
+          rows = arr && arr.length ? arr.map(String) : DEFAULT_BELLS.slice();
+          paintRows();
+          const real = !!(arr && arr.length);
+          hint.textContent = real
+            ? 'Сохранено ' + rows.length + ' урок(ов).'
+            : 'Свои звонки не заданы — используются стандартные (7 уроков).';
         });
       } else if (admin.ctype === 'homework') {
         editor.innerHTML = subNav() + `
@@ -3003,28 +4156,93 @@
             </div>`).join('') : emptyNote('Пусто');
         });
       } else {
+        let annDraftAdmin = null;
+        const annPath = () => P.classNode(admin.city, admin.school, admin.cls);
         editor.innerHTML = subNav() + `
           <div class="rounded-xl bg-slate-900 border border-slate-800 p-3 space-y-2 mb-3">
-            <textarea id="ann-text" rows="3" placeholder="Текст" class="${aInput('w-full resize-none')}"></textarea>
-            <button id="ann-save" class="w-full rounded-lg px-3 py-2.5 text-sm font-bold accent-bg text-white">Опубликовать</button>
+            <textarea id="ann-text" rows="3" placeholder="Текст объявления" class="${aInput('w-full resize-none')}"></textarea>
+            <div class="flex items-center gap-2 flex-wrap">
+              <label class="shrink-0 cursor-pointer rounded-lg bg-slate-800 hover:bg-slate-700 px-3 py-2 text-xs font-semibold">
+                📎 Фото или видео
+                <input id="ann-file" type="file" accept="image/*,video/*" class="hidden">
+              </label>
+              <span id="ann-fileinfo" class="text-[11px] text-slate-500 truncate">Фото сжимается, видео — до 3 МБ</span>
+              <button id="ann-file-clear" class="hidden shrink-0 rounded-lg bg-slate-800 px-2.5 py-2 text-xs font-bold text-rose-400">✕</button>
+            </div>
+            <div id="ann-file-preview" class="ann-draft-prev hidden"></div>
+            <div class="flex gap-2">
+              <button id="ann-save" class="flex-1 rounded-lg px-3 py-2.5 text-sm font-bold accent-bg text-white">Опубликовать</button>
+              <button id="ann-save-pin" class="shrink-0 rounded-lg bg-slate-800 hover:bg-slate-700 px-3 py-2.5 text-xs font-bold" title="Опубликовать и закрепить">📌</button>
+            </div>
           </div>
-          <div id="ann-list" class="space-y-2"></div>`;
+          <div id="ann-admin-list" class="space-y-2"></div>`;
         $$('.ctype-btn').forEach((b) => b.addEventListener('click', () => { admin.ctype = b.dataset.ctype; loadEditor(); }));
-        editor.querySelector('#ann-save').addEventListener('click', () => {
-          const text = editor.querySelector('#ann-text').value.trim();
-          if (!text) return;
-          node.child('announcements').push({ text, createdAt: Date.now() });
-          editor.querySelector('#ann-text').value = '';
+        const fileInput = editor.querySelector('#ann-file');
+        const fileInfo = editor.querySelector('#ann-fileinfo');
+        const filePrev = editor.querySelector('#ann-file-preview');
+        const clearDraft = () => {
+          annDraftAdmin = null;
+          fileInput.value = '';
+          filePrev.classList.add('hidden');
+          filePrev.innerHTML = '';
+          editor.querySelector('#ann-file-clear').classList.add('hidden');
+          fileInfo.textContent = 'Фото сжимается, видео — до 3 МБ';
+        };
+        fileInput.addEventListener('change', () => {
+          const f = fileInput.files && fileInput.files[0];
+          if (!f) return;
+          fileInfo.textContent = 'Обработка…';
+          prepareAnnMedia(f)
+            .then((m) => {
+              annDraftAdmin = m;
+              fileInfo.textContent = (m.kind === 'video' ? '🎬 ' : '🖼 ') + m.name + ' · ' + fmtBytes(m.size);
+              filePrev.classList.remove('hidden');
+              filePrev.innerHTML = m.kind === 'video'
+                ? `<video src="${safeDataUrl(m.data, 'video')}" controls playsinline preload="metadata"></video>`
+                : `<img src="${safeDataUrl(m.data, 'image')}" alt="Предпросмотр">`;
+              editor.querySelector('#ann-file-clear').classList.remove('hidden');
+            })
+            .catch((err) => {
+              clearDraft();
+              const msg = err && err.message ? err.message : 'Не удалось добавить файл';
+              fileInfo.textContent = msg;
+              showToast(msg);
+            })
+            .then(() => { fileInput.value = ''; });
         });
+        editor.querySelector('#ann-file-clear').addEventListener('click', clearDraft);
+        const save = (pin, btn) => {
+          const text = editor.querySelector('#ann-text').value.trim();
+          if (!text && !annDraftAdmin) { showToast('Введите текст или прикрепите фото/видео'); return; }
+          publishAnnRecord({ text: text, media: annDraftAdmin, pin: !!pin, path: annPath(), btn: btn })
+            .then(() => {
+              editor.querySelector('#ann-text').value = '';
+              clearDraft();
+            });
+        };
+        editor.querySelector('#ann-save').addEventListener('click', (e) => save(false, e.currentTarget));
+        editor.querySelector('#ann-save-pin').addEventListener('click', (e) => save(true, e.currentTarget));
         addRef(adminRefs, node.child('announcements')).on('value', (snap) => {
           const items = snapArr(snap).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-          const wrap = editor.querySelector('#ann-list');
+          const wrap = editor.querySelector('#ann-admin-list');
           wrap.innerHTML = items.length ? items.map((a) => `
-            <div class="row rounded-xl bg-slate-900 border border-slate-800 p-3 space-y-2 fade-up">
-              <p class="text-sm whitespace-pre-wrap break-words">${esc(a.text || '')}</p>
-              <p class="text-[11px] text-slate-500">${fmtDate(a.createdAt)}</p>
-              <button data-ann-del data-key="${esc(a.key)}" class="rounded-lg px-3 py-2 text-xs font-bold bg-rose-600">Удалить</button>
+            <div class="row rounded-xl bg-slate-900 border ${a.pinned ? 'border-amber-500/50' : 'border-slate-800'} p-3 space-y-2 fade-up">
+              ${a.pinned ? '<div class="text-[10px] font-bold text-amber-400">📌 ЗАКРЕПЛЕНО</div>' : ''}
+              ${a.text ? `<p class="text-sm whitespace-pre-wrap break-words">${esc(a.text)}</p>` : ''}
+              ${annMediaHtml(a)}
+              <p class="text-[11px] text-slate-500">${fmtDate(a.createdAt)}${a.author ? ' · ' + esc(a.author) : ''}</p>
+              <div class="flex gap-2 flex-wrap">
+                <button data-ann-pin data-key="${esc(a.key)}" data-on="${a.pinned ? '1' : '0'}" class="rounded-lg ${a.pinned ? 'bg-amber-600' : 'bg-slate-800'} px-3 py-2 text-xs font-bold">${a.pinned ? 'Открепить' : 'Закрепить'}</button>
+                <button data-ann-del data-key="${esc(a.key)}" class="rounded-lg px-3 py-2 text-xs font-bold bg-rose-600">Удалить</button>
+              </div>
             </div>`).join('') : emptyNote('Пусто');
+          wrap.querySelectorAll('[data-ann-pin]').forEach((b) => b.addEventListener('click', () => {
+            const on = b.dataset.on === '1';
+            db.ref(annPath() + '/announcements/' + b.dataset.key)
+              .update(on ? { pinned: false } : { pinned: true, pinnedBy: nick() || 'Администратор', pinnedAt: Date.now() })
+              .then(() => showToast(on ? 'Объявление откреплено' : 'Объявление закреплено'))
+              .catch((err) => showToast('Не удалось изменить закрепление: ' + ((err && err.message) ? err.message : 'нет прав')));
+          }));
         });
       }
     };
@@ -3160,7 +4378,7 @@
       const usersEl = $('#users-list');
       if (usersEl) {
         const list = Object.keys(users)
-          .map((uid) => ({ uid: uid, nick: (users[uid] && users[uid].nick) || 'Ученик', role: roles[uid] }));
+          .map((uid) => ({ uid: uid, nick: (users[uid] && users[uid].nick) || 'Ученик', role: roles[uid], avatar: (users[uid] && users[uid].avatar) || '' }));
         list.sort((a, b) => a.nick.localeCompare(b.nick, 'ru'));
         if (!list.length) { usersEl.innerHTML = emptyNote('Пользователей пока нет'); return; }
         usersEl.innerHTML = list.map((u) => {
@@ -3173,6 +4391,7 @@
           else actions = `<button data-act="grantAdmin" data-uid="${esc(u.uid)}" data-nick="${esc(u.nick)}" class="rounded-lg bg-emerald-600/80 hover:bg-emerald-600 px-2.5 py-1.5 text-[11px] font-semibold">Выдать админа</button>`;
           return `
           <div class="row rounded-xl bg-slate-900 border border-slate-800 p-3 flex items-center gap-2 flex-wrap fade-up">
+            ${avatarHtml(u.nick, 'sm', u.avatar)}
             <span class="text-xs font-bold">${esc(u.nick)}</span>
             <span class="text-[10px] text-slate-500">UID: ${esc(u.uid).slice(0, 14)}…</span>
             ${roleLabel(u.role)}
@@ -3758,8 +4977,17 @@
   $('#chat-form').addEventListener('submit', sendMessage);
   $('#chat-nick').addEventListener('click', changeNick);
 
-  // Ввод в чате: статус "печатает..."
-  $('#chat-input').addEventListener('input', () => {
+  // Ввод в чате: запрет отправки запрещённых фраз + статус "печатает..."
+  let lastGoodChatText = '';
+  $('#chat-input').addEventListener('input', (ev) => {
+    const inp = ev.currentTarget;
+    // Такое в чат скидывать нельзя — откатываем поле на последний «чистый» текст
+    if (forbiddenHit(inp.value)) {
+      inp.value = lastGoodChatText;
+      showToast('Такое сообщение нельзя отправлять в чат');
+      return;
+    }
+    lastGoodChatText = inp.value;
     if (!typingBeacon) startTypingBeacon();
     const now = Date.now();
     if (now - lastTypingSent > 2500) {
@@ -3776,18 +5004,77 @@
       }
     }
     // Живой сброс edit, если очистили
-    if (editMsg && !$('#chat-input').value.trim()) clearEdit();
+    if (editMsg && !inp.value.trim()) clearEdit();
+  });
+  // Вставка из буфера — тоже проверяем
+  $('#chat-input').addEventListener('paste', (ev) => {
+    const inp = ev.currentTarget;
+    const dt = ev.clipboardData;
+    if (!dt || typeof dt.getData !== 'function') return;
+    const text = dt.getData('text') || '';
+    if (!forbiddenHit(text)) return;
+    ev.preventDefault();
+    showToast('Такое сообщение нельзя отправлять в чат');
+    // Вставляем всё, кроме запрещённой части
+    try {
+      const clean = text.split('\n').filter((l) => !forbiddenHit(l)).join('\n');
+      if (clean) {
+        const s = inp.selectionStart == null ? inp.value.length : inp.selectionStart;
+        const e = inp.selectionEnd == null ? s : inp.selectionEnd;
+        inp.value = inp.value.slice(0, s) + clean + inp.value.slice(e);
+      }
+      lastGoodChatText = inp.value;
+    } catch (err) { /* поле не трогаем */ }
   });
 
   // Reply/Edit: закрытие
   $('#chat-reply-close').addEventListener('click', clearReply);
   $('#chat-edit-close').addEventListener('click', clearEdit);
 
-  // Клики по сообщениям: реакция, reply, edit, del, fav
+  // Блок закреплённых сообщений: переход к сообщению и открепление
+  $('#chat-pinned').addEventListener('click', (e) => {
+    const card = e.target.closest('[data-pin-card]');
+    if (!card) return;
+    const key = card.getAttribute('data-pin-card');
+    if (e.target.closest('.pin-unpin')) { togglePin(key); return; }
+    if (e.target.closest('.pin-jump')) jumpToMsg(key);
+  });
+
+  // Просмотр фото/видео объявления во весь экран
+  $('#media-close').addEventListener('click', closeMediaModal);
+  $('#media-modal').addEventListener('click', (e) => {
+    if (e.target === $('#media-modal')) closeMediaModal();
+  });
+
+  // Карточка пользователя (тап по аватару в чате)
+  $('#user-close').addEventListener('click', closeUserCard);
+  $('#user-modal').addEventListener('click', (e) => {
+    if (e.target === $('#user-modal')) closeUserCard();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    closeMediaModal();
+    closeUserCard();
+  });
+
+  // Обратный отсчёт до конца урока (обновляется раз в секунду)
+  startLessonClock();
+  // Счётчик онлайна: пересчёт раз в 30 сек, чтобы «старые» записи отваливались
+  setInterval(paintOnlineCount, 30000);
+  // Обруч с часами (тема coder20): разметка монтируется всегда, часы тикают только в этой теме
+  mountCoder20();
+  if (isCoder20()) startCoder20();
+  // В фоновой вкладке браузер душит таймеры — обновляем циферблат сразу после возврата
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && isCoder20()) tickCoder20(); });
+
+  // Клики по сообщениям: реакция, reply, edit, del, fav, закрепление
   $('#chat-messages').addEventListener('click', (e) => {
     const wrap = e.target.closest('[data-msg]');
     if (!wrap) return;
     const key = wrap.dataset.msg;
+
+    const pin = e.target.closest('.msg-pin');
+    if (pin) { togglePin(key); return; }
 
     const fav = e.target.closest('.msg-fav');
     if (fav) {
