@@ -67,6 +67,11 @@
     .avatar-sm { width: 28px; height: 28px; font-size: 12px; }
     .avatar-md { width: 40px; height: 40px; font-size: 16px; }
     .avatar-lg { width: 64px; height: 64px; font-size: 24px; }
+    .avatar-emoji { background: #374151; }
+    .avatar-sm.avatar-emoji { font-size: 16px; }
+    .avatar-md.avatar-emoji { font-size: 22px; }
+    .avatar-lg.avatar-emoji { font-size: 34px; }
+    .msg-author { cursor: pointer; }
 
     .accent-dot { width: 36px; height: 36px; border-radius: 9999px; border: 3px solid transparent; cursor: pointer; transition: transform .15s; }
     .accent-dot:hover { transform: scale(1.1); }
@@ -542,6 +547,7 @@
   <div id="dm-panel" class="hidden fixed inset-0 z-[55] flex flex-col bg-slate-950">
     <div class="flex items-center gap-2 px-3 pt-safe py-3 border-b border-slate-800">
       <button id="dm-back" class="hidden shrink-0 h-9 w-9 rounded-full bg-slate-800 flex items-center justify-center hover:bg-slate-700 font-bold" aria-label="Назад">‹</button>
+      <span id="dm-ava" class="hidden shrink-0"></span>
       <div class="flex-1 min-w-0">
         <div id="dm-title" class="font-bold text-sm truncate">✉️ Личные сообщения</div>
         <div id="dm-sub" class="text-[10px] text-slate-500 truncate"></div>
@@ -890,12 +896,80 @@
     for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 360;
     return h;
   }
-  function avatarHtml(name, size) {
+  function avatarHtml(name, size, av) {
     const n = String(name || '?').trim() || '?';
+    const sizeCls = size === 'sm' ? 'avatar-sm' : size === 'lg' ? 'avatar-lg' : 'avatar-md';
+    if (av && av !== 'letter') {
+      return `<span class="avatar avatar-emoji ${sizeCls}">${esc(String(av))}</span>`;
+    }
     const initial = n[0].toUpperCase();
     const hue = avatarHue(n);
-    const sizeCls = size === 'sm' ? 'avatar-sm' : size === 'lg' ? 'avatar-lg' : 'avatar-md';
     return `<span class="avatar ${sizeCls}" style="background:hsl(${hue},55%,45%);color:#fff">${esc(initial)}</span>`;
+  }
+  const AVATAR_EMOJI = ['❤️', '👻', '🔥', '⭐', '🐱', '🐶', '🌹', '⚡', '🌙', '☀️', '💀', '👽', '🦄', '🐉', '🐼', '🦊'];
+  // Кэш внешних профилей (users/{uid}): nick / avatar / bio — для чата, ЛС и просмотра профиля.
+  let usersMeta = null;
+  function loadUsersMeta() {
+    if (!window.HubAuth || !HubAuth.uid) return;
+    db.ref('/users').once('value').then((s) => {
+      const v = s.val() || {};
+      const m = {};
+      Object.keys(v).forEach((uid) => {
+        const u = v[uid] || {};
+        m[uid] = { nick: u.nick || '', avatar: u.avatar || '', bio: u.bio || '' };
+      });
+      usersMeta = m;
+      paintChatAvatars();
+      paintDmList();
+    }).catch(() => {});
+  }
+  function userMeta(uid) { return (usersMeta && usersMeta[uid]) ? usersMeta[uid] : null; }
+  function userAvatarOf(uid) { const m = userMeta(uid); return (m && m.avatar) ? m.avatar : 'letter'; }
+  function userBioOf(uid) { const m = userMeta(uid); return (m && m.bio) ? m.bio : ''; }
+  function peerAvatarHtml(uid, name, size) {
+    let av = 'letter';
+    if (dmUsers && dmUsers[uid] && dmUsers[uid].avatar) av = dmUsers[uid].avatar;
+    else if (userMeta(uid) && userMeta(uid).avatar) av = userMeta(uid).avatar;
+    return avatarHtml(name, size, av);
+  }
+  function peerBioOf(uid) {
+    if (dmUsers && dmUsers[uid] && dmUsers[uid].bio) return dmUsers[uid].bio;
+    return userBioOf(uid);
+  }
+  function paintChatAvatars() {
+    const chat = $('#tab-chat');
+    if (!chat || chat.classList.contains('hidden')) return;
+    document.querySelectorAll('#chat-messages [data-uid]').forEach((el) => {
+      const uid = el.getAttribute('data-uid');
+      const avEl = el.querySelector('.chat-bubble-row .avatar');
+      if (!avEl || !uid) return;
+      const nm = el.getAttribute('data-nick') || 'Ученик';
+      avEl.outerHTML = avatarHtml(nm, 'sm', userAvatarOf(uid));
+    });
+  }
+  function openUserPopup(uid, fallbackName) {
+    if (!uid) return;
+    const overlay = document.createElement('div');
+    overlay.className = 'hidden fixed inset-0 z-[75] items-center justify-center bg-black/70 backdrop-blur-sm p-4';
+    const build = (p) => {
+      const nm = (p && p.nick) || fallbackName || 'Ученик';
+      const av = (p && p.avatar) ? p.avatar : 'letter';
+      overlay.innerHTML = `
+        <div class="w-full max-w-xs rounded-2xl bg-slate-900 border border-slate-800 p-5 shadow-2xl text-center">
+          <div class="flex justify-center">${avatarHtml(nm, 'lg', av)}</div>
+          <div class="mt-3 flex items-center justify-center gap-1 flex-wrap">
+            <span class="font-bold text-base">${esc(nm)}</span>
+            ${verifyBadge(uid)}
+          </div>
+          <p class="text-xs text-slate-400 mt-2 break-words whitespace-pre-wrap">${esc((p && p.bio) || '—')}</p>
+          <button class="mt-4 w-full rounded-xl bg-slate-800 hover:bg-slate-700 py-2.5 text-sm font-bold">Закрыть</button>
+        </div>`;
+    };
+    db.ref('/users/' + uid).once('value').then((sn) => build(sn.val() || {})).catch(() => build({}));
+    overlay.classList.remove('hidden');
+    overlay.classList.add('flex');
+    overlay.addEventListener('click', () => overlay.remove());
+    document.body.appendChild(overlay);
   }
 
   const P = {
@@ -2390,10 +2464,10 @@
 
     div.innerHTML = `
       <div class="chat-bubble-row flex items-start gap-2 max-w-[85%] ${mine ? 'flex-row-reverse' : ''}">
-        ${avatarHtml(mname, 'sm')}
+        ${avatarHtml(mname, 'sm', m.uid ? userAvatarOf(m.uid) : 'letter')}
         <div class="${mine ? 'accent-bg text-white' : 'bg-slate-800'} rounded-2xl px-3.5 py-2 min-w-0 flex-1">
           <div class="flex items-center gap-1 mb-0.5 flex-wrap">
-            <span class="text-[11px] font-bold" style="color:${mine ? '#e0e7ff' : nickColor(mname)}">${esc(mname)}</span>
+            <span class="msg-author text-[11px] font-bold" style="color:${mine ? '#e0e7ff' : nickColor(mname)}" data-uid="${esc(m.uid || '')}">${esc(mname)}</span>
             ${verifyBadge(m.uid)}
             ${adminBadge}
             ${editedMark}
@@ -3133,7 +3207,7 @@
     box.innerHTML = list.map((p) => {
       const n = p.unread || 0;
       return `<button class="dm-peer" data-uid="${esc(p.uid)}">
-        ${avatarHtml(dmNickOf(p.uid), 'md')}
+        ${peerAvatarHtml(p.uid, dmNickOf(p.uid), 'md')}
         <span class="flex-1 min-w-0">
           <span class="flex items-center gap-1">
             <span class="font-bold text-sm truncate">${esc(dmNickOf(p.uid))}</span>
@@ -3154,6 +3228,7 @@
     $('#dm-thread').classList.add('hidden');
     $('#dm-form').classList.add('hidden');
     $('#dm-back').classList.add('hidden');
+    $('#dm-ava').classList.add('hidden');
     $('#dm-search').classList.remove('hidden');
     $('#dm-list').classList.remove('hidden');
     $('#dm-title').textContent = '✉️ Личные сообщения';
@@ -3166,10 +3241,12 @@
     $('#dm-thread').classList.remove('hidden');
     $('#dm-form').classList.remove('hidden');
     $('#dm-back').classList.remove('hidden');
+    $('#dm-ava').classList.remove('hidden');
+    $('#dm-ava').innerHTML = peerAvatarHtml(uid, name, 'sm');
     $('#dm-search').classList.add('hidden');
     $('#dm-title').textContent = name;
     const p = dmPeers[uid];
-    $('#dm-sub').textContent = (p && p.uname ? '@' + p.uname : '') || '';
+    $('#dm-sub').textContent = peerBioOf(uid) || ((p && p.uname ? '@' + p.uname : '') || '');
     paintDmThread();
     markDmRead(uid);
     setTimeout(() => { const i = $('#dm-input'); if (i) i.focus(); }, 120);
@@ -3487,13 +3564,35 @@
     el.innerHTML = `
       <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
         <div class="flex items-center gap-3">
-          ${avatarHtml(n, 'lg')}
+          <div id="profile-avatar">${avatarHtml(n, 'lg', userAvatarOf(window.HubAuth && HubAuth.uid))}</div>
           <div class="flex-1 min-w-0">
             <div class="font-bold text-base truncate">${esc(n)}${verifyBadge(window.HubAuth && HubAuth.uid)}</div>
             <div class="text-[11px] text-slate-500 truncate">${esc(s.cname || '')}, ${esc(s.sname || '')}, ${esc(s.clname || '')}</div>
             <button id="profile-edit-nick" class="text-[11px] accent-text underline mt-1">Изменить ник</button>
           </div>
         </div>
+      </div>
+
+      <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
+        <div class="flex items-center justify-between mb-1">
+          <div class="font-bold text-sm">О себе</div>
+          <span id="bio-count" class="text-[10px] text-slate-500"></span>
+        </div>
+        <p class="text-[11px] text-slate-500 mb-2">Расскажи о себе — до 150 символов. Видно одноклассникам в ЛС, в «Людях» и по клику на ник в чате.</p>
+        <textarea id="bio-input" maxlength="150" rows="2" placeholder="Например: люблю футбол и математику"
+                  class="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-xs resize-none outline-none focus:border-indigo-500"></textarea>
+        <div class="mt-2 flex justify-end">
+          <button id="bio-save" class="rounded-lg accent-bg text-white px-4 py-2 text-xs font-bold hover:opacity-90">Сохранить</button>
+        </div>
+      </div>
+
+      <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
+        <div class="font-bold text-sm mb-1">Аватар</div>
+        <p class="text-[11px] text-slate-500 mb-2">Выбери эмодзи или оставь первую букву ника</p>
+        <div class="grid grid-cols-8 gap-1.5 mb-2">
+          ${AVATAR_EMOJI.map((em) => `<button class="avatar-tile rounded-xl border border-slate-700 bg-slate-800/40 hover:bg-slate-700 h-9 flex items-center justify-center" data-avatar="${esc(em)}" title="${em}">${em}</button>`).join('')}
+        </div>
+        <button id="avatar-letter" class="w-full rounded-lg bg-slate-800 hover:bg-slate-700 py-2 text-xs font-semibold">🔤 Буква ника</button>
       </div>
 
       <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
@@ -3597,6 +3696,59 @@
       <p class="text-center text-[10px] mt-6" style="color:#6b7280">Developers: ZakveZ, Coder20</p>`;
 
     $('#profile-edit-nick').addEventListener('click', changeNick);
+    const bioInp = $('#bio-input');
+    const bioCnt = $('#bio-count');
+    const updBioCount = () => { if (bioInp && bioCnt) bioCnt.textContent = bioInp.value.length + '/150'; };
+    const setTileState = (av) => {
+      const cur = av || 'letter';
+      $$('.avatar-tile').forEach((t) => { t.classList.toggle('accent-border', t.dataset.avatar === cur); });
+      const lb = $('#avatar-letter');
+      if (lb) { lb.classList.toggle('accent-border', cur === 'letter'); }
+    };
+    if (bioInp) bioInp.addEventListener('input', updBioCount);
+    updBioCount();
+    const meu = window.HubAuth && HubAuth.uid;
+    if (meu) {
+      db.ref('/users/' + meu).once('value').then((sn) => {
+        const u = sn.val() || {};
+        if (bioInp && document.activeElement !== bioInp) { bioInp.value = u.bio || ''; updBioCount(); }
+        setTileState(u.avatar || 'letter');
+        const pa = $('#profile-avatar');
+        if (pa) pa.innerHTML = avatarHtml(nick() || 'Ученик', 'lg', (u.avatar) || 'letter');
+      }).catch(() => updBioCount());
+      const bioBtn = $('#bio-save');
+      if (bioBtn) bioBtn.addEventListener('click', () => {
+        const val = (bioInp ? bioInp.value : '').trim().slice(0, 150);
+        db.ref('/users/' + meu + '/bio').set(val).then(() => {
+          if (usersMeta) { usersMeta[meu] = usersMeta[meu] || { nick: nick() || '', avatar: '', bio: '' }; usersMeta[meu].bio = val; }
+          showToast('О себе сохранено');
+        }).catch((e) => showToast('Ошибка: ' + ((e && e.message) ? e.message : e)));
+      });
+      const letterBtn = $('#avatar-letter');
+      if (letterBtn) letterBtn.addEventListener('click', () => {
+        db.ref('/users/' + meu + '/avatar').set('letter').then(() => {
+          if (usersMeta) { usersMeta[meu] = usersMeta[meu] || {}; usersMeta[meu].avatar = 'letter'; }
+          setTileState('letter');
+          const pa = $('#profile-avatar');
+          if (pa) pa.innerHTML = avatarHtml(nick() || 'Ученик', 'lg', 'letter');
+          paintChatAvatars();
+          paintDmList();
+          showToast('Аватар обновлён');
+        }).catch((e) => showToast('Ошибка: ' + ((e && e.message) ? e.message : e)));
+      });
+      $$('.avatar-tile').forEach((t) => t.addEventListener('click', () => {
+        const av = t.dataset.avatar;
+        db.ref('/users/' + meu + '/avatar').set(av).then(() => {
+          if (usersMeta) { usersMeta[meu] = usersMeta[meu] || {}; usersMeta[meu].avatar = av; }
+          setTileState(av);
+          const pa = $('#profile-avatar');
+          if (pa) pa.innerHTML = avatarHtml(nick() || 'Ученик', 'lg', av);
+          paintChatAvatars();
+          paintDmList();
+          showToast('Аватар обновлён');
+        }).catch((e) => showToast('Ошибка: ' + ((e && e.message) ? e.message : e)));
+      }));
+    }
     $('#theme-light').addEventListener('click', () => { applyTheme('light'); renderSettingsTab(); showToast('Тема: ' + THEME_LABELS.light); });
     $('#theme-dark').addEventListener('click', () => { applyTheme('dark'); renderSettingsTab(); showToast('Тема: ' + THEME_LABELS.dark); });
     $('#theme-coder').addEventListener('click', () => { applyTheme('coder20'); renderSettingsTab(); showToast('Тема: ' + THEME_LABELS.coder20); });
@@ -4113,8 +4265,10 @@
             else actions = `<button data-act="revokeAdmin" data-uid="${esc(uid)}" class="rounded-lg bg-rose-600/80 hover:bg-rose-600 px-2.5 py-1.5 text-[11px] font-semibold">Снять права</button>`;
             return `
             <div class="row rounded-xl bg-slate-900 border border-slate-800 p-3 flex items-center gap-2 flex-wrap fade-up">
+              ${avatarHtml(nickOf(uid) || '?', 'sm', (users[uid] && users[uid].avatar) || 'letter')}
               <span class="text-xs font-bold">${esc(nickOf(uid) || '—')}</span>
               ${verifyBadge(uid)}
+              ${(users[uid] && users[uid].bio) ? `<span class="text-[10px] text-slate-500 truncate max-w-[160px]">${esc(users[uid].bio)}</span>` : ''}
               <span class="text-[10px] text-slate-500">UID: ${esc(uid).slice(0, 14)}…</span>
               ${meta.grantedAt ? `<span class="text-[10px] text-slate-500">Выдан ${fmtDate(meta.grantedAt)}</span>` : ''}
               ${roleLabel('admin')}
@@ -4127,7 +4281,7 @@
       const usersEl = $('#users-list');
       if (usersEl) {
         const list = Object.keys(users)
-          .map((uid) => ({ uid: uid, nick: (users[uid] && users[uid].nick) || 'Ученик', role: roles[uid] }));
+          .map((uid) => ({ uid: uid, nick: (users[uid] && users[uid].nick) || 'Ученик', role: roles[uid], bio: (users[uid] && users[uid].bio) || '', avatar: (users[uid] && users[uid].avatar) || 'letter' }));
         list.sort((a, b) => a.nick.localeCompare(b.nick, 'ru'));
         if (!list.length) { usersEl.innerHTML = emptyNote('Пользователей пока нет'); return; }
         usersEl.innerHTML = list.map((u) => {
@@ -4140,8 +4294,10 @@
           else actions = `<button data-act="grantAdmin" data-uid="${esc(u.uid)}" data-nick="${esc(u.nick)}" class="rounded-lg bg-emerald-600/80 hover:bg-emerald-600 px-2.5 py-1.5 text-[11px] font-semibold">Выдать админа</button>`;
           return `
           <div class="row rounded-xl bg-slate-900 border border-slate-800 p-3 flex items-center gap-2 flex-wrap fade-up">
+            ${avatarHtml(u.nick || '?', 'sm', (u.avatar || 'letter'))}
             <span class="text-xs font-bold">${esc(u.nick)}</span>
             ${verifyBadge(u.uid)}
+            ${u.bio ? `<span class="text-[10px] text-slate-500 truncate max-w-[160px]">${esc(u.bio)}</span>` : ''}
             <span class="text-[10px] text-slate-500">UID: ${esc(u.uid).slice(0, 14)}…</span>
             ${roleLabel(u.role)}
             <span class="flex gap-1.5 ml-auto">${actions}</span>
@@ -4757,6 +4913,13 @@
     if (!wrap) return;
     const key = wrap.dataset.msg;
 
+    const author = e.target.closest('.msg-author');
+    if (author) {
+      const auid = author.getAttribute('data-uid');
+      if (auid) openUserPopup(auid, author.textContent);
+      return;
+    }
+
     const fav = e.target.closest('.msg-fav');
     if (fav) {
       const p = wrap.querySelector('p');
@@ -4903,6 +5066,7 @@
       loadHomeClass();
       pickUpAdminRole();
       pickUpRolesCache();
+      loadUsersMeta();
       // Регистрация/вход ждал авторизации: продолжаем, когда uid известен.
       accountAuthReady();
     });

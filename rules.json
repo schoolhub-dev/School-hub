@@ -101,6 +101,12 @@
         },
         "regAt": {
           ".write": "auth != null && $uid === auth.uid"
+        },
+        "bio": {
+          ".write": "auth != null && $uid === auth.uid && (newData.val() === null || (newData.isString() && newData.val().length() <= 150))"
+        },
+        "avatar": {
+          ".write": "auth != null && $uid === auth.uid && (newData.val() === null || (newData.isString() && newData.val().length() <= 8))"
         }
       }
     },
@@ -143,7 +149,7 @@
         "$peer": {
           ".read": "auth != null && (auth.uid === $uid || auth.uid === $peer)",
           "$key": {
-            ".write": "auth != null && (auth.uid === $uid || auth.uid === $peer) && newData.child('from').val() === auth.uid && (!root.child('bannedUsers').child(auth.uid).exists() || (root.child('bannedUsers').child(auth.uid).hasChild('until') && root.child('bannedUsers').child(auth.uid).child('until').val() > 0 && root.child('bannedUsers').child(auth.uid).child('until').val() < now) || root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true)"
+            ".write": "auth != null && (auth.uid === $uid || auth.uid === $peer) && (!root.child('bannedUsers').child(auth.uid).exists() || (root.child('bannedUsers').child(auth.uid).hasChild('until') && root.child('bannedUsers').child(auth.uid).child('until').val() > 0 && root.child('bannedUsers').child(auth.uid).child('until').val() < now) || root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true) && ((!data.exists() && newData.child('from').val() === auth.uid) || (data.exists() && (data.child('from').val() === auth.uid || data.child('to').val() === auth.uid)))"
           }
         }
       }
