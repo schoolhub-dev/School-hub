@@ -338,6 +338,8 @@
       --text-secondary: #1fa84a;
       --border: #1e4d2b;
       --accent: #00ff41;
+      --accent-bg: #041a08;
+      --avatar-bg: #0f2410;
       --danger: #ff3355;
       --font-mono: 'Courier New', 'Consolas', monospace;
     }
@@ -402,19 +404,25 @@
     html.zakvez .hover\:border-indigo-500:hover { border-color: var(--accent) !important; }
     html.zakvez .focus\:border-indigo-500:focus { border-color: var(--accent) !important; }
 
-    /* Aktsent vybora (zakvezov): vsegda neon-zelyonyy */
+    /* Aktsent (zakvezov): neon-zelyonyy na tyomno-zelyonom fone */
     html.zakvez[data-accent] .accent-bg { background-color: var(--accent) !important; }
     html.zakvez[data-accent] .accent-bg { color: #001a00 !important; }
     html.zakvez[data-accent] .accent-text { color: var(--accent) !important; }
     html.zakvez[data-accent] .accent-border { border-color: var(--accent) !important; }
 
-    /* Knopki: tyomnyy fon + zelyonaya ramka + zelyonyy tekst */
+    /* Knopki: tyomnyy akcent-fon + zelyonaya ramka + zelyonyy tekst */
     html.zakvez button.accent-bg {
-      background-color: var(--bg-tertiary) !important;
+      background-color: var(--accent-bg) !important;
       box-shadow: inset 0 0 0 1px var(--accent);
-      color: var(--text-primary) !important;
+      color: var(--accent) !important;
     }
     html.zakvez button.accent-bg:hover { background-color: var(--bg-hover) !important; }
+
+    /* Aktivnye vkladki/nav: tmnyy akcent na fone accent-bg */
+    html.zakvez .bg-indigo-500\/10 { background-color: rgba(4, 26, 8, .92) !important; }
+
+    /* Avatary s emodzhi: tyomno-zelyonyy krug, chtoby emodzhi vyydylyaliis */
+    html.zakvez .avatar-emoji { background-color: var(--avatar-bg) !important; }
 
     /* Teni — chyotkiy obvod, bez blura i rasmytiya */
     html.zakvez .shadow-lg,
@@ -427,19 +435,31 @@
     .zakvez-aside { display: none; }
 
     @media (min-width: 600px) {
+      /* Levaya chast': sobstvennaya oblast' prokrutki, ne zayezzhaet pod kolonku */
+      html.zakvez #main-screen,
+      html.zakvez #auth-screen {
+        height: 100vh;
+        height: 100dvh;
+        overflow-y: auto;
+        padding-right: var(--zakvez-aside);
+      }
+      /* Deti rastyagivayutsya na otvedyennuyu oblast' (bez zayezda pod titry) */
       html.zakvez #main-screen > *:not(.zakvez-aside),
       html.zakvez #auth-screen > *:not(.zakvez-aside) {
-        width: calc(100% - var(--zakvez-aside));
+        width: 100%;
         max-width: none;
         margin-left: 0;
         margin-right: auto;
       }
+      /* Kolonka titrov: zafiksirovana na ekrane, ne skrolititsya vmeste s kontentom */
       html.zakvez .zakvez-aside {
         display: block;
-        position: absolute;
+        position: fixed;
         top: 0; right: 0; bottom: 0;
         width: var(--zakvez-aside);
         border-left: 1px solid var(--border);
+        background: var(--bg-primary);
+        z-index: 30;
         pointer-events: none;
       }
     }
@@ -456,7 +476,7 @@
     }
     #credits-pre {
       position: absolute;
-      left: 18px; right: 18px; top: 0;
+      left: 28px; right: 28px; top: 0;
       margin: 0;
       white-space: pre;
       line-height: 1.7;
@@ -741,6 +761,19 @@
     </div>
   </div>
 
+  <!-- ======================= ВЫБОР АВАТАРА ======================= -->
+  <div id="avatar-modal" class="hidden fixed inset-0 z-[60] items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+    <div class="w-full max-w-xs rounded-2xl bg-slate-900 border border-slate-800 p-5 shadow-2xl">
+      <div class="flex items-center justify-between mb-1">
+        <h3 class="text-base font-bold">Аватар</h3>
+        <button id="avatar-modal-close" class="h-8 w-8 rounded-full bg-slate-800 flex items-center justify-center font-bold hover:bg-slate-700" aria-label="Закрыть">✕</button>
+      </div>
+      <p class="text-xs text-slate-400 mb-3">Выбери эмодзи или оставь первую букву ника</p>
+      <div id="avatar-grid" class="grid grid-cols-4 gap-2 mb-3"></div>
+      <button id="avatar-modal-letter" class="w-full rounded-xl accent-bg py-2.5 text-xs font-bold text-white hover:opacity-90 active:scale-[.98] transition">🔤 Буква ника</button>
+    </div>
+  </div>
+
   <!-- ======================= АДМИН-ПАНЕЛЬ ======================= -->
   <div id="admin-panel" class="hidden fixed inset-0 z-40">
     <div id="admin-overlay" class="absolute inset-0 bg-black/60"></div>
@@ -854,7 +887,6 @@
     accent: 'sh_accent',
     fav: 'sh_fav',
     hwDone: 'sh_hw_done',
-    bdays: 'sh_bdays',
     dnd: 'sh_dnd',
     lastRead: 'sh_last_read',
     lastParse: 'sh_last_parse',
@@ -3872,7 +3904,9 @@
     el.innerHTML = `
       <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
         <div class="flex items-center gap-3">
-          <div id="profile-avatar">${avatarHtml(n, 'lg', userAvatarOf(window.HubAuth && HubAuth.uid))}</div>
+          <button id="profile-avatar" class="rounded-full border border-slate-700 hover:border-slate-600 transition-colors shrink-0" style="cursor:pointer" title="Изменить аватар">
+            ${avatarHtml(n, 'lg', userAvatarOf(window.HubAuth && HubAuth.uid))}
+          </button>
           <div class="flex-1 min-w-0">
             <div class="font-bold text-base truncate">${esc(n)}${verifyBadge(window.HubAuth && HubAuth.uid)}</div>
             <div class="text-[11px] text-slate-500 truncate">${esc(s.cname || '')}, ${esc(s.sname || '')}, ${esc(s.clname || '')}</div>
@@ -3892,15 +3926,6 @@
         <div class="mt-2 flex justify-end">
           <button id="bio-save" class="rounded-lg accent-bg text-white px-4 py-2 text-xs font-bold hover:opacity-90">Сохранить</button>
         </div>
-      </div>
-
-      <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
-        <div class="font-bold text-sm mb-1">Аватар</div>
-        <p class="text-[11px] text-slate-500 mb-2">Выбери эмодзи или оставь первую букву ника</p>
-        <div class="grid grid-cols-8 gap-1.5 mb-2">
-          ${AVATAR_EMOJI.map((em) => `<button class="avatar-tile rounded-xl border border-slate-700 bg-slate-800/40 hover:bg-slate-700 h-9 flex items-center justify-center" data-avatar="${esc(em)}" title="${em}">${em}</button>`).join('')}
-        </div>
-        <button id="avatar-letter" class="w-full rounded-lg bg-slate-800 hover:bg-slate-700 py-2 text-xs font-semibold">🔤 Буква ника</button>
       </div>
 
       <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
@@ -3975,16 +4000,6 @@
       <button id="fav-open" class="w-full rounded-xl bg-slate-800 hover:bg-slate-700 py-3 text-sm font-bold fade-up">⭐ Избранные сообщения</button>
       <button id="export-chat" class="w-full rounded-xl bg-slate-800 hover:bg-slate-700 py-3 text-sm font-bold fade-up">📥 Скачать чат в TXT</button>
 
-      <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
-        <div class="font-bold text-sm mb-2">🎂 Дни рождения класса</div>
-        <div id="bdays-list" class="space-y-1.5 mb-2"></div>
-        <form id="bday-add" class="flex gap-2 mt-2">
-          <input id="bday-name" placeholder="Имя" class="flex-1 min-w-0 rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-xs outline-none focus:border-indigo-500">
-          <input id="bday-date" type="date" class="rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-xs outline-none focus:border-indigo-500">
-          <button class="rounded-lg px-3 py-2 text-xs font-bold accent-bg text-white">+</button>
-        </form>
-      </div>
-
       ${isAdminNow ? `
         <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
           <div class="flex items-center justify-between gap-3">
@@ -4006,15 +4021,10 @@
       <p class="text-center text-[10px] mt-6" style="color:#6b7280">Developers: ZakveZ, Coder20</p>`;
 
     $('#profile-edit-nick').addEventListener('click', changeNick);
+    $('#profile-avatar').addEventListener('click', openAvatarModal);
     const bioInp = $('#bio-input');
     const bioCnt = $('#bio-count');
     const updBioCount = () => { if (bioInp && bioCnt) bioCnt.textContent = bioInp.value.length + '/150'; };
-    const setTileState = (av) => {
-      const cur = av || 'letter';
-      $$('.avatar-tile').forEach((t) => { t.classList.toggle('accent-border', t.dataset.avatar === cur); });
-      const lb = $('#avatar-letter');
-      if (lb) { lb.classList.toggle('accent-border', cur === 'letter'); }
-    };
     if (bioInp) bioInp.addEventListener('input', updBioCount);
     updBioCount();
     const meu = window.HubAuth && HubAuth.uid;
@@ -4022,7 +4032,6 @@
       db.ref('/users/' + meu).once('value').then((sn) => {
         const u = sn.val() || {};
         if (bioInp && document.activeElement !== bioInp) { bioInp.value = u.bio || ''; updBioCount(); }
-        setTileState(u.avatar || 'letter');
         const pa = $('#profile-avatar');
         if (pa) pa.innerHTML = avatarHtml(nick() || 'Ученик', 'lg', (u.avatar) || 'letter');
       }).catch(() => updBioCount());
@@ -4034,30 +4043,6 @@
           showToast('О себе сохранено');
         }).catch((e) => showToast('Ошибка: ' + ((e && e.message) ? e.message : e)));
       });
-      const letterBtn = $('#avatar-letter');
-      if (letterBtn) letterBtn.addEventListener('click', () => {
-        db.ref('/users/' + meu + '/avatar').set('letter').then(() => {
-          if (usersMeta) { usersMeta[meu] = usersMeta[meu] || {}; usersMeta[meu].avatar = 'letter'; }
-          setTileState('letter');
-          const pa = $('#profile-avatar');
-          if (pa) pa.innerHTML = avatarHtml(nick() || 'Ученик', 'lg', 'letter');
-          paintChatAvatars();
-          paintDmList();
-          showToast('Аватар обновлён');
-        }).catch((e) => showToast('Ошибка: ' + ((e && e.message) ? e.message : e)));
-      });
-      $$('.avatar-tile').forEach((t) => t.addEventListener('click', () => {
-        const av = t.dataset.avatar;
-        db.ref('/users/' + meu + '/avatar').set(av).then(() => {
-          if (usersMeta) { usersMeta[meu] = usersMeta[meu] || {}; usersMeta[meu].avatar = av; }
-          setTileState(av);
-          const pa = $('#profile-avatar');
-          if (pa) pa.innerHTML = avatarHtml(nick() || 'Ученик', 'lg', av);
-          paintChatAvatars();
-          paintDmList();
-          showToast('Аватар обновлён');
-        }).catch((e) => showToast('Ошибка: ' + ((e && e.message) ? e.message : e)));
-      }));
     }
     $('#theme-light').addEventListener('click', () => { applyTheme('light'); renderSettingsTab(); showToast('Тема: ' + THEME_LABELS.light); });
     $('#theme-dark').addEventListener('click', () => { applyTheme('dark'); renderSettingsTab(); showToast('Тема: ' + THEME_LABELS.dark); });
@@ -4112,21 +4097,6 @@
     });
     paintMsgList();
 
-    paintBdays();
-    $('#bday-add').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const name = $('#bday-name').value.trim();
-      const date = $('#bday-date').value;
-      if (!name || !date) return;
-      let arr = [];
-      try { arr = JSON.parse(localStorage.getItem(LS.bdays) || '[]'); } catch (er) {}
-      arr.push({ name, date });
-      arr.sort((a, b) => a.date.localeCompare(b.date));
-      localStorage.setItem(LS.bdays, JSON.stringify(arr));
-      $('#bday-name').value = '';
-      $('#bday-date').value = '';
-      paintBdays();
-    });
     if (isAdminNow) {
       const alt = $('#alt-toggle');
       if (alt) alt.addEventListener('change', (e) => {
@@ -4141,31 +4111,44 @@
     }
   }
 
-  function paintBdays() {
-    const el = $('#bdays-list');
-    if (!el) return;
-    let arr = [];
-    try { arr = JSON.parse(localStorage.getItem(LS.bdays) || '[]'); } catch (e) {}
-    if (!arr.length) { el.innerHTML = '<p class="text-[11px] text-slate-500">Пока никого</p>'; return; }
-    const today = new Date();
-    const p = (n) => String(n).padStart(2, '0');
-    const todayMD = p(today.getMonth() + 1) + '-' + p(today.getDate());
-    el.innerHTML = arr.map((b, i) => {
-      const isToday = b.date.slice(5) === todayMD;
-      return `
-        <div class="flex items-center justify-between gap-2 text-xs">
-          <span class="${isToday ? 'font-bold accent-text' : ''}">${esc(b.name)}</span>
-          <span class="text-slate-500">${b.date.slice(5).split('-').reverse().join('.')}${isToday ? ' 🎉' : ''}</span>
-          <button class="bday-del text-slate-500 hover:text-rose-400 px-1" data-i="${i}">✕</button>
-        </div>`;
-    }).join('');
-    el.querySelectorAll('.bday-del').forEach((b) => b.addEventListener('click', () => {
-      let a = [];
-      try { a = JSON.parse(localStorage.getItem(LS.bdays) || '[]'); } catch (e) {}
-      a.splice(Number(b.dataset.i), 1);
-      localStorage.setItem(LS.bdays, JSON.stringify(a));
-      paintBdays();
-    }));
+  function openAvatarModal() {
+    const m = $('#avatar-modal');
+    const grid = $('#avatar-grid');
+    const meu = window.HubAuth && window.HubAuth.uid;
+    const cur = (meu && usersMeta && usersMeta[meu] && usersMeta[meu].avatar) || 'letter';
+    if (grid && !grid.dataset.built) {
+      grid.dataset.built = '1';
+      grid.innerHTML = AVATAR_EMOJI.map((em) => `<button class="avatar-pick rounded-xl border border-slate-700 bg-slate-800/40 hover:bg-slate-700 h-10 flex items-center justify-center text-lg" data-av="${esc(em)}" aria-label="Аватар ${esc(em)}">${em}</button>`).join('');
+    }
+    grid.querySelectorAll('.avatar-pick').forEach((b) => {
+      b.classList.toggle('accent-border', b.dataset.av === cur);
+    });
+    const lb = $('#avatar-modal-letter');
+    if (lb) { lb.classList.remove('accent-border'); lb.classList.toggle('accent-border', cur === 'letter'); }
+    m.classList.remove('hidden');
+    m.classList.add('flex');
+  }
+  function closeAvatarModal() {
+    const m = $('#avatar-modal');
+    m.classList.add('hidden');
+    m.classList.remove('flex');
+  }
+  function setMyAvatar(av) {
+    const meu = window.HubAuth && window.HubAuth.uid;
+    const val = av || 'letter';
+    const applyAv = (v) => {
+      if (usersMeta && meu) { usersMeta[meu] = usersMeta[meu] || {}; usersMeta[meu].avatar = v; }
+      const pa = $('#profile-avatar');
+      if (pa) pa.innerHTML = avatarHtml(nick() || 'Ученик', 'lg', v);
+      paintChatAvatars();
+      paintDmList();
+      closeAvatarModal();
+      showToast('Аватар обновлён');
+    };
+    if (!meu) { applyAv(val); return; }
+    db.ref('/users/' + meu + '/avatar').set(val)
+      .then(() => applyAv(val))
+      .catch((e) => showToast('Ошибка: ' + ((e && e.message) ? e.message : e)));
   }
 
   function openFavModal() {
@@ -5339,6 +5322,14 @@
   $('#fav-close').addEventListener('click', () => { $('#fav-modal').classList.add('hidden'); $('#fav-modal').classList.remove('flex'); });
   $('#fav-modal').addEventListener('click', (e) => {
     if (e.target === $('#fav-modal')) { $('#fav-modal').classList.add('hidden'); $('#fav-modal').classList.remove('flex'); }
+  });
+
+  $('#avatar-modal-close').addEventListener('click', closeAvatarModal);
+  $('#avatar-modal-letter').addEventListener('click', () => setMyAvatar('letter'));
+  $('#avatar-modal').addEventListener('click', (e) => {
+    if (e.target === $('#avatar-modal')) closeAvatarModal();
+    const pick = e.target.closest('.avatar-pick');
+    if (pick) setMyAvatar(pick.dataset.av);
   });
 
   bindLongPress($('#header-title'), openAdmin);
