@@ -324,23 +324,102 @@
     .c20-legend { font-size: 10px; letter-spacing: .2em; text-transform: uppercase; color: #64748b; }
 
     /* ============================================================
-       TEMA ZakveZ: chyornyy fon + zelyonyy tekst, shrift Courier New.
-       Vse tsveta privodyatsya k zelyonomu filtrom, a sprava stoyit
-       kolonka s "titrami" (kreditsami), polzushchimi snizu vverkh.
+       TEMA ZakveZ: chyornyy fon + chistyy zelyonyy tekst (terminal).
+       Chtiskie peremnye -> pryamaya perekraska, BEZ filterov,
+       backdrop-blur i poluprozrachnyh zelyonyh owerleyev.
        ============================================================ */
-    html.zakvez body,
     html.zakvez {
-      background: #000000 !important;
-      color: #39ff14 !important;
-      font-family: 'Courier New', Courier, monospace !important;
+      color-scheme: dark;
+      --bg-primary: #0a0e0a;
+      --bg-secondary: #0f1410;
+      --bg-tertiary: #131816;
+      --bg-hover: #1a2418;
+      --text-primary: #33ff66;
+      --text-secondary: #1fa84a;
+      --border: #1e4d2b;
+      --accent: #00ff41;
+      --danger: #ff3355;
+      --font-mono: 'Courier New', 'Consolas', monospace;
     }
-    /* ZelVeeniy svechenie/kontrast: emodzhi i kartinki tozhe v zelyonykh
-       tonakh. Filtr veshaem na PRYAMYKH potomkov body (kak u coder20),
-       chtoby ne lomat' fixed/sticky-sobsvennoe pozicionirovanie modalok. */
-    html.zakvez body > * { filter: grayscale(1) sepia(1) hue-rotate(72deg) saturate(3.6) brightness(1.05); }
+    html.zakvez body {
+      background: var(--bg-primary) !important;
+      color: var(--text-primary) !important;
+      font-family: var(--font-mono) !important;
+    }
+    html.zakvez, html.zakvez body * { font-family: var(--font-mono) !important; }
     html.zakvez ::-webkit-scrollbar { width: 6px; }
-    html.zakvez ::-webkit-scrollbar-thumb { background: #1c6b2f; border-radius: 9999px; }
-    html.zakvez ::selection { background: #39ff14; color: #000000; }
+    html.zakvez ::-webkit-scrollbar-track { background: transparent; }
+    html.zakvez ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 0; }
+    html.zakvez ::selection { background: var(--accent); color: #001a00; }
+
+    /* Fonovye poverkhnosti */
+    html.zakvez .bg-slate-950 { background-color: var(--bg-primary) !important; }
+    html.zakvez .bg-slate-950\/90 { background-color: rgba(10, 14, 10, .94) !important; }
+    html.zakvez .bg-slate-950\/10 { background-color: rgba(10, 14, 10, .1) !important; }
+    html.zakvez .bg-slate-900 { background-color: var(--bg-secondary) !important; }
+    html.zakvez .bg-slate-900\/70 { background-color: rgba(15, 20, 16, .7) !important; }
+    html.zakvez .bg-slate-800 { background-color: var(--bg-tertiary) !important; }
+    html.zakvez .bg-slate-800\/40 { background-color: rgba(19, 24, 22, .4) !important; }
+    html.zakvez .bg-slate-800\/50 { background-color: rgba(19, 24, 22, .5) !important; }
+    html.zakvez .bg-slate-800\/60 { background-color: rgba(19, 24, 22, .6) !important; }
+    html.zakvez .bg-slate-800\/70 { background-color: rgba(19, 24, 22, .7) !important; }
+    html.zakvez .bg-slate-700 { background-color: var(--bg-hover) !important; }
+    html.zakvez .hover\:bg-slate-700:hover { background-color: var(--bg-hover) !important; }
+    html.zakvez .hover\:bg-slate-800:hover { background-color: var(--bg-hover) !important; }
+    html.zakvez .hover\:bg-slate-950:hover { background-color: var(--bg-hover) !important; }
+    html.zakvez .bg-emerald-500\/10 { background-color: rgba(0, 255, 65, .08) !important; }
+    html.zakvez .bg-emerald-600, html.zakvez .bg-emerald-600\/80 { background-color: var(--accent) !important; }
+    html.zakvez .bg-sky-600 { background-color: var(--accent) !important; }
+    html.zakvez .bg-rose-600, html.zakvez .bg-rose-600\/80 { background-color: var(--danger) !important; }
+
+    /* Tekst */
+    html.zakvez .text-slate-100,
+    html.zakvez .text-slate-200,
+    html.zakvez .text-slate-300,
+    html.zakvez .text-white { color: var(--text-primary) !important; }
+    html.zakvez .text-slate-400,
+    html.zakvez .text-slate-500,
+    html.zakvez .text-slate-600 { color: var(--text-secondary) !important; }
+    html.zakvez .text-slate-900,
+    html.zakvez .text-slate-950 { color: var(--text-primary) !important; }
+    html.zakvez .text-indigo-400,
+    html.zakvez .text-emerald-400 { color: var(--accent) !important; }
+    html.zakvez .text-rose-400 { color: var(--danger) !important; }
+    html.zakvez .placeholder-slate-500::placeholder { color: var(--text-secondary) !important; }
+    /* Na zvetnyh chipakh/bageh belyy tekst ostayotsya belym (kontrast) */
+    html.zakvez .bg-rose-600 .text-white,
+    html.zakvez .bg-rose-600\/80 .text-white,
+    html.zakvez .bg-emerald-600 .text-white,
+    html.zakvez .bg-sky-600 .text-white { color: #ffffff !important; }
+
+    /* Granicy */
+    html.zakvez .border-slate-600,
+    html.zakvez .border-slate-700,
+    html.zakvez .border-slate-800,
+    html.zakvez .border-slate-800\/60 { border-color: var(--border) !important; }
+    html.zakvez .border-emerald-500\/30 { border-color: rgba(0, 255, 65, .3) !important; }
+    html.zakvez .border-emerald-500\/40 { border-color: rgba(0, 255, 65, .4) !important; }
+    html.zakvez .hover\:border-indigo-500:hover { border-color: var(--accent) !important; }
+    html.zakvez .focus\:border-indigo-500:focus { border-color: var(--accent) !important; }
+
+    /* Aktsent vybora (zakvezov): vsegda neon-zelyonyy */
+    html.zakvez[data-accent] .accent-bg { background-color: var(--accent) !important; }
+    html.zakvez[data-accent] .accent-bg { color: #001a00 !important; }
+    html.zakvez[data-accent] .accent-text { color: var(--accent) !important; }
+    html.zakvez[data-accent] .accent-border { border-color: var(--accent) !important; }
+
+    /* Knopki: tyomnyy fon + zelyonaya ramka + zelyonyy tekst */
+    html.zakvez button.accent-bg {
+      background-color: var(--bg-tertiary) !important;
+      box-shadow: inset 0 0 0 1px var(--accent);
+      color: var(--text-primary) !important;
+    }
+    html.zakvez button.accent-bg:hover { background-color: var(--bg-hover) !important; }
+
+    /* Teni — chyotkiy obvod, bez blura i rasmytiya */
+    html.zakvez .shadow-lg,
+    html.zakvez .shadow-indigo-900\/40 { box-shadow: 0 0 0 1px var(--border) !important; }
+    html.zakvez [class*="backdrop-blur"] { backdrop-filter: none !important; }
 
     /* Sdvigaem interfeys vlevo; osvobodivsheesya mesto sprava — titry. */
     html.zakvez #main-screen,
@@ -360,7 +439,7 @@
         position: absolute;
         top: 0; right: 0; bottom: 0;
         width: var(--zakvez-aside);
-        border-left: 1px solid rgba(57, 255, 20, .35);
+        border-left: 1px solid var(--border);
         pointer-events: none;
       }
     }
@@ -371,8 +450,9 @@
       width: 100%;
       height: 100%;
       overflow: hidden;
-      color: #39ff14;
-      font-family: 'Courier New', Courier, monospace;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: var(--font-mono);
     }
     #credits-pre {
       position: absolute;
@@ -381,7 +461,7 @@
       white-space: pre;
       line-height: 1.7;
       font-size: clamp(12px, 1.9vw, 15px);
-      text-shadow: 0 0 8px rgba(57, 255, 20, .75);
+      text-shadow: none;
       animation: scroll-up 80s linear infinite;
     }
     @keyframes scroll-up {
