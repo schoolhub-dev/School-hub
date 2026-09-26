@@ -18,7 +18,8 @@
     tailwind.config = { darkMode: 'class' };
     (function () {
       var saved = localStorage.getItem('sh_theme') || 'dark';
-      document.documentElement.classList.toggle('dark', saved === 'dark');
+      document.documentElement.classList.toggle('dark', saved !== 'light');
+      document.documentElement.classList.toggle('coder20', saved === 'coder20');
       var accent = localStorage.getItem('sh_accent') || 'indigo';
       document.documentElement.setAttribute('data-accent', accent);
     })();
@@ -235,6 +236,72 @@
       #stats-flagged .gap-1\.5.flex-wrap { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .apage-btn { font-size: 10px; padding: 8px 0; }
     }
+
+    /* ====== Тема «Coder20»: серый интерфейс слева + механические часы справа ====== */
+    html.coder20 body { background: #202024 !important; color: #e7e7ec; }
+    html.coder20 .bg-slate-950 { background: #1a1a1e !important; }
+    html.coder20 .dark\:bg-slate-950 { background: #1a1a1e !important; }
+    html.coder20 .bg-slate-900 { background: #2c2c31 !important; }
+    html.coder20 .bg-slate-900\/50 { background: rgba(44,44,49,.5) !important; }
+    html.coder20 .bg-slate-800 { background: #39393f !important; }
+    html.coder20 .bg-slate-800\/50 { background: rgba(57,57,63,.5) !important; }
+    html.coder20 .bg-slate-700 { background: #48484f !important; }
+    html.coder20 .bg-amber-500\/5 { background: rgba(120,120,128,.07) !important; }
+    html.coder20 .bg-amber-500\/10 { background: rgba(120,120,128,.16) !important; }
+    html.coder20 .border-slate-800 { border-color: #404047 !important; }
+    html.coder20 .border-slate-700 { border-color: #4d4d55 !important; }
+    html.coder20 .border-slate-600 { border-color: #585860 !important; }
+    html.coder20 .border-amber-500\/40 { border-color: rgba(150,150,160,.4) !important; }
+    html.coder20 .text-slate-900 { color: #e7e7ec !important; }
+    html.coder20 .text-slate-100 { color: #f1f1f5 !important; }
+    html.coder20 .dark\:text-slate-100 { color: #f1f1f5 !important; }
+    html.coder20 .text-slate-200 { color: #e7e7ec !important; }
+    html.coder20 .text-slate-300 { color: #d4d4da !important; }
+    html.coder20 .text-slate-400 { color: #a9a9b1 !important; }
+    html.coder20 .text-slate-500 { color: #8f8f97 !important; }
+    html.coder20 .text-amber-400 { color: #c9c9d1 !important; }
+    html.coder20 .text-amber-200 { color: #e4e4ea !important; }
+    html.coder20 .placeholder-slate-500::placeholder { color: #77777f !important; }
+    html.coder20 .accent-bg { background-color: #5a6472 !important; }
+    html.coder20 .accent-text { color: #b0b8c4 !important; }
+    html.coder20 .accent-border { border-color: #5a6472 !important; }
+    html.coder20 .hover\:bg-slate-700:hover { background-color: #4d4d55 !important; }
+    html.coder20 .hover\:bg-slate-600:hover { background-color: #56565e !important; }
+    html.coder20 .hover\:text-slate-200:hover { color: #f1f1f5 !important; }
+    html.coder20 .hover\:text-slate-100:hover { color: #fff !important; }
+    html.coder20 .tab-btn { font-size: 12px; }
+    html.coder20 .tab-btn svg { width: 22px; height: 22px; }
+    html.coder20 main button { font-size: 13px; }
+    html.coder20 main textarea, html.coder20 main input { font-size: 14px; }
+    html.coder20 .chat-scroll { height: calc(100vh - 350px); height: calc(100dvh - 340px); }
+
+    @media (min-width: 1100px) {
+      html.coder20 #main-screen > .sticky > .w-full.max-w-md,
+      html.coder20 #main-screen main.flex-1 {
+        max-width: 880px;
+        margin-left: 6vw;
+        margin-right: auto;
+      }
+      html.coder20 #coder-clock { display: flex; }
+    }
+
+    #coder-clock {
+      display: none;
+      position: fixed;
+      top: 50%;
+      right: 4vw;
+      transform: translateY(-50%);
+      width: 264px;
+      height: 264px;
+      z-index: 20;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: radial-gradient(circle at 50% 40%, #34343a, #26262b 70%);
+      border: 7px solid #4a4a52;
+      box-shadow: 0 0 0 10px #212126, 0 18px 50px rgba(0,0,0,.6), inset 0 0 40px rgba(255,255,255,.05);
+    }
+    #coder-clock svg { width: 100%; height: 100%; }
   </style>
 </head>
 
@@ -281,6 +348,7 @@
 
   <!-- ======================= ГЛАВНЫЙ ЭКРАН ======================= -->
   <div id="main-screen" class="hidden min-h-screen flex flex-col">
+    <div id="coder-clock"></div>
     <div class="sticky top-0 z-30 bg-slate-950/90 backdrop-blur border-b border-slate-800 pt-safe">
       <div class="w-full max-w-md mx-auto">
         <div class="flex items-center gap-3 px-4 pt-2 pb-2">
@@ -1510,6 +1578,43 @@
     clockTimer = setInterval(upd, 30000);
   }
 
+  /* ---- Coder20: аналоговые механические часы (справа, серые) ---- */
+  function initCoderClock() {
+    const box = $('#coder-clock');
+    if (!box || box.getAttribute('data-init')) return;
+    box.setAttribute('data-init', '1');
+    box.innerHTML = `
+      <svg viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="46" fill="none" stroke="#55555e" stroke-width="1.2"/>
+        <circle cx="50" cy="50" r="36" fill="none" stroke="#3a3a41" stroke-width=".6"/>
+        ${Array.from({ length: 12 }, (_, i) => {
+          const a = (i * 30) * Math.PI / 180;
+          const x1 = (50 + Math.sin(a) * 40).toFixed(2), y1 = (50 - Math.cos(a) * 40).toFixed(2);
+          const x2 = (50 + Math.sin(a) * 43.5).toFixed(2), y2 = (50 - Math.cos(a) * 43.5).toFixed(2);
+          return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${i % 3 === 0 ? '#cfcfd6' : '#8a8a93'}" stroke-width="${i % 3 === 0 ? 2 : 1.1}" stroke-linecap="round"/>`;
+        }).join('')}
+        <g id="coder-hh"><line x1="50" y1="50" x2="50" y2="28" stroke="#e8e8ee" stroke-width="2.6" stroke-linecap="round"/></g>
+        <g id="coder-mm"><line x1="50" y1="50" x2="50" y2="19" stroke="#cfcfd6" stroke-width="1.9" stroke-linecap="round"/></g>
+        <g id="coder-ss"><line x1="50" y1="54" x2="50" y2="17" stroke="#c9a86a" stroke-width=".9" stroke-linecap="round"/></g>
+        <circle cx="50" cy="50" r="1.8" fill="#c9a86a"/>
+      </svg>`;
+    const tick = () => {
+      const d = new Date();
+      const s = d.getSeconds() + d.getMilliseconds() / 1000;
+      const m = d.getMinutes() + s / 60;
+      const h = (d.getHours() % 12) + m / 60;
+      let el = box.querySelector('#coder-hh');
+      if (el) el.setAttribute('transform', 'rotate(' + (h * 30).toFixed(3) + ' 50 50)');
+      el = box.querySelector('#coder-mm');
+      if (el) el.setAttribute('transform', 'rotate(' + (m * 6).toFixed(3) + ' 50 50)');
+      el = box.querySelector('#coder-ss');
+      if (el) el.setAttribute('transform', 'rotate(' + (s * 6).toFixed(3) + ' 50 50)');
+    };
+    tick();
+    setInterval(tick, 250);
+  }
+  initCoderClock();
+
   /* ---- Объявления ---- */
   let seenSet = new Set();
   function initSeen() {
@@ -1754,27 +1859,50 @@
 
   /* ---- Объявления ---- */
   let annCache = [];
+  let annDraft = '';
   function renderAnnouncements(snap) {
     annCache = snapArr(snap).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
     paintAnnouncements();
   }
   function paintAnnouncements() {
     const el = $('#tab-announcements');
-    if (!annCache.length) { el.innerHTML = emptyNote('Объявлений пока нет'); return; }
-    const [first, ...rest] = annCache;
-    const isCtrl = (txt) => CTRL_RE.test(txt || '');
-    const pinned = `
+    const compose = `
+      <div class="rounded-2xl bg-slate-900 border border-slate-800 p-3 space-y-2 fade-up">
+        <textarea id="ann-input" rows="2" maxlength="500" placeholder="Новое объявление..." class="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-xs resize-none outline-none focus:border-indigo-500">${esc(annDraft)}</textarea>
+        <button id="ann-post" class="w-full rounded-xl accent-bg text-white py-2.5 text-sm font-bold hover:opacity-90">📢 Опубликовать</button>
+      </div>`;
+    let body;
+    if (!annCache.length) {
+      body = emptyNote('Объявлений пока нет');
+    } else {
+      const [first, ...rest] = annCache;
+      const isCtrl = (txt) => CTRL_RE.test(txt || '');
+      body = `
       <div class="rounded-2xl p-4 border-2 accent-border bg-amber-500/5 fade-up">
         <div class="flex items-center gap-2 mb-2"><span class="text-xs font-bold text-amber-400">📌 ЗАКРЕПЛЕНО</span></div>
         <p class="text-sm whitespace-pre-wrap break-words ${isCtrl(first.text) ? 'text-amber-200 font-semibold' : 'text-slate-200'}">${esc(first.text)}</p>
         <p class="text-[11px] text-slate-500 mt-2">${fmtDate(first.createdAt)}</p>
-      </div>`;
-    const listHtml = rest.length ? rest.map((a) => `
+      </div>` +
+      (rest.length ? rest.map((a) => `
       <div class="rounded-2xl p-4 border fade-up ${isCtrl(a.text) ? 'bg-amber-500/10 border-amber-500/40' : 'bg-slate-900 border-slate-800'}">
         <p class="text-sm whitespace-pre-wrap break-words ${isCtrl(a.text) ? 'text-amber-200 font-semibold' : 'text-slate-200'}">${esc(a.text)}</p>
         <p class="text-[11px] text-slate-500 mt-2">${fmtDate(a.createdAt)}</p>
-      </div>`).join('') : '';
-    el.innerHTML = pinned + listHtml + buildCalendar();
+      </div>`).join('') : '');
+    }
+    el.innerHTML = compose + body + buildCalendar();
+    const ta = $('#ann-input');
+    if (ta) ta.addEventListener('input', () => { annDraft = ta.value; });
+    if ($('#ann-post')) $('#ann-post').addEventListener('click', postAnnouncement);
+  }
+  function postAnnouncement() {
+    const text = annDraft.trim();
+    if (!text) return;
+    if (!(window.HubAuth && window.HubAuth.ready && window.HubAuth.uid)) { showToast('Авторизация ещё не готова, попробуйте снова'); return; }
+    const send = () => db.ref(curClassPath() + '/announcements').push({ text, createdAt: Date.now() })
+      .then(() => { annDraft = ''; showToast('Объявление опубликовано'); })
+      .catch((e) => showToast('Ошибка: ' + ((e && e.message) ? e.message : e)));
+    if (window.HubModeration) window.HubModeration.checkCanSend((err) => { if (err) showToast(err); else send(); });
+    else send();
   }
 
   function buildCalendar() {
@@ -2559,14 +2687,12 @@
       </div>
 
       <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
-        <div class="flex items-center justify-between gap-3">
-          <div>
-            <div class="font-bold text-sm">Тема оформления</div>
-            <p class="text-[11px] text-slate-500 mt-0.5">Светлая или тёмная</p>
-          </div>
-          <button id="theme-toggle" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold">
-            ${theme === 'dark' ? '🌙 Тёмная' : '☀️ Светлая'}
-          </button>
+        <div class="font-bold text-sm mb-1">Тема оформления</div>
+        <p class="text-[11px] text-slate-500 mb-3">Светлая, тёмная или Coder20</p>
+        <div class="grid grid-cols-3 gap-2">
+          <button id="theme-light" class="px-3 py-2.5 rounded-xl border text-xs font-bold transition ${theme === 'light' ? 'accent-bg border-transparent text-white' : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'}">☀️ Светлая</button>
+          <button id="theme-dark" class="px-3 py-2.5 rounded-xl border text-xs font-bold transition ${theme === 'dark' ? 'accent-bg border-transparent text-white' : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'}">🌙 Тёмная</button>
+          <button id="theme-coder" class="px-3 py-2.5 rounded-xl border text-xs font-bold transition ${theme === 'coder20' ? 'accent-bg border-transparent text-white' : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'}">⚙️ Coder20</button>
         </div>
       </div>
 
@@ -2628,14 +2754,16 @@
       ` : ''}`;
 
     $('#profile-edit-nick').addEventListener('click', changeNick);
-    $('#theme-toggle').addEventListener('click', () => {
-      const cur = localStorage.getItem(LS.theme) || 'dark';
-      const next = cur === 'dark' ? 'light' : 'dark';
-      localStorage.setItem(LS.theme, next);
-      document.documentElement.classList.toggle('dark', next === 'dark');
+    const applyTheme = (name) => {
+      localStorage.setItem(LS.theme, name);
+      document.documentElement.classList.toggle('dark', name !== 'light');
+      document.documentElement.classList.toggle('coder20', name === 'coder20');
       renderSettingsTab();
-      showToast(next === 'dark' ? 'Тёмная тема' : 'Светлая тема');
-    });
+      showToast(name === 'coder20' ? 'Тема Coder20' : name === 'dark' ? 'Тёмная тема' : 'Светлая тема');
+    };
+    $('#theme-light').addEventListener('click', () => applyTheme('light'));
+    $('#theme-dark').addEventListener('click', () => applyTheme('dark'));
+    $('#theme-coder').addEventListener('click', () => applyTheme('coder20'));
     $$('.accent-dot').forEach((d) => d.addEventListener('click', () => {
       const key = d.dataset.accent;
       localStorage.setItem(LS.accent, key);
@@ -2883,7 +3011,6 @@
         <input id="class-name" placeholder="Класс" class="${aInput('flex-1 min-w-0')}">
         <button class="rounded-lg px-3 py-2 text-xs font-bold accent-bg text-white">Добавить</button>
       </form>
-      <button data-act="del7Lower" class="mt-2 w-full rounded-lg bg-rose-700/80 hover:bg-rose-700 px-3 py-2 text-xs font-bold">🗑 Удалить 7-е классы со строчной буквой (оставить 7А–7Д)</button>
       <div id="class-list" class="mt-3 space-y-2"></div>`;
     const renderList = () => {
       const cid = $('#class-city').value, sid = $('#class-school').value;
@@ -3630,21 +3757,6 @@
         db.ref(P.classes(cid, sid) + '/' + t.dataset.key).update({ name });
       }
       if (act === 'classDelete') askConfirm('Удалить класс?', () => db.ref(P.classes($('#class-city').value, $('#class-school').value) + '/' + t.dataset.key).remove());
-      if (act === 'del7Lower') {
-        const cid = $('#class-city').value, sid = $('#class-school').value;
-        if (!cid || !sid) { showToast('Выберите город и школу'); return; }
-        if (!isAdmin()) { showToast('Нет прав администратора'); return; }
-        db.ref(P.classes(cid, sid)).once('value', (sn) => {
-          const items = Object.entries(sn.val() || {});
-          const low = items.filter(([, v]) => /^7[а-яё]$/.test(String((v && v.name) || '').trim()));
-          if (!low.length) { showToast('Строчных 7-х классов нет'); return; }
-          askConfirm('Удалить (' + low.length + '): ' + low.map(([, v]) => v.name).join(', ') + '?', () => {
-            Promise.all(low.map(([k]) => db.ref(P.classes(cid, sid) + '/' + k).remove()))
-              .then(() => { renderAdminPage('classes'); showToast('Удалено седьмых классов: ' + low.length); })
-              .catch((e) => showToast('Ошибка: ' + ((e && e.message) ? e.message : e)));
-          });
-        });
-      }
       if ('hwSave' in t.dataset) {
         const row = t.closest('.row');
         const subj = row.querySelector('[data-hw-key]').value.trim();
