@@ -18,13 +18,15 @@
     tailwind.config = { darkMode: 'class' };
     (function () {
       var saved = localStorage.getItem('sh_theme') || 'dark';
-      // 'coder20' — серое оформление поверх тёмной палитры
+      // 'coder20' — серое оформление поверх тёмной палитры;
+      // 'zakvez' — зелёные титры справа (экранная заставка в стиле кино).
       document.documentElement.classList.toggle('dark', saved !== 'light');
       document.documentElement.classList.toggle('coder20', saved === 'coder20');
+      document.documentElement.classList.toggle('zakvez', saved === 'zakvez');
       var accent = localStorage.getItem('sh_accent') || 'indigo';
       document.documentElement.setAttribute('data-accent', accent);
       var mc = document.querySelector('meta[name="theme-color"]');
-      if (mc) mc.setAttribute('content', saved === 'coder20' ? '#111827' : (saved === 'light' ? '#f8fafc' : '#0f172a'));
+      if (mc) mc.setAttribute('content', saved === 'zakvez' ? '#000000' : (saved === 'coder20' ? '#111827' : (saved === 'light' ? '#f8fafc' : '#0f172a')));
     })();
   </script>
 
@@ -320,6 +322,72 @@
     .c20-sec { margin-top: 5px; font-size: 11px; color: #94a3b8; font-variant-numeric: tabular-nums; }
     .c20-date { margin-top: 9px; font-size: 11px; line-height: 1.3; color: #cbd5e1; }
     .c20-legend { font-size: 10px; letter-spacing: .2em; text-transform: uppercase; color: #64748b; }
+
+    /* ============================================================
+       TEMA ZakveZ: chyornyy fon + zelyonyy tekst, shrift Courier New.
+       Vse tsveta privodyatsya k zelyonomu filtrom, a sprava stoyit
+       kolonka s "titrami" (kreditsami), polzushchimi snizu vverkh.
+       ============================================================ */
+    html.zakvez body,
+    html.zakvez {
+      background: #000000 !important;
+      color: #39ff14 !important;
+      font-family: 'Courier New', Courier, monospace !important;
+    }
+    /* ZelVeeniy svechenie/kontrast: emodzhi i kartinki tozhe v zelyonykh
+       tonakh. Filtr veshaem na PRYAMYKH potomkov body (kak u coder20),
+       chtoby ne lomat' fixed/sticky-sobsvennoe pozicionirovanie modalok. */
+    html.zakvez body > * { filter: grayscale(1) sepia(1) hue-rotate(72deg) saturate(3.6) brightness(1.05); }
+    html.zakvez ::-webkit-scrollbar { width: 6px; }
+    html.zakvez ::-webkit-scrollbar-thumb { background: #1c6b2f; border-radius: 9999px; }
+    html.zakvez ::selection { background: #39ff14; color: #000000; }
+
+    /* Sdvigaem interfeys vlevo; osvobodivsheesya mesto sprava — titry. */
+    html.zakvez #main-screen,
+    html.zakvez #auth-screen { position: relative; --zakvez-aside: clamp(280px, 35vw, 480px); }
+    .zakvez-aside { display: none; }
+
+    @media (min-width: 600px) {
+      html.zakvez #main-screen > *:not(.zakvez-aside),
+      html.zakvez #auth-screen > *:not(.zakvez-aside) {
+        width: calc(100% - var(--zakvez-aside));
+        max-width: none;
+        margin-left: 0;
+        margin-right: auto;
+      }
+      html.zakvez .zakvez-aside {
+        display: block;
+        position: absolute;
+        top: 0; right: 0; bottom: 0;
+        width: var(--zakvez-aside);
+        border-left: 1px solid rgba(57, 255, 20, .35);
+        pointer-events: none;
+      }
+    }
+
+    /* Konteyner titrov i sama animatsiya (chistyy CSS, bez JS-intervalov). */
+    #credits-scroll {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      color: #39ff14;
+      font-family: 'Courier New', Courier, monospace;
+    }
+    #credits-pre {
+      position: absolute;
+      left: 18px; right: 18px; top: 0;
+      margin: 0;
+      white-space: pre;
+      line-height: 1.7;
+      font-size: clamp(12px, 1.9vw, 15px);
+      text-shadow: 0 0 8px rgba(57, 255, 20, .75);
+      animation: scroll-up 80s linear infinite;
+    }
+    @keyframes scroll-up {
+      from { transform: translateY(100%); }
+      to   { transform: translateY(-100%); }
+    }
 
     /* ============ Golosovye soobshcheniya ============ */
     .voice-row { display: flex; align-items: center; gap: 8px; min-width: 170px; margin: 2px 0; }
@@ -1821,30 +1889,35 @@
   }
 
   /* ============================================================
-     TEMY OFORMLENIYA: dark | light | coder20
+     TEMY OFORMLENIYA: dark | light | coder20 | zakvez
      coder20 — vse seroe, interfeys szhjat vlevo, a sprava v
      svobodnom meste stoyit "obruch" s vremenem i datoy.
+     zakvez — chyorno-zelyonyy terminal: interfeys sleva, sprava
+     kolonka s polzushchimi vverkh "titrami" (kreditsami).
      ============================================================ */
-  const THEMES = ['dark', 'light', 'coder20'];
-  const THEME_LABELS = { dark: 'Тёмная', light: 'Светлая', coder20: 'coder20' };
+  const THEMES = ['dark', 'light', 'coder20', 'zakvez'];
+  const THEME_LABELS = { dark: 'Тёмная', light: 'Светлая', coder20: 'coder20', zakvez: 'ZakveZ' };
   const C20_R = 90;                      // radius obrucha v koordinatah viewBox
   const C20_CIRC = 2 * Math.PI * C20_R;  // dlina ego okruzhnosti
 
   function isCoder20() { return document.documentElement.classList.contains('coder20'); }
+  function isZakvez() { return document.documentElement.classList.contains('zakvez'); }
   function curTheme() {
     const t = localStorage.getItem(LS.theme);
     return THEMES.indexOf(t) === -1 ? 'dark' : t;
   }
-  // Primenit temu: dark | light | coder20
+  // Primenit temu: dark | light | coder20 | zakvez
   function applyTheme(theme) {
     const t = THEMES.indexOf(theme) === -1 ? 'dark' : theme;
     localStorage.setItem(LS.theme, t);
     const root = document.documentElement;
     root.classList.toggle('dark', t !== 'light');
     root.classList.toggle('coder20', t === 'coder20');
+    root.classList.toggle('zakvez', t === 'zakvez');
     const mc = document.querySelector('meta[name="theme-color"]');
-    if (mc) mc.setAttribute('content', t === 'coder20' ? '#111827' : (t === 'light' ? '#f8fafc' : '#0f172a'));
+    if (mc) mc.setAttribute('content', t === 'zakvez' ? '#000000' : (t === 'coder20' ? '#111827' : (t === 'light' ? '#f8fafc' : '#0f172a')));
     if (t === 'coder20') startCoder20(); else stopCoder20();
+    if (t === 'zakvez') mountZakvez();
     return t;
   }
 
@@ -1914,6 +1987,54 @@
     if (!c20Timer) return;
     clearInterval(c20Timer);
     c20Timer = null;
+  }
+
+  /* ---- "Titry" ZakveZ ---- */
+  const CREDITS_TEXT = [
+    '════════════════════════════',
+    '        School Hub',
+    '════════════════════════════',
+    '',
+    'Главные разработчики',
+    '  ZakveZ',
+    '  coder20',
+    '',
+    'Дизайнеры',
+    '  ZakveZ',
+    '  coder20',
+    '',
+    'Благодаря кому было сделано',
+    '  coder20',
+    '  ZakveZ',
+    '  и куча бессонных ночей',
+    '',
+    'Тестирование',
+    '  coder20',
+    '  ZakveZ',
+    '',
+    'Для обратной связи',
+    'или отправки пожертвований',
+    'пишите в поддержку',
+    '',
+    '════════════════════════════',
+    '      © 2026 School Hub',
+    '════════════════════════════',
+  ].join('\n');
+  function mountZakvez() {
+    ['#auth-screen', '#main-screen'].forEach((sel) => {
+      const host = $(sel);
+      if (!host || host.querySelector('.zakvez-aside')) return;
+      const wrap = document.createElement('div');
+      wrap.className = 'zakvez-aside';
+      const scroll = document.createElement('div');
+      scroll.id = 'credits-scroll';
+      const pre = document.createElement('pre');
+      pre.id = 'credits-pre';
+      pre.textContent = CREDITS_TEXT;
+      scroll.appendChild(pre);
+      wrap.appendChild(scroll);
+      host.appendChild(wrap);
+    });
   }
 
 /* ============================================================
@@ -3735,13 +3856,15 @@
 
       <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
         <div class="font-bold text-sm mb-1">Тема оформления</div>
-        <p class="text-[11px] text-slate-500 mb-3">Светлая, тёмная или coder20</p>
-        <div class="grid grid-cols-3 gap-2">
+        <p class="text-[11px] text-slate-500 mb-3">Светлая, тёмная, coder20 или ZakveZ</p>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
           <button id="theme-light" class="px-3 py-2.5 rounded-xl border text-xs font-bold transition ${theme === 'light' ? 'accent-bg border-transparent text-white' : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'}">☀️ Светлая</button>
           <button id="theme-dark" class="px-3 py-2.5 rounded-xl border text-xs font-bold transition ${theme === 'dark' ? 'accent-bg border-transparent text-white' : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'}">🌙 Тёмная</button>
           <button id="theme-coder" class="px-3 py-2.5 rounded-xl border text-xs font-bold transition ${theme === 'coder20' ? 'accent-bg border-transparent text-white' : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'}">◴ coder20</button>
+          <button id="theme-zakvez" class="px-3 py-2.5 rounded-xl border text-xs font-bold transition ${theme === 'zakvez' ? 'accent-bg border-transparent text-white' : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'}">♥ ZakveZ</button>
         </div>
         <p class="text-[10px] text-slate-600 mt-2.5 leading-snug">В теме coder20 интерфейс становится серым и уезжает влево, а в освободившемся месте справа появляется круглый циферблат с временем и датой.</p>
+        <p class="text-[10px] text-slate-600 mt-1.5 leading-snug">В теме ZakveZ интерфейс становится чёрно-зелёным как в терминале, а справа идут кинематографические титры.</p>
       </div>
 
       <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
@@ -3859,6 +3982,7 @@
     $('#theme-light').addEventListener('click', () => { applyTheme('light'); renderSettingsTab(); showToast('Тема: ' + THEME_LABELS.light); });
     $('#theme-dark').addEventListener('click', () => { applyTheme('dark'); renderSettingsTab(); showToast('Тема: ' + THEME_LABELS.dark); });
     $('#theme-coder').addEventListener('click', () => { applyTheme('coder20'); renderSettingsTab(); showToast('Тема: ' + THEME_LABELS.coder20); });
+    $('#theme-zakvez').addEventListener('click', () => { applyTheme('zakvez'); renderSettingsTab(); showToast('Тема: ' + THEME_LABELS.zakvez); });
     $$('.accent-dot').forEach((d) => d.addEventListener('click', () => {
       const key = d.dataset.accent;
       localStorage.setItem(LS.accent, key);
@@ -5148,6 +5272,8 @@
     initFirebase();
     // Обруч с часами (тема coder20): разметка монтируется всегда, часы тикают только в этой теме
     mountCoder20();
+    // Титры (тема ZakveZ): разметка монтируется всегда, показ регулируется CSS-классом html.zakvez
+    mountZakvez();
     if (isCoder20()) startCoder20();
     // В фоновой вкладке браузер душит таймеры — обновляем циферблат сразу после возврата
     document.addEventListener('visibilitychange', () => { if (!document.hidden && isCoder20()) tickCoder20(); });
