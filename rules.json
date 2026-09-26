@@ -1,94 +1,120 @@
 {
-  // ============================================================
-  // ШКОЛЬНЫЙ ХАБ — правила Firebase Realtime Database
-  // ============================================================
-  // Как применить:
-  //   Firebase Console -> Authentication -> Sign-in method -> Anonymous -> Enable
-  //   Firebase Console -> Realtime Database -> «Правила» -> вставить этот JSON -> Опубликовать
-  //
-  // Ключевые моменты:
-  //  - каждый пользователь входит анонимно (Firebase Auth), идентификатор — uid;
-  //  - баны хранятся в bannedUsers/{uid}: { until, reason, bannedBy, bannedAt };
-  //      until — таймстамп (мс) окончания бана; 0 или отсутствует = бессрочный;
-  //      ВАЖНО: Firebase `now` в правилах = миллисекунды, поэтому until пишется в мс
-  //      (пример в секундах из ТЗ привёл бы к тому, что бан никогда не срабатывал бы)
-  //      и сравнивается как: hasChild('until') && until > 0 && until < now;
-  //  - чат и содержимое классов (cities) пишет любой авторизованный не забаненный
-  //    пользователь (бессрочный бан блокирует: при until=0 условие until>0 не выполняется);
-  //  - bannedUsers меняют только администраторы из /admins (плюс чтение — всем);
-  //  - warnings (кнопка «Предупредить») — владелец читает и очищает, пишет админ;
-  //  - users/{uid} — владелец меняет только nick/class/deviceId (createdAt 1 раз),
-  //    старые поля banned/mutedUntil — только для /admins (совместимость);
-  //  - online / unique / flagged_messages — только для авторизованных.
   "rules": {
+    "roles": {
+      ".read": "auth != null",
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null && (root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true)"
+      }
+    },
+    "roles_meta": {
+      ".read": "auth != null",
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null && (root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true)"
+      }
+    },
     "bannedUsers": {
       ".read": true,
       ".write": false,
       "$uid": {
         ".read": true,
-        ".write": "root.child('admins/' + auth.uid).val() === true"
+        ".write": "auth != null && (root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true)"
       }
     },
-
     "warnings": {
       ".read": "auth != null",
       "$uid": {
-        ".read": "auth != null && (auth.uid === $uid || root.child('admins/' + auth.uid).val() === true)",
-        ".write": "auth != null && (auth.uid === $uid || root.child('admins/' + auth.uid).val() === true)"
+        ".read": "auth != null && (auth.uid === $uid || root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true)",
+        ".write": "auth != null && (auth.uid === $uid || root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true)"
       }
     },
-
     "cities": {
       ".read": true,
-      ".write": "auth != null && (!root.child('bannedUsers').child(auth.uid).exists() || (root.child('bannedUsers').child(auth.uid).hasChild('until') && root.child('bannedUsers').child(auth.uid).child('until').val() > 0 && root.child('bannedUsers').child(auth.uid).child('until').val() < now))",
+      ".write": "auth != null && (!root.child('bannedUsers').child(auth.uid).exists() || (root.child('bannedUsers').child(auth.uid).hasChild('until') && root.child('bannedUsers').child(auth.uid).child('until').val() > 0 && root.child('bannedUsers').child(auth.uid).child('until').val() < now) || root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true)",
       "$city": {
         ".read": true,
         "$school": {
           ".read": true,
           "$class": {
             ".read": true,
-            "schedule":      { ".write": "auth != null && (!root.child('bannedUsers').child(auth.uid).exists() || (root.child('bannedUsers').child(auth.uid).hasChild('until') && root.child('bannedUsers').child(auth.uid).child('until').val() > 0 && root.child('bannedUsers').child(auth.uid).child('until').val() < now))" },
-            "homework":      { ".write": "auth != null && (!root.child('bannedUsers').child(auth.uid).exists() || (root.child('bannedUsers').child(auth.uid).hasChild('until') && root.child('bannedUsers').child(auth.uid).child('until').val() > 0 && root.child('bannedUsers').child(auth.uid).child('until').val() < now))" },
-            "announcements": { ".write": "auth != null && (!root.child('bannedUsers').child(auth.uid).exists() || (root.child('bannedUsers').child(auth.uid).hasChild('until') && root.child('bannedUsers').child(auth.uid).child('until').val() > 0 && root.child('bannedUsers').child(auth.uid).child('until').val() < now))" },
-            "ban":           { ".write": "root.child('admins/' + auth.uid).val() === true" },
+            "schedule": {
+              ".write": "auth != null && (!root.child('bannedUsers').child(auth.uid).exists() || (root.child('bannedUsers').child(auth.uid).hasChild('until') && root.child('bannedUsers').child(auth.uid).child('until').val() > 0 && root.child('bannedUsers').child(auth.uid).child('until').val() < now) || root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true)"
+            },
+            "homework": {
+              ".write": "auth != null && (!root.child('bannedUsers').child(auth.uid).exists() || (root.child('bannedUsers').child(auth.uid).hasChild('until') && root.child('bannedUsers').child(auth.uid).child('until').val() > 0 && root.child('bannedUsers').child(auth.uid).child('until').val() < now) || root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true)"
+            },
+            "announcements": {
+              ".write": "auth != null && (!root.child('bannedUsers').child(auth.uid).exists() || (root.child('bannedUsers').child(auth.uid).hasChild('until') && root.child('bannedUsers').child(auth.uid).child('until').val() > 0 && root.child('bannedUsers').child(auth.uid).child('until').val() < now) || root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true)"
+            },
+            "ban": {
+              ".write": "auth != null && (root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true)"
+            },
             "chat": {
               ".read": true,
-              ".write": "auth != null && (!root.child('bannedUsers').child(auth.uid).exists() || (root.child('bannedUsers').child(auth.uid).hasChild('until') && root.child('bannedUsers').child(auth.uid).child('until').val() > 0 && root.child('bannedUsers').child(auth.uid).child('until').val() < now))"
+              ".write": "auth != null && (!root.child('bannedUsers').child(auth.uid).exists() || (root.child('bannedUsers').child(auth.uid).hasChild('until') && root.child('bannedUsers').child(auth.uid).child('until').val() > 0 && root.child('bannedUsers').child(auth.uid).child('until').val() < now) || root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true)"
             }
           }
         }
       }
     },
-
-    // Профили пользователей: users/{uid}
     "users": {
       ".read": true,
       "$uid": {
         ".read": true,
         ".write": "false",
-        "nick":       { ".write": "auth != null && $uid === auth.uid" },
-        "class":      { ".write": "auth != null && $uid === auth.uid" },
-        "deviceId":   { ".write": "auth != null && $uid === auth.uid" },
-        "createdAt":  { ".write": "auth != null && $uid === auth.uid && !data.exists()" },
-        "banned":     { ".write": "root.child('admins/' + auth.uid).val() === true" },
-        "mutedUntil": { ".write": "root.child('admins/' + auth.uid).val() === true" }
+        "nick": {
+          ".write": "auth != null && $uid === auth.uid"
+        },
+        "class": {
+          ".write": "auth != null && $uid === auth.uid"
+        },
+        "deviceId": {
+          ".write": "auth != null && $uid === auth.uid"
+        },
+        "createdAt": {
+          ".write": "auth != null && $uid === auth.uid && !data.exists()"
+        },
+        "homeClass": {
+          ".write": "auth != null && ($uid === auth.uid || root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true)"
+        },
+        "homeClassChangedAt": {
+          ".write": "auth != null && ($uid === auth.uid || root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true)"
+        },
+        "banned": {
+          ".write": "auth != null && (root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true)"
+        },
+        "mutedUntil": {
+          ".write": "auth != null && (root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true)"
+        }
       }
     },
-
-    // Администраторы: /admins/{uid} = true (добавляются вручную в консоли)
     "admins": {
       ".read": true,
-      ".write": "false"
+      ".write": "auth != null && (root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true)"
     },
-
-    // Присутствие и уникальные пользователи — только для авторизованных
-    "online": { ".read": "auth != null", ".write": "auth != null" },
-    "unique": { ".read": "auth != null", ".write": "auth != null" },
-
-    // Помеченные автофильтром сообщения (раздел «Интересное»)
+    "online": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "unique": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
     "flagged_messages": {
       ".read": true,
       ".write": "auth != null"
+    },
+    "flagged_homework": {
+      ".read": true,
+      ".write": "auth != null"
+    },
+    "admin_messages": {
+      ".read": "auth != null",
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true)",
+        ".write": "auth != null && (auth.uid === $uid || root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true)"
+      }
     }
   }
 }

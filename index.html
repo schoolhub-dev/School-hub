@@ -233,6 +233,7 @@
       /* Админка: крупные кнопки действий; блок действий - сеткой в 2 колонки */
       #admin-body button { min-height: 40px; }
       #stats-flagged .gap-1\.5.flex-wrap { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .apage-btn { font-size: 10px; padding: 8px 0; }
     }
   </style>
 </head>
@@ -336,6 +337,7 @@
               <circle cx="12" cy="12" r="2.6"/>
             </svg>
             <span class="tab-label">Настройки</span>
+            <span id="settings-unread" class="unread-badge hidden"></span>
           </button>
         </nav>
       </div>
@@ -385,6 +387,10 @@
             </svg>
           </button>
         </form>
+        <div id="chat-readonly-notice" class="hidden rounded-xl bg-slate-800/60 border border-slate-700 p-3 mt-3 text-xs text-slate-300 fade-up">
+          Ты можешь писать только в своём классе (<span id="chat-readonly-home" class="font-bold accent-text">—</span>).
+          Чтобы попросить смену — напиши администрации в настройках.
+        </div>
       </section>
       <section id="tab-settings" class="tab hidden space-y-4"></section>
     </main>
@@ -419,13 +425,15 @@
         <button id="admin-close" class="h-9 w-9 rounded-full bg-slate-800 flex items-center justify-center font-bold hover:bg-slate-700" aria-label="Закрыть">✕</button>
       </div>
 
-      <nav id="admin-nav" class="grid grid-cols-6 gap-0.5 px-2 py-3 border-b border-slate-800">
-        <button data-apage="cities"  class="apage-btn py-2 rounded-lg text-[11px] font-semibold bg-slate-800 text-white">Города</button>
-        <button data-apage="schools" class="apage-btn py-2 rounded-lg text-[11px] font-semibold text-slate-400">Школы</button>
-        <button data-apage="classes" class="apage-btn py-2 rounded-lg text-[11px] font-semibold text-slate-400">Классы</button>
-        <button data-apage="content" class="apage-btn py-2 rounded-lg text-[11px] font-semibold text-slate-400">Данные</button>
-        <button data-apage="people"  class="apage-btn py-2 rounded-lg text-[11px] font-semibold text-slate-400">Люди</button>
-        <button data-apage="stats"   class="apage-btn py-2 rounded-lg text-[11px] font-semibold text-slate-400">Статистика</button>
+      <nav id="admin-nav" class="grid grid-cols-8 gap-0.5 px-2 py-3 border-b border-slate-800">
+        <button data-apage="cities"  class="apage-btn py-2 rounded-lg text-[11px] leading-tight font-semibold bg-slate-800 text-white">Города</button>
+        <button data-apage="schools" class="apage-btn py-2 rounded-lg text-[11px] leading-tight font-semibold text-slate-400">Школы</button>
+        <button data-apage="classes" class="apage-btn py-2 rounded-lg text-[11px] leading-tight font-semibold text-slate-400">Классы</button>
+        <button data-apage="content" class="apage-btn py-2 rounded-lg text-[11px] leading-tight font-semibold text-slate-400">Данные</button>
+        <button data-apage="people"  class="apage-btn py-2 rounded-lg text-[11px] leading-tight font-semibold text-slate-400">Люди</button>
+        <button data-apage="stats"   class="apage-btn py-2 rounded-lg text-[11px] leading-tight font-semibold text-slate-400">Статы</button>
+        <button data-apage="messages" class="apage-btn py-2 rounded-lg text-[11px] leading-tight font-semibold text-slate-400">Вопросы</button>
+        <button data-apage="flagged"  class="apage-btn py-2 rounded-lg text-[11px] leading-tight font-semibold text-slate-400">Интересное</button>
       </nav>
 
       <div id="admin-body" class="flex-1 overflow-y-auto p-4"></div>
@@ -531,7 +539,39 @@
     annKey: null, annDate: null,
     page: 'cities',
     authorized: sessionStorage.getItem('sh_admin_auth') === '1',
+    viaRole: false,   // админ по roles/{uid} === 'admin'
   };
+
+  // UID администраторов, зашитые прямо в клиент (главный админ — его нельзя «снять»).
+  const HARDCODE_ADMIN_UIDS = ['LEOnIfZks4hFIVJe1o2YMqcCdeZ2'];
+  // Является ли текущий пользователь админом:
+  //  - входил по паролю (admin.authorized),
+  //  - UID есть в HARDCODE_ADMIN_UIDS,
+  //  - роль admin в ветке /roles.
+  function isAdmin() {
+    if (admin.authorized) return true;
+    const u = window.HubAuth && window.HubAuth.uid;
+    if (!u) return false;
+    return HARDCODE_ADMIN_UIDS.indexOf(u) !== -1 || admin.viaRole;
+  }
+  // Автоподхват роли: roles/{uid} === 'admin' → включаем админ-режим.
+  function pickUpAdminRole() {
+    if (!window.HubAuth || !HubAuth.uid) return;
+    db.ref('/roles/' + HubAuth.uid).once('value').then((s) => {
+      if (s.val() === 'admin') {
+        admin.authorized = true;
+        admin.viaRole = true;
+        sessionStorage.setItem('sh_admin_auth', '1');
+        paintAdminBadge();
+      }
+    }).catch(() => {});
+  }
+
+  // «Свой» класс пользователя (права на написание). Хранится в users/{uid}/homeClass.
+  let homeClassData = null;   // { cityId, schoolId, classId, cname, sname, clname, changedAt }
+  let homeClassReady = false;
+  let selectMode = 'browse';  // 'browse' — обычный просмотр; 'pickHome' — выбор «своего» класса
+  let pickHomeUid = null;     // UID, для которого админ меняет класс (null = меняет сам пользователь)
 
   let authRefs = [], mainRefs = [], adminRefs = [];
   // Двухступенчатый выбор класса: цифра → буква. Кеш классов текущей школы
@@ -641,6 +681,165 @@
   function curClassKey() {
     const s = state.sel;
     return `${s.cid}|${s.sid}|${s.clid}`;
+  }
+
+  /* ============================================================
+     «СВОЙ» КЛАСС (homeClass) И ПРАВА НА НАПИСАНИЕ
+     ============================================================ */
+  const HOME_CHANGE_DAYS = 30;
+  function homeNameShort() {
+    const h = homeClassData;
+    if (!h) return '';
+    return h.clname || h.classId || '';
+  }
+  function homeNameFull() {
+    const h = homeClassData;
+    if (!h) return 'не выбран';
+    return [h.cname, h.sname, h.clname || h.classId].filter(Boolean).join(', ') || 'не выбран';
+  }
+  function canWriteHere() {
+    if (isAdmin()) return true;
+    const h = homeClassData;
+    const s = state.sel;
+    if (!h || !h.cityId || !h.schoolId || !h.classId) return false;
+    return s.cid === h.cityId && s.sid === h.schoolId && s.clid === h.classId;
+  }
+  function homeChangeAllowed() {
+    const t = (homeClassData && homeClassData.changedAt) || 0;
+    if (!t) return true;
+    return Date.now() - t >= HOME_CHANGE_DAYS * 86400000;
+  }
+  function homeChangeAvailableAt() {
+    const t = (homeClassData && homeClassData.changedAt) || 0;
+    const d = new Date(t ? t + HOME_CHANGE_DAYS * 86400000 : Date.now());
+    const p = (n) => String(n).padStart(2, '0');
+    return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()}`;
+  }
+  function saveHomeClassSelf() {
+    if (!window.HubAuth || !HubAuth.uid) return;
+    const s = state.sel;
+    const h = { cityId: s.cid, schoolId: s.sid, classId: s.clid, cname: s.cname, sname: s.sname, clname: s.clname };
+    homeClassData = Object.assign({}, h, { changedAt: Date.now() });
+    db.ref('/users/' + HubAuth.uid).update({
+      homeClass: h,
+      homeClassChangedAt: firebase.database.ServerValue.TIMESTAMP,
+    }).then(() => {
+      paintChatPermissions();
+      paintAdminBadge();
+      refreshChat();
+    }).catch((err) => {
+      console.warn('homeClass не сохранился в Firebase (проверьте правила):', err);
+      paintChatPermissions();
+    });
+  }
+  function setOtherHomeClass(uid) {
+    if (!uid) return;
+    const s = state.sel;
+    const h = { cityId: s.cid, schoolId: s.sid, classId: s.clid, cname: s.cname, sname: s.sname, clname: s.clname };
+    db.ref('/users/' + uid).update({
+      homeClass: h,
+      homeClassChangedAt: firebase.database.ServerValue.TIMESTAMP,
+    }).then(() => showToast('Класс пользователя обновлён')).catch(() => showToast('Не удалось обновить класс'));
+  }
+  function startHomePickFor(uid) {
+    pickHomeUid = uid || null;
+    selectMode = 'pickHome';
+    $('#admin-panel').classList.add('hidden');
+    showAuth();
+    $('#select-status').textContent = pickHomeUid
+      ? 'Выберите класс для пользователя — его права писать перейдут туда'
+      : 'Выберите свой класс — права писать перейдут в него';
+  }
+  // Чтение «своего» класса из users/{uid}. При первом входе (homeClass в БД нет)
+  // принудительно открываем экран выбора.
+  function loadHomeClass() {
+    if (!window.HubAuth || !HubAuth.uid) { homeClassReady = true; paintChatPermissions(); return; }
+    db.ref('/users/' + HubAuth.uid).once('value').then((snap) => {
+      const u = snap.val() || {};
+      const h = u.homeClass;
+      homeClassReady = true;
+      if (h && h.cityId && h.schoolId && h.classId) {
+        homeClassData = Object.assign({}, h, { changedAt: u.homeClassChangedAt || 0 });
+        paintChatPermissions();
+        paintAdminBadge();
+        return;
+      }
+      homeClassData = null;
+      selectMode = 'pickHome';
+      if ($('#auth-screen').classList.contains('hidden')) {
+        showAuth();
+        $('#select-status').textContent = 'При первом входе нужно выбрать свой класс — в нём можно писать в чат и ДЗ';
+      } else {
+        $('#select-status').textContent = 'Выберите свой класс — в нём можно писать в чат и ДЗ';
+      }
+    }).catch((e) => {
+      homeClassReady = true;
+      console.warn('Не удалось загрузить homeClass:', e);
+      paintChatPermissions();
+    });
+  }
+  // Перерисовка зоны ввода чата: своя класса — форма, чужая — заглушка.
+  function paintChatPermissions() {
+    const form = $('#chat-form');
+    const notice = $('#chat-readonly-notice');
+    if (!form || !notice) return;
+    const write = canWriteHere();
+    form.classList.toggle('hidden', !write);
+    notice.classList.toggle('hidden', write);
+    const home = $('#chat-readonly-home');
+    if (home) home.textContent = homeNameShort() || 'не выбран';
+  }
+  // Красный бейдж на вкладке «Настройки»: есть непрочитанный ответ администратора.
+  // Счётчик непрочитанных ответов администрации. Админ видит все обращения — считаем по всем.
+  function paintAdminBadge() {
+    const el = $('#settings-unread');
+    if (!el) return;
+    if (!window.HubAuth || !HubAuth.uid) { el.classList.add('hidden'); return; }
+    const src = isAdmin()
+      ? db.ref('/admin_messages').once('value').then((s) => flattenMsgs(s.val()))
+      : db.ref('/admin_messages/' + HubAuth.uid).once('value').then((s) => flattenMsgs(s.val()));
+    src.then((items) => {
+      const n = items.filter((m) => m.reply && !m.replyRead).length;
+      if (n > 0) { el.textContent = n > 99 ? '99+' : String(n); el.classList.remove('hidden'); }
+      else el.classList.add('hidden');
+    }).catch(() => {});
+  }
+  // Разворачивает /admin_messages в плоский список обращений (uid + mid).
+  function flattenMsgs(v) {
+    const out = [];
+    const rec = (node, uid) => {
+      const keys = node ? Object.keys(node) : [];
+      keys.forEach((k) => {
+        const it = node[k];
+        if (it && typeof it === 'object') {
+          if (it.text || it.reply) out.push(Object.assign({ uid: uid || null, mid: k }, it));
+          else rec(it, k);
+        }
+      });
+    };
+    rec(v || {}, null);
+    return out;
+  }
+
+  // Меню модерации (Мут 1 час / 24 часа / 7 дней / Разбанить) около любого сообщения или записи ДЗ.
+  function openMuteMenu(dest, uid) {
+    if (!uid) { showToast('UID автора неизвестен'); return; }
+    const old = dest.querySelector('.mute-menu');
+    if (old) { old.remove(); return; }
+    const div = document.createElement('div');
+    div.className = 'mute-menu flex gap-1.5 mt-1.5 flex-wrap';
+    const items = [['Мут 1 час', 1], ['Мут 24 часа', 24], ['Мут 7 дней', 168], ['Разбанить', 0]];
+    div.innerHTML = items.map(([l, h]) =>
+      `<button class="mute-go rounded-lg bg-slate-800 hover:bg-slate-700 px-2 py-1 text-[10px] font-semibold" data-hours="${h}">${l}</button>`).join('');
+    dest.appendChild(div);
+    div.querySelectorAll('.mute-go').forEach((b) => b.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      const hours = parseInt(b.dataset.hours, 10);
+      const act = hours === 0 ? HubModeration.unban(uid) : HubModeration.muteHours(uid, hours, 'мут администратором');
+      act.then(() => showToast(hours === 0 ? 'Бан снят' : 'Мут применён: ' + (hours === 168 ? '7 дней' : hours === 24 ? '24 часа' : '1 час')))
+         .catch((er) => showToast('Ошибка: ' + ((er && er.message) ? er.message : er)));
+      div.remove();
+    }));
   }
 
   function snapArr(snap) {
@@ -1216,6 +1415,19 @@
         state.sel.clid = btn.dataset.key;
         state.sel.clname = btn.dataset.name;
         saveSelection();
+        if (selectMode === 'pickHome') {
+          const forOther = pickHomeUid;
+          selectMode = 'browse';
+          pickHomeUid = null;
+          if (forOther) {
+            setOtherHomeClass(forOther);
+            showMainScreen();
+            $('#admin-panel').classList.remove('hidden');
+            renderAdminPage('messages');
+            return;
+          }
+          saveHomeClassSelf();
+        }
         showMainScreen();
       });
     });
@@ -1264,6 +1476,7 @@
     $('#chat-nick').textContent = nick() || 'Ученик';
     ensureProfile();
     startClock();
+    paintChatPermissions();
   }
 
   function loadMainData() {
@@ -1330,8 +1543,9 @@
     if (name === 'chat') {
       refreshChat();
       markChatRead();
+      paintChatPermissions();
     }
-    if (name === 'settings') renderSettingsTab();
+    if (name === 'settings') { renderSettingsTab(); paintAdminBadge(); }
   }
 
   /* ---- Расписание ---- */
@@ -1398,6 +1612,7 @@
 
   /* ---- Домашка ---- */
   let hwCache = {};
+  let hwEditKey = null;    // предмет, редактируемый админом
   function renderHomework(snap) { hwCache = snap.val() || {}; paintHomework(); }
   function hwDoneKey(subj) { return curClassKey() + '|' + subj; }
   function isHwDone(subj) {
@@ -1412,14 +1627,31 @@
     if (!done) arr = arr.filter((x) => x !== key);
     localStorage.setItem(LS.hwDone, JSON.stringify(arr));
   }
+  // Домашка хранится как строка (старые записи) или объект { text, author, authorUid, editedAt }
+  function hwText(v) { return (v && typeof v === 'object') ? String(v.text || '') : String(v || ''); }
+  function hwAuthor(v) { return (v && typeof v === 'object') ? String(v.author || '') : ''; }
+  function hwAuthorUid(v) { return (v && typeof v === 'object') ? String(v.authorUid || '') : ''; }
   function paintHomework() {
     const entries = Object.entries(hwCache).sort((a, b) => a[0].localeCompare(b[0], 'ru'));
     const el = $('#tab-homework');
-    if (!entries.length) { el.innerHTML = emptyNote('Домашки нет 🎉'); return; }
+    const canWrite = canWriteHere();
+    const home = esc(homeNameShort());
+    const form = canWrite ? `
+      <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
+        <div class="font-bold text-sm mb-2">Добавить домашку</div>
+        <input id="hw-new-subj" placeholder="Предмет" maxlength="60"
+               class="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-sm font-semibold outline-none focus:border-indigo-500 mb-2">
+        <textarea id="hw-new-task" rows="2" maxlength="1000" placeholder="Задание"
+                  class="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-sm resize-none outline-none focus:border-indigo-500"></textarea>
+        <button id="hw-save-new" class="w-full rounded-lg accent-bg text-white px-3 py-2.5 text-sm font-bold mt-2">Добавить</button>
+      </div>` : `
+      <div class="rounded-xl bg-slate-800/60 border border-slate-700 p-3 text-xs text-slate-300 fade-up">
+        Ты можешь писать только в своём классе (${home}). Чтобы попросить смену — напиши администрации в настройках.
+      </div>`;
     const total = entries.length;
     const done = entries.filter(([s]) => isHwDone(s)).length;
     const pct = total ? Math.round((done / total) * 100) : 0;
-    el.innerHTML = `
+    const progress = total ? `
       <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
         <div class="flex items-center justify-between mb-2">
           <div class="font-bold text-sm">Прогресс домашки</div>
@@ -1428,28 +1660,95 @@
         <div class="h-2 rounded-full bg-slate-800 overflow-hidden">
           <div class="h-full accent-bg transition-all" style="width:${pct}%"></div>
         </div>
-      </div>
-      ${entries.map(([subj, task]) => {
-        const d = isHwDone(subj);
-        return `
-          <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
-            <div class="flex items-start gap-3">
-              <button class="hw-check ${d ? 'done' : ''}" data-hw-subj="${esc(subj)}" aria-label="Сделано">
-                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-                </svg>
-              </button>
-              <div class="flex-1 min-w-0">
-                <h4 class="font-bold text-sm ${d ? 'line-through opacity-60' : ''}">${esc(subj)}</h4>
-                <p class="text-sm text-slate-300 whitespace-pre-wrap break-words mt-1 ${d ? 'line-through opacity-60' : ''}">${esc(task || '—')}</p>
-              </div>
+      </div>` : '';
+    const list = total ? entries.map(([subj, v]) => {
+      const d = isHwDone(subj);
+      const author = hwAuthor(v);
+      const authorUid = hwAuthorUid(v);
+      const adminOn = isAdmin();
+      const editing = adminOn && hwEditKey === subj;
+      const body = editing ? `
+            <textarea id="hw-edit-textarea" rows="3" maxlength="1000" class="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-sm resize-none outline-none focus:border-indigo-500">${esc(hwText(v))}</textarea>
+            <div class="flex gap-2 mt-2">
+              <button class="hw-save-edit flex-1 rounded-lg accent-bg text-white px-3 py-2 text-xs font-bold" data-hw-subj="${esc(subj)}">Сохранить</button>
+              <button class="hw-cancel-edit rounded-lg bg-slate-800 px-3 py-2 text-xs font-semibold">Отмена</button>
+            </div>` : `
+            <p class="text-sm text-slate-300 whitespace-pre-wrap break-words mt-1 ${d ? 'line-through opacity-60' : ''}">${esc(hwText(v) || '—')}</p>`;
+      const adminRow = adminOn ? `
+          <div class="flex gap-1.5 mt-2 flex-wrap">
+            <button class="hw-edit rounded-lg bg-slate-800 hover:bg-slate-700 px-2.5 py-1.5 text-[11px] font-semibold" data-hw-subj="${esc(subj)}">✎ Редактировать</button>
+            ${authorUid ? `<button class="hw-mute rounded-lg bg-slate-800 hover:bg-slate-700 px-2.5 py-1.5 text-[11px] font-semibold" data-auid="${esc(authorUid)}">🔨 Мут автора</button>` : ''}
+            <button class="hw-del rounded-lg bg-rose-600/80 hover:bg-rose-600 px-2.5 py-1.5 text-[11px] font-semibold" data-hw-subj="${esc(subj)}">✕ Удалить</button>
+          </div>` : '';
+      return `
+        <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
+          <div class="flex items-start gap-3">
+            <button class="hw-check ${d ? 'done' : ''}" data-hw-subj="${esc(subj)}" aria-label="Сделано">
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+              </svg>
+            </button>
+            <div class="flex-1 min-w-0">
+              <h4 class="font-bold text-sm ${d ? 'line-through opacity-60' : ''}">${esc(subj)}</h4>
+              ${body}
+              ${author ? `<p class="text-[10px] text-slate-500 mt-0.5">Автор: ${esc(author)}${adminOn && v && v.authorUid && window.HubAuth && v.authorUid === HubAuth.uid ? ' <span title="Администратор">🛡️</span>' : ''}</p>` : ''}
             </div>
-          </div>`;
-      }).join('')}`;
+          </div>
+          ${adminRow}
+        </div>`;
+    }).join('') : '';
+    el.innerHTML = form + progress + (total ? list : (canWrite ? emptyNote('Домашки нет 🎉 Добавь первую!') : emptyNote('Домашки нет 🎉')));
+    const add = $('#hw-save-new');
+    if (add) add.addEventListener('click', () => {
+      const subj = $('#hw-new-subj').value.trim();
+      const task = $('#hw-new-task').value;
+      if (!subj) { showToast('Введите предмет'); return; }
+      if (!canWriteHere()) { showToast('Ты можешь писать только в своём классе'); return; }
+      db.ref(curClassPath() + '/homework/' + subj).set({
+        text: task,
+        author: nick() || 'Ученик',
+        authorUid: HubAuth.uid || '',
+        editedAt: Date.now(),
+      }).then(() => {
+        $('#hw-new-subj').value = '';
+        $('#hw-new-task').value = '';
+      }).catch((err) => showToast('Ошибка: ' + (err && err.message ? err.message : err)));
+    });
     $$('.hw-check').forEach((b) => b.addEventListener('click', () => {
       const s = b.dataset.hwSubj;
       setHwDone(s, !isHwDone(s));
       paintHomework();
+    }));
+
+    // Админ-действия в любом классе: редактировать / удалить / мут автора записи ДЗ
+    $$('.hw-edit').forEach((b) => b.addEventListener('click', () => {
+      hwEditKey = hwEditKey === b.dataset.hwSubj ? null : b.dataset.hwSubj;
+      paintHomework();
+    }));
+    $$('.hw-cancel-edit').forEach((b) => b.addEventListener('click', () => { hwEditKey = null; paintHomework(); }));
+    $$('.hw-save-edit').forEach((b) => b.addEventListener('click', () => {
+      const subj = b.dataset.hwSubj;
+      const task = $('#hw-edit-textarea').value;
+      const old = hwCache[subj];
+      const rec = (old && typeof old === 'object')
+        ? Object.assign({}, old, { text: task, editedAt: Date.now() })
+        : { text: task, author: nick() || 'Ученик', authorUid: HubAuth.uid || '', editedAt: Date.now() };
+      hwEditKey = null;
+      paintHomework();
+      db.ref(curClassPath() + '/homework/' + subj).set(rec)
+        .then(() => showToast('Домашка обновлена'))
+        .catch((err) => showToast('Ошибка: ' + (err && err.message ? err.message : err)));
+    }));
+    $$('.hw-del').forEach((b) => b.addEventListener('click', () => {
+      const subj = b.dataset.hwSubj;
+      askConfirm('Удалить запись «' + subj + '»?', () => {
+        db.ref(curClassPath() + '/homework/' + subj).remove()
+          .then(() => { if (hwEditKey === subj) hwEditKey = null; })
+          .catch((err) => showToast('Ошибка: ' + (err && err.message ? err.message : err)));
+      });
+    }));
+    $$('.hw-mute').forEach((b) => b.addEventListener('click', () => {
+      openMuteMenu(b.closest('.rounded-2xl'), b.dataset.auid);
     }));
   }
 
@@ -1612,11 +1911,18 @@
       </div>`;
     }
 
-    // Кнопка редактирования (только для своих)
-    const editBtn = mine ? `<button class="msg-edit text-[10px] opacity-70 hover:opacity-100 px-1 rounded" title="Редактировать">✎</button>` : '';
-    const delBtn = (mine || admin.authorized || altMode()) ? `<button class="msg-del text-[10px] opacity-70 hover:opacity-100 px-1 rounded" title="Удалить">✕</button>` : '';
-    const reactBtn = `<button class="msg-react text-[10px] opacity-70 hover:opacity-100 px-1 rounded" title="Реакция">☺</button>`;
-    const replyBtn = `<button class="msg-reply text-[10px] opacity-70 hover:opacity-100 px-1 rounded" title="Ответить">↩</button>`;
+    // Кнопки редактирования/удаления/реакций. Админ видит их всегда и может всё.
+    const canWrite = canWriteHere();
+    const adminOn = isAdmin();
+    const editBtn = ((mine && canWrite) || adminOn)
+      ? `<button class="msg-edit text-[10px] opacity-70 hover:opacity-100 px-1 rounded" title="Редактировать">✎</button>` : '';
+    const delBtn = ((mine && canWrite) || adminOn || (altMode() && canWrite))
+      ? `<button class="msg-del text-[10px] opacity-70 hover:opacity-100 px-1 rounded" title="Удалить">✕</button>` : '';
+    const reactBtn = (canWrite || adminOn) ? `<button class="msg-react text-[10px] opacity-70 hover:opacity-100 px-1 rounded" title="Реакция">☺</button>` : '';
+    const replyBtn = (canWrite || adminOn) ? `<button class="msg-reply text-[10px] opacity-70 hover:opacity-100 px-1 rounded" title="Ответить">↩</button>` : '';
+    const muteBtn = (adminOn && m.uid) ? `<button class="msg-mute text-[10px] opacity-70 hover:opacity-100 px-1 rounded" title="Модерация (мут)">🔨</button>` : '';
+    const adminBadge = (adminOn && m.uid && window.HubAuth && m.uid === HubAuth.uid)
+      ? '<span class="text-[10px]" title="Администратор">🛡️</span>' : '';
 
     // Показываем "изменено"
     const editedMark = m.edited ? '<span class="msg-edited">(изменено)</span>' : '';
@@ -1627,12 +1933,14 @@
         <div class="${mine ? 'accent-bg text-white' : 'bg-slate-800'} rounded-2xl px-3.5 py-2 min-w-0 flex-1">
           <div class="flex items-center gap-1 mb-0.5 flex-wrap">
             <span class="text-[11px] font-bold" style="color:${mine ? '#e0e7ff' : nickColor(mname)}">${esc(mname)}</span>
+            ${adminBadge}
             ${editedMark}
             ${m.flagged ? `<span class="msg-flagmark" title="Помечено фильтром: ${esc(m.flagReason || '')}">⚠</span>` : ''}
             <span class="ml-auto flex items-center gap-0.5">
               <button class="msg-fav text-[12px] opacity-70 hover:opacity-100 px-1 rounded" title="Избранное">${star}</button>
               ${replyBtn}
               ${reactBtn}
+              ${muteBtn}
               ${editBtn}
               ${delBtn}
             </span>
@@ -1805,6 +2113,7 @@
   }
   function toggleReaction(msgKey, emoji) {
     if (!HubAuth.uid) return;
+    if (!canWriteHere()) { showToast('Ты можешь писать только в своём классе'); return; }
     const ref = db.ref(curClassPath() + '/chat/' + msgKey + '/reactions/' + HubAuth.uid);
     ref.once('value', (s) => {
       if (s.val() === emoji) ref.remove();
@@ -1817,6 +2126,7 @@
   let lastTypingSent = 0;
   function startTypingBeacon() {
     if (typingBeacon) return;
+    if (!canWriteHere()) return;
     const me = nick();
     if (!me || !HubAuth.uid) return;
     const doSend = () => {
@@ -1969,6 +2279,7 @@
     const input = $('#chat-input');
     const text = input.value.trim();
     if (!text) return;
+    if (!canWriteHere()) { showToast('Ты можешь писать только в своём классе'); return; }
     if (!nick()) { showToast('Сначала задайте ник'); askNickIfNeeded(); return; }
     if (!HubAuth.uid || !HubAuth.ready) { showToast('Авторизация ещё не готова'); return; }
     const me = nick();
@@ -2117,10 +2428,92 @@
     const on = altMode();
     const theme = localStorage.getItem(LS.theme) || 'dark';
     const accent = localStorage.getItem(LS.accent) || 'indigo';
-    const isAdmin = !!admin.authorized;
+    const isAdminNow = isAdmin();
     const dnd = localStorage.getItem(LS.dnd) === '1';
     const n = nick() || 'Ученик';
     const s = state.sel;
+
+    // Список моих обращений и ответы администрации. Админ видит ВСЕ обращения (с ответом/удалением).
+    function paintMsgList() {
+      const wrap = $('#msg-list');
+      if (!wrap || !n || !s || !window.HubAuth || !HubAuth.uid) return;
+      const adminView = isAdmin();
+      const job = adminView
+        ? db.ref('/admin_messages').once('value').then((sn) => flattenMsgs(sn.val()))
+        : db.ref('/admin_messages/' + HubAuth.uid).once('value').then((sn) => {
+            const v = sn.val() || {};
+            return Object.keys(v).map((k) => Object.assign({ mid: k }, v[k]));
+          });
+      job.then((raw) => {
+        const items = raw.filter((m) => m && m.text).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+        let unreadReplies = 0;
+        if (!items.length) { wrap.innerHTML = emptyNote('Обращений пока нет'); paintAdminBadge(); return; }
+        wrap.innerHTML = items.map((m) => {
+          const hasReply = !!m.reply;
+          const unread = hasReply && !m.replyRead;
+          const mine = m.uid === HubAuth.uid;
+          if (unread) unreadReplies++;
+          const who = adminView ? `<div class="text-[10px] text-slate-500 truncate">${esc(m.nick || 'Ученик')}${m.homeClass ? ' · ' + esc([m.homeClass.cname, m.homeClass.sname, m.homeClass.clname].filter(Boolean).join(', ')) : ''}</div>` : '';
+          return `
+          <div class="rounded-xl bg-slate-800/50 border ${unread ? 'border-rose-500/50' : 'border-slate-700'} p-3 fade-up">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-[11px] font-bold ${m.status === 'new' ? 'text-amber-400' : 'text-slate-400'}">${esc(m.subject || '')}${m.status === 'new' && !adminView ? ' · новое' : ''}</span>
+              <span class="text-[10px] text-slate-500 shrink-0">${fmtDate(m.timestamp)}</span>
+            </div>
+            ${who}
+            <p class="text-sm break-words whitespace-pre-wrap mt-1">${esc(m.text || '')}</p>
+            ${hasReply ? `
+              <div class="mt-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 p-2">
+                <div class="text-[10px] font-bold text-emerald-400">Ответ администрации</div>
+                <p class="text-xs text-slate-200 break-words whitespace-pre-wrap mt-0.5">${esc(m.reply)}</p>
+              </div>` : ''}
+            <div class="flex gap-2 mt-2 flex-wrap items-center">
+              ${unread && mine ? `<button class="text-[11px] accent-text underline msg-mark-read" data-mid="${esc(m.mid)}">Отметить прочитанным</button>` : ''}
+              ${adminView ? `<button class="text-[11px] accent-text underline msg-settings-reply" data-uid="${esc(m.uid || HubAuth.uid)}" data-mid="${esc(m.mid)}">Ответить</button>
+              <button class="text-[11px] text-rose-400 underline msg-settings-del" data-uid="${esc(m.uid || HubAuth.uid)}" data-mid="${esc(m.mid)}">Удалить</button>` : ''}
+            </div>
+          </div>`;
+        }).join('');
+        const badge = $('#adm-contact-badge');
+        if (badge) {
+          if (unreadReplies > 0) { badge.textContent = String(unreadReplies); badge.classList.remove('hidden'); }
+          else badge.classList.add('hidden');
+        }
+        wrap.querySelectorAll('.msg-mark-read').forEach((b) => b.addEventListener('click', () => {
+          db.ref('/admin_messages/' + HubAuth.uid + '/' + b.dataset.mid).update({ replyRead: true })
+            .then(() => { renderSettingsTab(); })
+            .catch((err) => showToast('Ошибка: ' + (err && err.message ? err.message : err)));
+        }));
+        wrap.querySelectorAll('.msg-settings-del').forEach((b) => b.addEventListener('click', () => {
+          const r = db.ref('/admin_messages/' + b.dataset.uid + '/' + b.dataset.mid);
+          askConfirm('Удалить обращение?', () => r.remove().then(() => renderSettingsTab()).catch((err) => showToast('Ошибка: ' + (err && err.message ? err.message : err))));
+        }));
+        wrap.querySelectorAll('.msg-settings-reply').forEach((b) => b.addEventListener('click', () => {
+          const card = b.closest('.rounded-xl');
+          const existing = card.querySelector('.msg-settings-reply-box');
+          if (existing) { existing.remove(); return; }
+          const box = document.createElement('div');
+          box.className = 'msg-settings-reply-box mt-2 space-y-2';
+          box.innerHTML = `
+            <textarea rows="2" maxlength="500" placeholder="Ответ пользователю…" class="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-xs resize-none outline-none focus:border-indigo-500"></textarea>
+            <div class="flex gap-2">
+              <button class="msg-settings-reply-save flex-1 rounded-lg accent-bg text-white px-3 py-2 text-xs font-bold">Сохранить</button>
+              <button class="msg-settings-reply-close rounded-lg bg-slate-800 px-3 py-2 text-xs font-semibold">Отмена</button>
+            </div>`;
+          card.appendChild(box);
+          box.querySelector('textarea').focus();
+          box.querySelector('.msg-settings-reply-close').addEventListener('click', () => box.remove());
+          box.querySelector('.msg-settings-reply-save').addEventListener('click', () => {
+            const txt = box.querySelector('textarea').value.trim().slice(0, 500);
+            if (!txt) { showToast('Введите текст ответа'); return; }
+            db.ref('/admin_messages/' + b.dataset.uid + '/' + b.dataset.mid).update({ reply: txt, repliedAt: Date.now() })
+              .then(() => { showToast('Ответ сохранён'); renderSettingsTab(); })
+              .catch((err) => showToast('Ошибка: ' + (err && err.message ? err.message : err)));
+          });
+        }));
+        paintAdminBadge();
+      }).catch(() => {});
+    }
 
     el.innerHTML = `
       <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
@@ -2132,6 +2525,37 @@
             <button id="profile-edit-nick" class="text-[11px] accent-text underline mt-1">Изменить ник</button>
           </div>
         </div>
+      </div>
+
+      <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
+        <div class="flex items-center justify-between gap-3">
+          <div class="min-w-0">
+            <div class="font-bold text-sm">🏠 Мой класс</div>
+            <p class="text-[11px] text-slate-500 mt-0.5" id="home-class-name">${esc(homeNameFull())}</p>
+            <p class="text-[10px] text-slate-500 mt-0.5">${homeChangeAllowed() ? 'Смену можно выполнить сейчас' : 'Смена — не чаще 1 раза в 30 дней. Доступно с ' + homeChangeAvailableAt()}</p>
+          </div>
+          <button id="home-change-btn" class="shrink-0 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold">Сменить мой класс</button>
+        </div>
+      </div>
+
+      <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
+        <div class="flex items-center justify-between gap-2 mb-2">
+          <div class="font-bold text-sm">✉️ Связь с администрацией</div>
+          <span id="adm-contact-badge" class="hidden shrink-0 text-[10px] bg-rose-600 text-white rounded-full px-2 py-0.5 font-bold"></span>
+        </div>
+        <form id="msg-form" class="space-y-2">
+          <select id="msg-subject" class="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-xs outline-none focus:border-indigo-500">
+            <option value="Смена класса">Смена класса</option>
+            <option value="Проблема с чатом">Проблема с чатом</option>
+            <option value="Проблема с ДЗ">Проблема с ДЗ</option>
+            <option value="Баг">Баг</option>
+            <option value="Другое">Другое</option>
+          </select>
+          <textarea id="msg-text" rows="3" maxlength="500" placeholder="Текст обращения (до 500 символов)…"
+                    class="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-xs resize-none outline-none focus:border-indigo-500"></textarea>
+          <button id="msg-send" class="w-full rounded-xl accent-bg text-white py-2.5 text-sm font-bold hover:opacity-90">Отправить</button>
+        </form>
+        <div id="msg-list" class="mt-3 space-y-2"></div>
       </div>
 
       <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
@@ -2184,7 +2608,7 @@
         </form>
       </div>
 
-      ${isAdmin ? `
+      ${isAdminNow ? `
         <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
           <div class="flex items-center justify-between gap-3">
             <div>
@@ -2228,6 +2652,39 @@
     });
     $('#fav-open').addEventListener('click', openFavModal);
     $('#export-chat').addEventListener('click', exportChat);
+
+    const hcBtn = $('#home-change-btn');
+    if (hcBtn) hcBtn.addEventListener('click', () => {
+      if (!homeChangeAllowed()) {
+        showToast('Смену можно выполнить 1 раз в 30 дней. Доступно с ' + homeChangeAvailableAt());
+        return;
+      }
+      startHomePickFor(null);
+    });
+
+    // ---- Связь с администрацией: отправка + список обращений/ответов ----
+    const msgForm = $('#msg-form');
+    if (msgForm) msgForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (!window.HubAuth || !HubAuth.uid) { showToast('Авторизация ещё не готова'); return; }
+      const subject = $('#msg-subject').value;
+      const text = $('#msg-text').value.trim().slice(0, 500);
+      if (!text) { showToast('Введите текст обращения'); return; }
+      const record = {
+        uid: HubAuth.uid,
+        nick: nick() || 'Ученик',
+        homeClass: homeClassData ? { cityId: homeClassData.cityId, schoolId: homeClassData.schoolId, classId: homeClassData.classId, cname: homeClassData.cname, sname: homeClassData.sname, clname: homeClassData.clname } : null,
+        subject: subject,
+        text: text,
+        timestamp: firebase.database.ServerValue.TIMESTAMP,
+        status: 'new',
+      };
+      db.ref('/admin_messages/' + HubAuth.uid).push(record)
+        .then(() => { showToast('Сообщение отправлено'); $('#msg-text').value = ''; renderSettingsTab(); })
+        .catch((err) => showToast('Ошибка отправки: ' + (err && err.message ? err.message : err)));
+    });
+    paintMsgList();
+
     paintBdays();
     $('#bday-add').addEventListener('submit', (e) => {
       e.preventDefault();
@@ -2243,7 +2700,7 @@
       $('#bday-date').value = '';
       paintBdays();
     });
-    if (isAdmin) {
+    if (isAdminNow) {
       const alt = $('#alt-toggle');
       if (alt) alt.addEventListener('change', (e) => {
         setAltMode(e.target.checked);
@@ -2344,6 +2801,8 @@
     else if (name === 'content') renderAdminContent(body);
     else if (name === 'people') renderAdminPeople(body);
     else if (name === 'stats') renderAdminStats(body);
+    else if (name === 'messages') renderAdminMessages(body);
+    else if (name === 'flagged') renderAdminFlagged(body);
   }
 
   const aInput = (cls) => `w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-sm placeholder-slate-500 outline-none focus:border-indigo-500 transition ${cls || ''}`;
@@ -2520,7 +2979,12 @@
           const s = editor.querySelector('#hw-new-subj').value.trim();
           const t = editor.querySelector('#hw-new-task').value;
           if (!s) return;
-          node.child('homework/' + s).set(t);
+          node.child('homework/' + s).set({
+            text: t,
+            author: nick() || 'Ученик',
+            authorUid: HubAuth.uid || '',
+            editedAt: Date.now(),
+          });
           editor.querySelector('#hw-new-subj').value = '';
           editor.querySelector('#hw-new-task').value = '';
         });
@@ -2531,7 +2995,7 @@
           wrap.innerHTML = entries.length ? entries.map(([subj, task]) => `
             <div class="row rounded-xl bg-slate-900 border border-slate-800 p-3 space-y-2 fade-up">
               <input data-hw-key="${esc(subj)}" value="${esc(subj)}" class="${aInput('w-full font-semibold')}">
-              <textarea data-hw-task rows="2" class="${aInput('w-full resize-none')}">${esc(task || '')}</textarea>
+              <textarea data-hw-task rows="2" class="${aInput('w-full resize-none')}">${esc(hwText(task))}</textarea>
               <div class="flex gap-2">
                 <button data-hw-save data-key="${esc(subj)}" class="rounded-lg px-3 py-2 text-xs font-bold bg-emerald-600">Сохранить</button>
                 <button data-hw-del data-key="${esc(subj)}" class="rounded-lg px-3 py-2 text-xs font-bold bg-rose-600">Удалить</button>
@@ -2605,8 +3069,198 @@
       <button id="sch-save" class="w-full rounded-lg px-3 py-3 text-sm font-bold bg-emerald-600 text-white">Сохранить</button>`;
   }
 
+  // ---- Управление правами (выдача/снятие админа) ----
+  const ROLE_LABELS = { admin: 'Админ', moderator: 'Модератор' };
+  function roleLabel(r) {
+    if (r === 'admin') return `<span class="role-pill text-emerald-400 border border-emerald-500/40 rounded px-1.5 py-0.5 text-[10px] font-bold">Админ</span>`;
+    if (r === 'moderator') return `<span class="role-pill text-amber-400 border border-amber-500/40 rounded px-1.5 py-0.5 text-[10px] font-bold">Модератор</span>`;
+    if (!r) return `<span class="role-pill text-slate-500 border border-slate-700 rounded px-1.5 py-0.5 text-[10px]">Пользователь</span>`;
+    return `<span class="role-pill text-slate-400 border border-slate-600 rounded px-1.5 py-0.5 text-[10px]">${esc(String(r))}</span>`;
+  }
+  function grantAdmin(uid, nickStr) {
+    if (!isAdmin()) { showToast('Нет прав администратора'); return; }
+    if (!uid) { showToast('Нет UID'); return; }
+    db.ref('/roles/' + uid).set('admin')
+      .then(() => db.ref('/roles_meta/' + uid).set({ grantedBy: HubAuth.uid || '', grantedAt: Date.now(), grantedNick: nick() || '' }))
+      .then(() => { showToast('Права выданы пользователю ' + (nickStr || uid)); renderAdminPage('people'); })
+      .catch((e) => showToast('Не удалось выдать права: ' + ((e && e.message) ? e.message : 'нет прав')));
+  }
+  function revokeAdmin(uid) {
+    if (!isAdmin()) { showToast('Нет прав администратора'); return; }
+    if (!uid) { showToast('Нет UID'); return; }
+    if (uid === (window.HubAuth && HubAuth.uid)) { showToast('Нельзя снять права с самого себя'); return; }
+    if (HARDCODE_ADMIN_UIDS.indexOf(uid) !== -1) { showToast('Нельзя снять права с главного админа'); return; }
+    askConfirm('Снять админ-права с этого пользователя?', () => {
+      Promise.all([
+        db.ref('/roles/' + uid).remove(),
+        db.ref('/roles_meta/' + uid).remove(),
+      ]).then(() => { showToast('Права сняты'); renderAdminPage('people'); })
+        .catch((e) => showToast('Не удалось снять права: ' + ((e && e.message) ? e.message : 'нет прав')));
+    });
+  }
+
   function renderAdminPeople(body) {
-    body.innerHTML = `<p class="text-xs text-slate-500">Модерация (заглушка).</p>`;
+    const me = window.HubAuth && HubAuth.uid;
+    body.innerHTML = `
+      <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4">
+        <div class="font-bold text-sm mb-2">👑 Выдать админ-права</div>
+        <div class="flex gap-2">
+          <input id="grant-admin-input" placeholder="UID или ник пользователя" class="${aInput('flex-1 min-w-0')}">
+          <button data-act="grantAdminForm" class="shrink-0 rounded-lg accent-bg text-white px-3 py-2 text-xs font-bold">Выдать</button>
+        </div>
+        <p class="text-[10px] text-slate-500 mt-1.5">Можно вставить UID напрямую или ввести ник — UID найдётся по базе. Выдать/снять можно и из списка ниже.</p>
+      </div>
+      <div class="mt-4">
+        <div class="font-bold text-sm mb-2">Текущие администраторы</div>
+        <div id="admins-list">${spinner()}</div>
+      </div>
+      <div class="mt-4">
+        <div class="font-bold text-sm mb-2">Пользователи</div>
+        <div id="users-list">${spinner()}</div>
+      </div>`;
+
+    const safe = (ref) => ref.once('value').then((s) => s.val() || {}).catch(() => null);
+    Promise.all([
+      safe(db.ref('/users')),
+      safe(db.ref('/roles')),
+      safe(db.ref('/roles_meta')),
+    ]).then(([usv, rv, mv]) => {
+      const users = usv || {};
+      const roles = rv || {};
+      const roleMeta = mv || {};
+      const nickOf = (uid) => (users[uid] && users[uid].nick) || '';
+      // ---- Текущие администраторы ----
+      const adminsEl = $('#admins-list');
+      if (adminsEl) {
+        const admins = new Set();
+        Object.keys(roles).forEach((uid) => { if (roles[uid] === 'admin') admins.add(uid); });
+        HARDCODE_ADMIN_UIDS.forEach((uid) => admins.add(uid));
+        if (!admins.size) { adminsEl.innerHTML = emptyNote('Администраторов пока нет'); }
+        else {
+          adminsEl.innerHTML = Array.from(admins).map((uid) => {
+            const meta = roleMeta[uid] || {};
+            const main = HARDCODE_ADMIN_UIDS.indexOf(uid) !== -1;
+            const selfFl = me && uid === me;
+            let actions = '';
+            if (main) actions = '<span class="text-[10px] text-indigo-400 font-bold">Главный админ</span>';
+            else if (selfFl) actions = '<span class="text-[10px] text-slate-600">это вы</span>';
+            else actions = `<button data-act="revokeAdmin" data-uid="${esc(uid)}" class="rounded-lg bg-rose-600/80 hover:bg-rose-600 px-2.5 py-1.5 text-[11px] font-semibold">Снять права</button>`;
+            return `
+            <div class="row rounded-xl bg-slate-900 border border-slate-800 p-3 flex items-center gap-2 flex-wrap fade-up">
+              <span class="text-xs font-bold">${esc(nickOf(uid) || '—')}</span>
+              <span class="text-[10px] text-slate-500">UID: ${esc(uid).slice(0, 14)}…</span>
+              ${meta.grantedAt ? `<span class="text-[10px] text-slate-500">Выдан ${fmtDate(meta.grantedAt)}</span>` : ''}
+              ${roleLabel('admin')}
+              <span class="flex gap-1.5 ml-auto">${actions}</span>
+            </div>`;
+          }).join('');
+        }
+      }
+      // ---- Все пользователи с ролью ----
+      const usersEl = $('#users-list');
+      if (usersEl) {
+        const list = Object.keys(users)
+          .map((uid) => ({ uid: uid, nick: (users[uid] && users[uid].nick) || 'Ученик', role: roles[uid] }));
+        list.sort((a, b) => a.nick.localeCompare(b.nick, 'ru'));
+        if (!list.length) { usersEl.innerHTML = emptyNote('Пользователей пока нет'); return; }
+        usersEl.innerHTML = list.map((u) => {
+          const main = HARDCODE_ADMIN_UIDS.indexOf(u.uid) !== -1;
+          const selfFl = me && u.uid === me;
+          let actions = '';
+          if (main) actions = '<span class="text-[10px] text-indigo-400 font-bold">Главный админ</span>';
+          else if (selfFl) actions = '<span class="text-[10px] text-slate-600">это вы</span>';
+          else if (u.role === 'admin') actions = `<button data-act="revokeAdmin" data-uid="${esc(u.uid)}" class="rounded-lg bg-rose-600/80 hover:bg-rose-600 px-2.5 py-1.5 text-[11px] font-semibold">Снять админа</button>`;
+          else actions = `<button data-act="grantAdmin" data-uid="${esc(u.uid)}" data-nick="${esc(u.nick)}" class="rounded-lg bg-emerald-600/80 hover:bg-emerald-600 px-2.5 py-1.5 text-[11px] font-semibold">Выдать админа</button>`;
+          return `
+          <div class="row rounded-xl bg-slate-900 border border-slate-800 p-3 flex items-center gap-2 flex-wrap fade-up">
+            <span class="text-xs font-bold">${esc(u.nick)}</span>
+            <span class="text-[10px] text-slate-500">UID: ${esc(u.uid).slice(0, 14)}…</span>
+            ${roleLabel(u.role)}
+            <span class="flex gap-1.5 ml-auto">${actions}</span>
+          </div>`;
+        }).join('');
+      }
+    }).catch((e) => { body.innerHTML = emptyNote('Ошибка загрузки: ' + ((e && e.message) ? e.message : e)); });
+  }
+
+  function renderAdminMessages(body) {
+    body.innerHTML = `
+      <div class="font-bold text-sm mb-2">Сообщения пользователей</div>
+      <div id="msgs-list" class="space-y-3">${spinner()}</div>`;
+    const wrap = $('#msgs-list');
+    if (!wrap) return;
+    db.ref('/admin_messages').once('value').then((snap) => {
+      const v = snap.val() || {};
+      const all = [];
+      Object.keys(v).forEach((uid) => {
+        Object.keys(v[uid] || {}).forEach((mid) => {
+          const m = Object.assign({ uid: uid, mid: mid }, v[uid][mid]);
+          if (m && m.text) all.push(m);
+        });
+      });
+      all.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+      if (!all.length) { wrap.innerHTML = emptyNote('Обращений нет'); return; }
+      const relClass = (m) => (m.homeClass && (m.homeClass.cname || m.homeClass.sname || m.homeClass.clname))
+        ? [m.homeClass.cname, m.homeClass.sname, m.homeClass.clname].filter(Boolean).join(', ')
+        : '—';
+      wrap.innerHTML = all.map((m) => {
+        const isNew = m.status === 'new';
+        const canSetClass = (m.subject === 'Смена класса');
+        return `
+        <div class="msg-card rounded-xl bg-slate-900 border ${isNew ? 'border-amber-500/40' : 'border-slate-800'} p-3 fade-up" data-uid="${esc(m.uid)}" data-mid="${esc(m.mid)}">
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-xs font-bold">${esc(m.nick || 'Ученик')}</span>
+            <span class="text-[10px] text-slate-500 shrink-0">${fmtDate(m.timestamp)}</span>
+          </div>
+          <div class="text-[10px] text-slate-500 mt-0.5">Класс: ${esc(relClass(m))} · Тема: ${esc(m.subject || '')}${isNew ? ' · <span class="text-amber-400 font-bold">новое</span>' : ''}</div>
+          <p class="text-sm break-words whitespace-pre-wrap mt-1">${esc(m.text || '')}</p>
+          ${m.reply ? `<div class="mt-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 p-2">
+            <div class="text-[10px] font-bold text-emerald-400">Ваш ответ</div>
+            <p class="text-xs text-slate-200 break-words whitespace-pre-wrap mt-0.5">${esc(m.reply)}</p>
+          </div>` : ''}
+          <div class="msg-actions flex gap-1.5 mt-2 flex-wrap">
+            <button class="msg-act rounded-lg bg-slate-800 hover:bg-slate-700 px-2.5 py-1.5 text-[11px] font-semibold" data-act="msgReply">Ответить</button>
+            ${canSetClass ? `<button class="msg-act rounded-lg bg-slate-800 hover:bg-slate-700 px-2.5 py-1.5 text-[11px] font-semibold" data-act="msgSetClass">Поменять класс</button>` : ''}
+            ${isNew ? `<button class="msg-act rounded-lg bg-slate-800 hover:bg-slate-700 px-2.5 py-1.5 text-[11px] font-semibold" data-act="msgRead">Прочитано</button>` : ''}
+            <button class="msg-act rounded-lg bg-rose-600/80 hover:bg-rose-600 px-2.5 py-1.5 text-[11px] font-semibold" data-act="msgDelete">Удалить</button>
+          </div>
+        </div>`;
+      }).join('');
+      wrap.querySelectorAll('.msg-act').forEach((btn) => btn.addEventListener('click', () => {
+        const card = btn.closest('.msg-card');
+        const uid = card.dataset.uid, mid = card.dataset.mid;
+        const ref = db.ref('/admin_messages/' + uid + '/' + mid);
+        const act = btn.dataset.act;
+        if (act === 'msgDelete') {
+          askConfirm('Удалить обращение?', () => ref.remove().then(() => renderAdminMessages(body)));
+        } else if (act === 'msgRead') {
+          ref.update({ status: 'read' }).then(() => renderAdminMessages(body));
+        } else if (act === 'msgSetClass') {
+          startHomePickFor(uid);
+        } else if (act === 'msgReply') {
+          const box = card.querySelector('.msg-reply-box');
+          if (box) { box.remove(); return; }
+          const div = document.createElement('div');
+          div.className = 'msg-reply-box mt-2 space-y-2';
+          div.innerHTML = `
+            <textarea rows="2" maxlength="500" placeholder="Ответ пользователю…" class="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-xs resize-none outline-none focus:border-indigo-500"></textarea>
+            <div class="flex gap-2">
+              <button class="msg-reply-save flex-1 rounded-lg accent-bg text-white px-3 py-2 text-xs font-bold">Сохранить</button>
+              <button class="msg-reply-close rounded-lg bg-slate-800 px-3 py-2 text-xs font-semibold">Отмена</button>
+            </div>`;
+          card.appendChild(div);
+          div.querySelector('textarea').focus();
+          div.querySelector('.msg-reply-close').addEventListener('click', () => div.remove());
+          div.querySelector('.msg-reply-save').addEventListener('click', () => {
+            const t = div.querySelector('textarea').value.trim().slice(0, 500);
+            if (!t) { showToast('Введите текст ответа'); return; }
+            ref.update({ reply: t, repliedAt: Date.now() })
+              .then(() => { showToast('Ответ сохранён'); renderAdminMessages(body); })
+              .catch((err) => showToast('Ошибка: ' + (err && err.message ? err.message : err)));
+          });
+        }
+      }));
+    }).catch((err) => { wrap.innerHTML = emptyNote('Не удалось загрузить: ' + ((err && err.message) ? err.message : err)); });
   }
   function renderAdminStats(body) {
     body.innerHTML = `<div id="stats-cards" class="grid grid-cols-3 gap-2">${spinner()}</div>
@@ -2760,6 +3414,196 @@
     })();
   }
 
+  // Вкладка «Интересное»: помеченные сообщения (+копии /flagged_messages) и помеченные ДЗ (+/flagged_homework).
+  function renderAdminFlagged(body) {
+    body.innerHTML = `
+      <div class="font-bold text-sm mb-2">🔎 Интересное · сообщения</div>
+      <div id="flag-chat">${spinner()}</div>
+      <div class="font-bold text-sm mt-5 mb-2">📚 Интересное · домашние задания</div>
+      <div id="flag-hw">${spinner()}</div>`;
+
+    const safe = (ref) => ref.once('value').then((s) => s.val() || {}).catch(() => null);
+    (async () => {
+      const [cv, fv, hfv, usv, bv] = await Promise.all([
+        safe(db.ref('/cities')),
+        safe(db.ref('/flagged_messages')),
+        safe(db.ref('/flagged_homework')),
+        safe(db.ref('/users')),
+        safe(db.ref('/bannedUsers')),
+      ]);
+      const users = usv || {};
+      const deviceToUid = {}, usersById = {};
+      Object.keys(users).forEach((uid) => { usersById[uid] = users[uid] || {}; if (users[uid] && users[uid].deviceId) deviceToUid[users[uid].deviceId] = uid; });
+      const bans = bv || {};
+      const bt = (label, act, extra) => `<button data-act="${act}" ${extra} class="rounded-lg bg-slate-800 hover:bg-slate-700 px-2.5 py-1.5 text-[11px] font-semibold">${label}</button>`;
+
+      // ---- Сообщения ----
+      const chatEl = $('#flag-chat');
+      if (chatEl) {
+        const fEntries = [];
+        const seen = {};
+        const pushF = (cid, sid, clid, key, m) => {
+          if (!(m && m.flagged)) return;
+          const id = cid + '/' + sid + '/' + clid + '/' + key;
+          if (seen[id]) return;
+          seen[id] = true;
+          fEntries.push({ cid: String(cid), sid: String(sid), clid: String(clid), key: String(key), m: m });
+        };
+        if (fv) {
+          Object.keys(fv || {}).forEach((cid) => {
+            Object.keys(fv[cid] || {}).forEach((sid) => {
+              Object.keys(fv[cid][sid] || {}).forEach((clid) => {
+                Object.keys(fv[cid][sid][clid] || {}).forEach((key) => {
+                  pushF(cid, sid, clid, key, fv[cid][sid][clid][key] || {});
+                });
+              });
+            });
+          });
+        }
+        Object.keys(cv || {}).forEach((cid) => {
+          const schools = (cv[cid] || {}).schools || {};
+          Object.keys(schools).forEach((sid) => {
+            const classes = (schools[sid] || {}).classes || {};
+            Object.keys(classes).forEach((clid) => {
+              const cls = classes[clid] || {};
+              const chat = cls.chat || {};
+              const ignored = cls._flags || {};
+              Object.keys(chat).forEach((key) => {
+                const m = chat[key];
+                if (m && m.flagged && !(ignored[key] && ignored[key].ignored)) pushF(cid, sid, clid, key, m);
+              });
+            });
+          });
+        });
+        fEntries.sort((a, b) => (a.m.time || 0) - (b.m.time || 0));
+        if (!fEntries.length) {
+          chatEl.innerHTML = emptyNote('Помеченных сообщений нет');
+        } else {
+          const classNames = {};
+          Object.keys(cv || {}).forEach((cid) => {
+            Object.keys((cv[cid] || {}).schools || {}).forEach((sid) => {
+              Object.keys((cv[cid].schools[sid] || {}).classes || {}).forEach((clid) => {
+                const cn = cv[cid] || {}, sn = cn.schools[sid] || {}, cl = (sn.classes || {})[clid] || {};
+                classNames[cid + '/' + sid + '/' + clid] = { cname: cn.name || cid, sname: sn.name || sid, clname: cl.name || clid };
+              });
+            });
+          });
+          chatEl.innerHTML = fEntries.map((f) => {
+            const uid = f.m.uid || deviceToUid[f.m.deviceId] || '';
+            const nick2 = (uid && usersById[uid] && usersById[uid].nick) || f.m.nick || f.m.name || 'Ученик';
+            const st = uid ? HubModeration.statusOf(bans[uid] || null) : { label: 'не определён', cls: 'text-slate-500' };
+            const mn = classNames[f.cid + '/' + f.sid + '/' + f.clid] || { cname: f.cid, sname: f.sid, clname: f.clid };
+            const fdata = JSON.stringify({ cid: f.cid, sid: f.sid, clid: f.clid, key: f.key, cname: mn.cname, sname: mn.sname, clname: mn.clname });
+            const dis = uid ? '' : ' opacity-40 pointer-events-none';
+            return `
+            <div class="border-b border-slate-800/60 py-2.5">
+              <div class="flex items-center justify-between gap-2 flex-wrap">
+                <span class="text-xs font-bold">${esc(nick2)} <span class="text-[10px] text-slate-500">${esc(mn.cname)}, ${esc(mn.sname)}, ${esc(mn.clname)}</span></span>
+                <span class="text-[10px] text-slate-500">${fmtDate(f.m.time)}</span>
+              </div>
+              <p class="text-sm mt-1 break-words">${esc(f.m.text || '')}</p>
+              <div class="text-[11px] mt-1 ${st.cls}">${uid ? 'UID: ' + esc(uid).slice(0, 14) + '…' : 'UID не определён'} · ${esc(st.label)}</div>
+              <div class="flex gap-1.5 mt-2 flex-wrap">
+                ${bt('Открыть чат', 'flagOpen', `data-f="${esc(fdata)}"`)}
+                ${bt('Игнорировать', 'flagIgnore', `data-f="${esc(fdata)}"`)}
+                ${bt('Удалить', 'flagDel', `data-f="${esc(fdata)}"`)}
+                <span class="flex gap-1.5 flex-wrap${dis}">
+                  ${bt('Мут 1 час', 'flagMute1', `data-uid="${esc(uid)}"`)}
+                  ${bt('Мут 24 часа', 'flagMute24', `data-uid="${esc(uid)}"`)}
+                  ${bt('Мут 7 дней', 'flagMute7', `data-uid="${esc(uid)}"`)}
+                  ${bt('Разбанить', 'flagUnban', `data-uid="${esc(uid)}"`)}
+                  ${bt('Предупредить', 'flagWarn', `data-uid="${esc(uid)}"`)}
+                </span>
+              </div>
+            </div>`;
+          }).join('') + (fv == null ? '<div class="pt-2 text-[10px] text-amber-400/80">Копии /flagged_messages недоступны с текущими правилами — показаны флаги из самих чатов.</div>' : '');
+        }
+      }
+
+      // ---- Домашние задания ----
+      const hwEl = $('#flag-hw');
+      if (hwEl) {
+        const hEntries = [];
+        const hseen = {};
+        const pushH = (cid, sid, clid, subj, v) => {
+          if (!(v && (v.flagged || (typeof v === 'object' && v.moderationStatus)))) return;
+          const id = cid + '/' + sid + '/' + clid + '/' + subj;
+          if (hseen[id]) return;
+          hseen[id] = true;
+          hEntries.push({ cid: String(cid), sid: String(sid), clid: String(clid), subj: String(subj), v: v });
+        };
+        if (hfv) {
+          Object.keys(hfv || {}).forEach((cid) => {
+            Object.keys(hfv[cid] || {}).forEach((sid) => {
+              Object.keys(hfv[cid][sid] || {}).forEach((clid) => {
+                Object.keys(hfv[cid][sid][clid] || {}).forEach((subj) => {
+                  pushH(cid, sid, clid, subj, hfv[cid][sid][clid][subj] || {});
+                });
+              });
+            });
+          });
+        }
+        Object.keys(cv || {}).forEach((cid) => {
+          const schools = (cv[cid] || {}).schools || {};
+          Object.keys(schools).forEach((sid) => {
+            const classes = (schools[sid] || {}).classes || {};
+            Object.keys(classes).forEach((clid) => {
+              const cls = classes[clid] || {};
+              const hw = cls.homework || {};
+              const flags = cls._flags || {};
+              Object.keys(hw).forEach((subj) => {
+                const v = hw[subj];
+                if (!(flags['hw:' + subj] && flags['hw:' + subj].ignored)) pushH(cid, sid, clid, subj, v);
+              });
+            });
+          });
+        });
+        if (!hEntries.length) {
+          hwEl.innerHTML = emptyNote('Помеченных ДЗ нет');
+        } else {
+          const classNames2 = {};
+          Object.keys(cv || {}).forEach((cid) => {
+            Object.keys((cv[cid] || {}).schools || {}).forEach((sid) => {
+              Object.keys((cv[cid].schools[sid] || {}).classes || {}).forEach((clid) => {
+                const cn = cv[cid] || {}, sn = cn.schools[sid] || {}, cl = (sn.classes || {})[clid] || {};
+                classNames2[cid + '/' + sid + '/' + clid] = { cname: cn.name || cid, sname: sn.name || sid, clname: cl.name || clid };
+              });
+            });
+          });
+          hwEl.innerHTML = hEntries.map((h) => {
+            const v = h.v;
+            const authorUid = (v && typeof v === 'object') ? String(v.authorUid || '') : '';
+            const author = (v && typeof v === 'object') ? String(v.author || '') : '';
+            const task = (v && typeof v === 'object') ? String(v.text || '') : String(v || '');
+            const st = authorUid ? HubModeration.statusOf(bans[authorUid] || null) : { label: 'не определён', cls: 'text-slate-500' };
+            const mn = classNames2[h.cid + '/' + h.sid + '/' + h.clid] || { cname: h.cid, sname: h.sid, clname: h.clid };
+            const hdata = JSON.stringify({ cid: h.cid, sid: h.sid, clid: h.clid, subj: h.subj, cname: mn.cname, sname: mn.sname, clname: mn.clname });
+            const dis = authorUid ? '' : ' opacity-40 pointer-events-none';
+            return `
+            <div class="border-b border-slate-800/60 py-2.5">
+              <div class="flex items-center justify-between gap-2 flex-wrap">
+                <span class="text-xs font-bold">${esc(h.subj)} · ${esc(author || 'автор не указан')} <span class="text-[10px] text-slate-500">${esc(mn.cname)}, ${esc(mn.sname)}, ${esc(mn.clname)}</span></span>
+              </div>
+              <p class="text-sm mt-1 break-words">${esc(task || '—')}</p>
+              <div class="text-[11px] mt-1 ${st.cls}">${authorUid ? 'UID: ' + esc(authorUid).slice(0, 14) + '…' : 'UID не определён'} · ${esc(st.label)}</div>
+              <div class="flex gap-1.5 mt-2 flex-wrap">
+                ${bt('Открыть класс', 'flagOpenHw', `data-hwf="${esc(hdata)}"`)}
+                ${bt('Игнорировать', 'flagIgnoreHw', `data-hwf="${esc(hdata)}"`)}
+                ${bt('Удалить', 'flagDelHw', `data-hwf="${esc(hdata)}"`)}
+                <span class="flex gap-1.5 flex-wrap${dis}">
+                  ${bt('Мут 1 час', 'flagMute1', `data-uid="${esc(authorUid)}"`)}
+                  ${bt('Мут 24 часа', 'flagMute24', `data-uid="${esc(authorUid)}"`)}
+                  ${bt('Мут 7 дней', 'flagMute7', `data-uid="${esc(authorUid)}"`)}
+                  ${bt('Разбанить', 'flagUnban', `data-uid="${esc(authorUid)}"`)}
+                </span>
+              </div>
+            </div>`;
+          }).join('') + (hfv == null ? '<div class="pt-2 text-[10px] text-amber-400/80">Копии /flagged_homework недоступны с текущими правилами — показаны флаги из самих классов.</div>' : '');
+        }
+      }
+    })().catch((err) => { body.innerHTML = emptyNote('Ошибка: ' + ((err && err.message) ? err.message : err)); });
+  }
+
   function bindAdminActions() {
     $('#admin-body').addEventListener('click', (e) => {
       const t = e.target.closest('button[data-act]') ||
@@ -2792,24 +3636,30 @@
         if (!subj) return;
         const node = db.ref(P.classNode(admin.city, admin.school, admin.cls) + '/homework');
         if (subj !== t.dataset.key) node.child(t.dataset.key).remove();
-        node.child(subj).set(task);
+        node.child(subj).set({
+          text: task,
+          author: nick() || 'Ученик',
+          authorUid: HubAuth.uid || '',
+          editedAt: Date.now(),
+        });
       }
       if ('hwDel' in t.dataset) db.ref(P.classNode(admin.city, admin.school, admin.cls) + '/homework/' + t.dataset.key).remove();
       if ('annDel' in t.dataset) askConfirm('Удалить?', () => db.ref(P.classNode(admin.city, admin.school, admin.cls) + '/announcements/' + t.dataset.key).remove());
 
-      // ---- «Интересное»: модерация авторов и сообщений ----
-      if (act === 'flagMute1' || act === 'flagMute24') {
+      // ---- «Интересное»: модерация авторов и сообщений/ДЗ ----
+      if (act === 'flagMute1' || act === 'flagMute24' || act === 'flagMute7') {
         const uid = t.dataset.uid;
         if (!uid) { showToast('Нет UID автора'); return; }
-        HubModeration.muteHours(uid, act === 'flagMute1' ? 1 : 24, 'мут администратором')
-          .then(() => { showToast('Мут применён'); renderAdminPage('stats'); })
+        const hours = act === 'flagMute1' ? 1 : act === 'flagMute24' ? 24 : 168;
+        HubModeration.muteHours(uid, hours, 'мут администратором')
+          .then(() => { showToast('Мут применён: ' + (hours === 168 ? '7 дней' : hours === 24 ? '24 часа' : '1 час')); renderAdminPage(admin.page); })
           .catch((e) => showToast('Не удалось замутить: ' + ((e && e.message) ? e.message : 'нет прав')));
       }
       if (act === 'flagUnban') {
         const uid = t.dataset.uid;
         if (!uid) return;
         HubModeration.unban(uid)
-          .then(() => { showToast('Бан снят'); renderAdminPage('stats'); })
+          .then(() => { showToast('Бан снят'); renderAdminPage(admin.page); })
           .catch((e) => showToast('Не удалось снять бан: ' + ((e && e.message) ? e.message : 'нет прав')));
       }
       if (act === 'flagWarn') {
@@ -2829,13 +3679,13 @@
               .catch((e) => showToast('Не удалось удалить: ' + ((e && e.message) ? e.message : 'нет прав')));
             db.ref(P.classNode(f.cid, f.sid, f.clid) + '/_flags/' + f.key).remove().catch(() => {});
             db.ref('/flagged_messages/' + f.cid + '/' + f.sid + '/' + f.clid + '/' + f.key).remove().catch(() => {});
-            renderAdminPage('stats');
+            renderAdminPage(admin.page);
           });
         } else {
           db.ref(P.classNode(f.cid, f.sid, f.clid) + '/_flags/' + f.key)
             .set({ ignored: true, at: firebase.database.ServerValue.TIMESTAMP }).catch(() => {});
           db.ref('/flagged_messages/' + f.cid + '/' + f.sid + '/' + f.clid + '/' + f.key).remove().catch(() => {});
-          renderAdminPage('stats');
+          renderAdminPage(admin.page);
         }
       }
       if (act === 'flagOpen') {
@@ -2845,6 +3695,55 @@
         saveSelection();
         showMainScreen();
         switchTab('chat');
+      }
+      // ---- Помеченные ДЗ ----
+      if (act === 'flagOpenHw') {
+        const f = JSON.parse(t.dataset.hwf || '{}');
+        $('#admin-panel').classList.add('hidden');
+        state.sel = { cid: f.cid, cname: f.cname, sid: f.sid, sname: f.sname, clid: f.clid, clname: f.clname };
+        saveSelection();
+        showMainScreen();
+        switchTab('homework');
+      }
+      if (act === 'flagIgnoreHw' || act === 'flagDelHw') {
+        const f = JSON.parse(t.dataset.hwf || '{}');
+        const hwPath = P.classNode(f.cid, f.sid, f.clid) + '/homework/' + f.subj;
+        if (act === 'flagDelHw') {
+          askConfirm('Удалить запись ДЗ «' + f.subj + '»?', () => {
+            db.ref(hwPath).remove().catch((e) => showToast('Не удалось удалить: ' + ((e && e.message) ? e.message : 'нет прав')));
+            db.ref(P.classNode(f.cid, f.sid, f.clid) + '/_flags/' + 'hw:' + f.subj).remove().catch(() => {});
+            db.ref('/flagged_homework/' + f.cid + '/' + f.sid + '/' + f.clid + '/' + f.subj).remove().catch(() => {});
+            renderAdminPage(admin.page);
+          });
+        } else {
+          db.ref(P.classNode(f.cid, f.sid, f.clid) + '/_flags/' + 'hw:' + f.subj)
+            .set({ ignored: true, at: firebase.database.ServerValue.TIMESTAMP }).catch(() => {});
+          db.ref('/flagged_homework/' + f.cid + '/' + f.sid + '/' + f.clid + '/' + f.subj).remove().catch(() => {});
+          renderAdminPage(admin.page);
+        }
+      }
+      // ---- Выдача/снятие админ-прав ----
+      if (act === 'grantAdmin') { grantAdmin(t.dataset.uid, t.dataset.nick || t.dataset.uid); }
+      if (act === 'revokeAdmin') { revokeAdmin(t.dataset.uid); }
+      if (act === 'grantAdminForm') {
+        const inp = $('#grant-admin-input');
+        const v = inp ? inp.value.trim() : '';
+        if (!v) { showToast('Введите UID или ник'); return; }
+        const looksUid = /^[A-Za-z0-9_-]{15,}$/.test(v);
+        db.ref('/users').once('value').then((sn) => {
+          const us = sn.val() || {};
+          if (looksUid) {
+            const u = us[v];
+            if (u) { grantAdmin(v, u.nick || v); return; }
+            showToast('Пользователь с таким UID не найден');
+            return;
+          }
+          const matches = Object.keys(us).filter((uid) =>
+            us[uid] && us[uid].nick && us[uid].nick.toLowerCase() === v.toLowerCase());
+          if (matches.length === 1) { grantAdmin(matches[0], us[matches[0]].nick); return; }
+          if (matches.length > 1) { showToast('Найдено несколько ников — введите UID'); return; }
+          showToast('Ник не найден');
+        }).catch((e) => showToast('Ошибка: ' + ((e && e.message) ? e.message : e)));
       }
     });
   }
@@ -2927,6 +3826,14 @@
       });
       return;
     }
+
+    const mute = e.target.closest('.msg-mute');
+    if (mute) {
+      const uid = wrap.getAttribute('data-uid');
+      if (!uid) { showToast('UID автора неизвестен'); return; }
+      openMuteMenu(wrap.querySelector('.chat-bubble-row') || wrap, uid);
+      return;
+    }
   });
 
   // Клик по реакции (изменить/удалить свою)
@@ -2981,6 +3888,8 @@
       startPresence();
       ensureProfile();
       checkWarnings();
+      loadHomeClass();
+      pickUpAdminRole();
     });
   }
   document.addEventListener('DOMContentLoaded', start);
