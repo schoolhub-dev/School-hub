@@ -7,14 +7,14 @@
  */
 
 // При обновлении приложения увеличьте версию, чтобы вытеснить старый кэш
-const CACHE = 'school-hub-v10';
+const CACHE = 'school-hub-v11';
 
 // Файлы для офлайн-запуска приложения
 const PRECACHE = [
   './',
   './index.html',
   './manifest.json',
-  './firebase-config.js',
+  './firebase-config.js?v=5',
   './auth.js?v=9',
   './moderation.js?v=9',
   './icon-192.png',
