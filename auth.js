@@ -65,19 +65,17 @@
     },
 
     // Создать/синхронизировать профиль users/{uid}.
-    // nick/class/deviceId/avatar/bio задаёт сам пользователь, createdAt — только при первом входе.
+    // nick/class/deviceId задаёт сам пользователь, createdAt — только при первом входе.
     // banned/mutedUntil здесь НЕ трогаем (старые поля; новых банов нет — они в bannedUsers/).
-    // Пустая строка — реальное значение (так чистится bio/avatar);
-    // null/undefined — «поле не трогать».
     // Возвращает Promise с профилем.
     syncProfile(patch) {
       const p = patch || {};
       if (!this.uid) return Promise.resolve(this.profile || {});
       const ref = db.ref('/users/' + this.uid);
       // Пишем каждый ребёнок отдельным запросом — это совместимо с правилами,
-      // где пользователь может менять только свои поля (и createdAt 1 раз).
+      // где пользователь может менять только свои nick/class/deviceId (и createdAt 1 раз).
       const syncField = (name, value) => {
-        if (value == null) return Promise.resolve();
+        if (value == null || value === '') return Promise.resolve();
         const v = String(value);
         return ref.child(name).once('value').then((s) => {
           if (s.val() !== v) return ref.child(name).set(v);
@@ -87,8 +85,6 @@
         syncField('nick', p.nick),
         syncField('class', p.class),
         syncField('deviceId', p.deviceId),
-        syncField('avatar', p.avatar),
-        syncField('bio', p.bio),
         ref.child('createdAt').once('value').then((s) => {
           if (!s.exists()) return ref.child('createdAt').set(Date.now());
         }),
