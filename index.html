@@ -180,6 +180,61 @@
     html:not(.dark) input::placeholder, html:not(.dark) textarea::placeholder { color: #94a3b8; }
     html:not(.dark) ::-webkit-scrollbar-thumb { background: #cbd5e1; }
   </style>
+
+  <style>
+    /* ============================================================
+       АДАПТИВНАЯ ВЕРСТКА (тач-цели, safe-area, мобильные экраны)
+       ============================================================ */
+    html, body { max-width: 100%; overflow-x: hidden; }
+    body { min-height: -webkit-fill-available; }
+    button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+
+    /* Кнопки выбора города/школы/класса — крупные тач-цели */
+    #select-list .choice, .digit-btn { min-height: 48px; }
+
+    /* Перенос длинных названий предметов в расписании */
+    #tab-schedule li .flex-1 { min-width: 0; overflow-wrap: anywhere; word-break: break-word; }
+
+    /* Форма чата прижата к низу окна — клавиатура не перекрывает поле */
+    #chat-form { position: sticky; bottom: 0; z-index: 10; }
+
+    /* Сообщения не шире 80% на телефоне */
+    @media (max-width: 480px) {
+      .chat-bubble-row { max-width: 80% !important; }
+    }
+
+    /* Планшет/ПК: выбор города/школы/букв класса — в 2 колонки */
+    @media (min-width: 769px) {
+      #select-list:has(> .choice) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    /* === Планшет и ниже (<=768px) === */
+    @media (max-width: 768px) {
+      .chat-scroll { height: calc(100vh - 300px); height: calc(100dvh - 290px); }
+      .tab-btn { min-height: 46px; }
+      .sview { min-height: 40px; }
+      .apage-btn { min-height: 40px; }
+      #admin-body, #view-body { padding-bottom: calc(1rem + env(safe-area-inset-bottom)); }
+      #pass-modal > div:last-child { padding-bottom: calc(1.25rem + env(safe-area-inset-bottom)); }
+    }
+
+    /* === Телефон (<=480px) === */
+    @media (max-width: 480px) {
+      /* вкладки: только иконки, крупнее (подсветка активной уже есть в switchTab) */
+      .tab-btn { gap: 2px; padding-top: 9px; padding-bottom: 9px; }
+      .tab-btn svg { width: 22px; height: 22px; }
+      .tab-label { display: none; }
+
+      /* «Сменить» -> только иконка */
+      #change-btn { width: 40px; height: 40px; padding: 0; justify-content: center; }
+      #change-btn .change-icon { display: block; }
+      #change-btn .change-label { display: none; }
+
+      /* Админка: крупные кнопки действий; блок действий - сеткой в 2 колонки */
+      #admin-body button { min-height: 40px; }
+      #stats-flagged .gap-1\.5.flex-wrap { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+  </style>
 </head>
 
 <body class="bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100 antialiased min-h-screen transition-colors">
@@ -209,7 +264,7 @@
       <p class="text-slate-400 text-sm mt-1">Расписание, домашка, объявления и чат класса</p>
     </header>
 
-    <div class="flex-1 px-4 pb-6 w-full max-w-md mx-auto">
+    <div class="flex-1 px-4 pb-6 w-full max-w-md mx-auto md:max-w-xl">
       <div class="flex items-center gap-3 mb-4">
         <button id="back-btn" class="hidden h-10 w-10 shrink-0 rounded-full bg-slate-800 flex items-center justify-center hover:bg-slate-700" aria-label="Назад">
           <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -240,8 +295,11 @@
               <span id="header-clock">—</span> · Твой класс
             </span>
           </button>
-          <button id="change-btn" class="shrink-0 px-3 py-2 rounded-lg bg-slate-800 text-xs font-semibold hover:bg-slate-700 active:scale-95 transition">
-            Сменить
+          <button id="change-btn" class="shrink-0 px-3 py-2 rounded-lg bg-slate-800 text-xs font-semibold hover:bg-slate-700 active:scale-95 transition flex items-center gap-1.5">
+            <svg class="change-icon hidden w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M16 3h5v5M8 21H3v-5M21 3l-7 7M3 21l7-7"/>
+            </svg>
+            <span class="change-label">Сменить</span>
           </button>
         </div>
 
@@ -250,25 +308,25 @@
             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
               <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3M4 8h16M5 5h14a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1V6a1 1 0 011-1z"/>
             </svg>
-            <span>Расписание</span>
+            <span class="tab-label">Расписание</span>
           </button>
           <button data-tab="homework" class="tab-btn relative flex-1 flex flex-col items-center gap-0.5 py-2 rounded-lg text-[11px] font-semibold text-slate-400">
             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
               <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6M7 4h10a2 2 0 012 2v14l-3-2-3 2-3-2-3 2V6a2 2 0 012-2z"/>
             </svg>
-            <span>Домашка</span>
+            <span class="tab-label">Домашка</span>
           </button>
           <button data-tab="announcements" class="tab-btn relative flex-1 flex flex-col items-center gap-0.5 py-2 rounded-lg text-[11px] font-semibold text-slate-400">
             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
               <path stroke-linecap="round" stroke-linejoin="round" d="M15 9a5 5 0 010 6M19.5 6a9 9 0 010 12M8 11h.01M8 15h-1a3 3 0 01-3-3v0a3 3 0 013-3h1v6zm10.5-6a9 9 0 010 12"/>
             </svg>
-            <span>Объявл.</span>
+            <span class="tab-label">Объявл.</span>
           </button>
           <button data-tab="chat" class="tab-btn relative flex-1 flex flex-col items-center gap-0.5 py-2 rounded-lg text-[11px] font-semibold text-slate-400">
             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
               <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.4-4 8-9 8-1 0-2-.15-2.9-.4L4 21l1.5-3.9A7.8 7.8 0 013 12c0-4.4 4-8 9-8s9 3.6 9 8z"/>
             </svg>
-            <span>Чат</span>
+            <span class="tab-label">Чат</span>
             <span id="chat-unread" class="unread-badge hidden"></span>
           </button>
           <button id="tab-settings-btn" data-tab="settings"
@@ -277,7 +335,7 @@
               <path stroke-linecap="round" stroke-linejoin="round" d="M10.3 4.3 11 3a1 1 0 0 1 2 0l.7 1.3a1 1 0 0 0 .9.5l1.5-.1a1 1 0 0 1 1 1l.1 1.5c0 .4.2.7.5.9l1.3.7a1 1 0 0 1 0 2l-1.3.7a1 1 0 0 0-.5.9l.1 1.5a1 1 0 0 1-1 1l-1.5-.1a1 1 0 0 0-.9.5L13 21a1 1 0 0 1-2 0l-.7-1.3a1 1 0 0 0-.9-.5l-1.5.1a1 1 0 0 1-1-1l-.1-1.5a1 1 0 0 0-.5-.9l-1.3-.7a1 1 0 0 1 0-2l1.3-.7a1 1 0 0 0 .5-.9L6.5 9a1 1 0 0 1 1-1L9 8.1c.4 0 .7-.2.9-.5l.7-1.3z"/>
               <circle cx="12" cy="12" r="2.6"/>
             </svg>
-            <span>Настройки</span>
+            <span class="tab-label">Настройки</span>
           </button>
         </nav>
       </div>
@@ -317,7 +375,7 @@
           <button id="chat-edit-close" class="text-slate-400 hover:text-rose-400 font-bold px-2">✕</button>
         </div>
 
-        <form id="chat-form" class="flex gap-2 mt-3 pt-3 bg-slate-950/90 backdrop-blur">
+        <form id="chat-form" class="flex gap-2 mt-3 pt-3 pb-safe sticky bottom-0 z-10 bg-slate-950/90 backdrop-blur">
           <input id="chat-input" type="text" maxlength="500" autocomplete="off"
                  placeholder="Сообщение… (@ник — упомянуть)"
                  class="flex-1 min-w-0 rounded-xl bg-slate-800 border border-transparent px-4 py-2.5 text-sm placeholder-slate-500 outline-none focus:border-indigo-500 transition">
@@ -701,38 +759,36 @@
   // а уходит на проверку модератору.
   // Запрос идёт через Cloudflare Worker-прокси (обход CORS), см. worker.js.
   // Адрес воркера — aiConfig.workerUrl в firebase-config.js.
-  let __lastModeration = null; // детали последнего вердикта (для записи флагов)
+  let __lastModeration = null; // детали последнего вердикта (резерв для совместимости)
   async function moderateMessage(text, out) {
     const cfg = window.AI_CONFIG;
     console.log('Модерация: отправляю запрос к xKiro...', text);
     let verdict;
     try {
-      verdict = await runModeration(text, cfg);
+      verdict = await runModeration(text, cfg, out);
     } catch (e) {
       console.error('Ошибка модерации:', e);
       verdict = 'REVIEW';
     }
     console.log('Ответ модерации:', verdict);
-    if (out && __lastModeration) {
-      out.category = __lastModeration.category || '';
-      out.reason = __lastModeration.reason || '';
-    }
     return verdict;
   }
   // Диспетчер: сначала Cloudflare Worker-прокси, если задан aiConfig.workerUrl
-  async function runModeration(text, cfg) {
+  async function runModeration(text, cfg, out) {
     const wu = ((cfg && cfg.workerUrl) || '').trim();
     if (wu && !/<|>/.test(wu)) {
-      return workerModerate(text, wu, cfg);
+      return workerModerate(text, wu, cfg, out);
     }
     if (cfg && cfg.base && cfg.key) {
       // Запасной путь — прямой запрос к xKiro из браузера (обычно блокируется CORS)
-      return directXkiroModerate(text, cfg);
+      return directXkiroModerate(text, cfg, out);
     }
     throw new Error('Не задан aiConfig.workerUrl в firebase-config.js (иначе чат не отправится)');
   }
-  // Запрос к Cloudflare Worker: workerUrl/moderate, ключ xKiro хранится на воркере
-  async function workerModerate(text, workerUrl, cfg) {
+  // Запрос к Cloudflare Worker: workerUrl/moderate, ключ xKiro хранится на воркере.
+  // Детали вердикта пишутся в out — при параллельных проверках глобальная
+  // __lastModeration перетиралась бы последним ответом (гонка категорий).
+  async function workerModerate(text, workerUrl, cfg, out) {
     const baseUrl = workerUrl.replace(/\/+$/, '');
     const url = /\/moderate\/?$/i.test(baseUrl) ? baseUrl : baseUrl + '/moderate';
     const ac = new AbortController();
@@ -751,18 +807,21 @@
       clearTimeout(to);
     }
     if (!res.ok) {
-      console.warn('[workerModerate] HTTP', res.status);
+      console.warn('[workerModerate] HTTP', res.status, '→ REVIEW, флаг не создаётся');
       return 'REVIEW';
     }
     const j = await res.json();
-    if (typeof j.bad !== 'boolean') return 'REVIEW';
-    __lastModeration = {
-      category: String(j.category || '').slice(0, 30),
-      reason: String(j.reason || '').slice(0, 80),
-    };
+    if (typeof j.bad !== 'boolean') {
+      console.warn('[workerModerate] нет поля bad в ответе:', j);
+      return 'REVIEW';
+    }
+    const category = String(j.category || '').slice(0, 30);
+    const reason = String(j.reason || '').slice(0, 80);
+    __lastModeration = { category: category, reason: reason };
+    if (out) { out.category = category; out.reason = reason; }
     return (j.bad || String(j.category || '') === 'review') ? (j.bad ? 'BAN' : 'REVIEW') : 'OK';
   }
-  async function directXkiroModerate(text, cfg) {
+  async function directXkiroModerate(text, cfg, out) {
     __lastModeration = null;
     if (!cfg || !cfg.key) {
       throw new Error('Не задан aiConfig.key в firebase-config.js');
@@ -806,10 +865,10 @@
       }
       const j = JSON.parse(m[0]);
       if (typeof j.bad !== 'boolean') return 'REVIEW';
-__lastModeration = {
-        category: String(j.category || '').slice(0, 30),
-        reason: String(j.reason || '').slice(0, 80),
-      };
+      const category = String(j.category || '').slice(0, 30);
+      const reason = String(j.reason || '').slice(0, 80);
+      __lastModeration = { category: category, reason: reason };
+      if (out) { out.category = category; out.reason = reason; }
       return (j.bad || String(j.category || '') === 'review') ? (j.bad ? 'BAN' : 'REVIEW') : 'OK';
     } finally {
       clearTimeout(to);
@@ -1299,7 +1358,7 @@ __lastModeration = {
         ? lessons.map((l, i) => `
             <li class="flex items-center gap-3 px-1">
               <span class="shrink-0 w-7 h-7 rounded-full accent-bg text-white text-xs font-bold flex items-center justify-center">${i + 1}</span>
-              <span class="flex-1 text-sm">${esc(l)}</span>
+              <span class="flex-1 min-w-0 text-sm break-words">${esc(l)}</span>
             </li>`).join('')
         : '<li class="text-sm text-slate-500 px-1">Уроков нет 😌</li>';
       return `
@@ -1563,7 +1622,7 @@ __lastModeration = {
     const editedMark = m.edited ? '<span class="msg-edited">(изменено)</span>' : '';
 
     div.innerHTML = `
-      <div class="flex items-start gap-2 max-w-[85%] ${mine ? 'flex-row-reverse' : ''}">
+      <div class="chat-bubble-row flex items-start gap-2 max-w-[85%] ${mine ? 'flex-row-reverse' : ''}">
         ${avatarHtml(mname, 'sm')}
         <div class="${mine ? 'accent-bg text-white' : 'bg-slate-800'} rounded-2xl px-3.5 py-2 min-w-0 flex-1">
           <div class="flex items-center gap-1 mb-0.5 flex-wrap">
@@ -1852,17 +1911,26 @@ __lastModeration = {
   // параллельно и не блокирует UI. Если ИИ определит нарушение — копия
   // сохраняется в /flagged_messages/{city}/{school}/{class}/{messageId}.
   function writeFlaggedCopy(text, chatPath, messageId, details) {
-    const parts = (chatPath || '').split('/'); // cities/{cid}/schools/{sid}/classes/{clid}
-    let cid = '', sid = '', clid = '';
-    parts.forEach(function (p, i) {
-      if (p === 'cities') cid = parts[i + 1];
-      else if (p === 'schools') sid = parts[i + 1];
-      else if (p === 'classes') clid = parts[i + 1];
-    });
+    // Единый путь: сегменты берём из state.sel (ключи города/школы/класса),
+    // а не из строки chatPath. Это исключает разнобой вида classes/6Б vs.
+    // classes/6б vs. classes/6b для отдельного класса.
+    const s = state.sel;
+    let cid = s.cid, sid = s.sid, clid = s.clid;
     if (!cid || !sid || !clid) {
-      console.error('[flagAfter] не распознан путь чата:', chatPath);
+      // Фолбэк: распарсить путь (например, вызов из чужого контекста)
+      const parts = (chatPath || '').split('/'); // cities/{cid}/schools/{sid}/classes/{clid}
+      parts.forEach(function (p, i) {
+        if (p === 'cities') cid = parts[i + 1];
+        else if (p === 'schools') sid = parts[i + 1];
+        else if (p === 'classes') clid = parts[i + 1];
+      });
+    }
+    if (!cid || !sid || !clid || !messageId) {
+      console.error('[flagAfter] не собрать путь флага:', chatPath, 'id=', messageId);
       return;
     }
+    const flagPath = '/flagged_messages/' + cid + '/' + sid + '/' + clid + '/' + messageId;
+    console.log('writeFlaggedCopy: пишу флаг ->', flagPath);
     const rec = {
       text: text,
       nick: nick(),
@@ -1876,18 +1944,24 @@ __lastModeration = {
       reason: (details && details.reason) || '',
       flagged: true,
     };
-    return db.ref('/flagged_messages/' + cid + '/' + sid + '/' + clid + '/' + messageId)
+    return db.ref(flagPath)
       .set(rec)
+      .then(() => console.log('[flagAfter] флаг записан:', flagPath))
       .catch((err) => console.error('[flagAfter] не удалось записать флаг:', err));
   }
-  // Фоновая проверка: при bad=true пишем копию в flagged_messages. При OK — тишина.
+  // Фоновая проверка: сообщение уже в чате, ИИ идёт параллельно и не блокирует UI.
+  // При вердикте BAN пишем копию в flagged_messages. При OK — тишина.
+  // REVIEW (сбой ИИ/сети/таймаут) — флаг не создаём, но громко пишем об этом.
   function flagAfterModeration(text, chatPath, messageId) {
+    console.log('[flagAfter] старт:', chatPath, '| messageId =', messageId);
     const details = {};
     moderateMessage(text, details)
       .then(function (verdict) {
+        console.log('[flagAfter] moderateMessage ответ:', verdict, '| ', (details && details.category) || '', '| ', (details && details.reason) || '');
         if (verdict === 'BAN') return writeFlaggedCopy(text, chatPath, messageId, details);
+        if (verdict === 'REVIEW') console.warn('[flagAfter] REVIEW → флаг не создан (нет ответа ИИ / ошибка сети). Проверьте worker.');
       })
-      .catch((err) => console.error('Ошибка модерации:', err));
+      .catch((err) => console.error('[flagAfter] ОШИБКА цепочки модерации:', err));
   }
 
   function sendMessage(e) {
@@ -1903,6 +1977,7 @@ __lastModeration = {
       ensureProfile();
       const s = state.sel;
       const chatPath = curClassPath();
+      console.log('sendMessage: путь чата =', chatPath, 'класс =', state.sel.clname || state.sel.clid);
       if (editMsg) {
         db.ref(chatPath + '/chat/' + editMsg.key).update({
           text: text,
@@ -1912,6 +1987,7 @@ __lastModeration = {
           clearEdit();
           input.value = '';
           showToast('Сообщение изменено');
+          console.log('sendMessage: вызываю flagAfterModeration (edit)');
           flagAfterModeration(text, chatPath, editMsg.key);
         }).catch((err2) => showToast('Ошибка: ' + (err2.message || err2)));
         return;
@@ -1931,6 +2007,7 @@ __lastModeration = {
       clearReply();
       input.value = '';
       setTimeout(refreshChat, 500);
+      console.log('sendMessage: вызываю flagAfterModeration (new)');
       flagAfterModeration(text, chatPath, pushed.key);
     });
   }
