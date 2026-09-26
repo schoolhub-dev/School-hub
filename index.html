@@ -43,6 +43,23 @@
 
     .chat-scroll { height: calc(100vh - 340px); height: calc(100dvh - 330px); }
 
+    .vchk {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 16px; height: 16px; border-radius: 9999px;
+      font-size: 11px; font-weight: 900; line-height: 1;
+      cursor: pointer; user-select: none; -webkit-user-select: none;
+      vertical-align: middle; margin-left: 2px; flex-shrink: 0;
+    }
+    .vchk-purple { background: #a855f7; color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.45); }
+    .vchk-gray { background: #9ca3af; color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.45); }
+    .vchk-gold { background: linear-gradient(135deg, #ffd700, #e8b800); color: #3a2f00; box-shadow: 0 1px 3px rgba(0,0,0,.45); }
+    .vchk-pop {
+      position: fixed; z-index: 300; max-width: min(260px, calc(100vw - 16px));
+      padding: 7px 11px; border-radius: 10px; font-size: 11px; line-height: 1.35;
+      color: #f1f1f5; background: #1f2937; border: 1px solid #374151;
+      box-shadow: 0 8px 24px rgba(0,0,0,.45); pointer-events: none;
+    }
+
     .avatar { display: inline-flex; align-items: center; justify-content: center; border-radius: 9999px; font-weight: 700; flex-shrink: 0; }
     .avatar-sm { width: 28px; height: 28px; font-size: 12px; }
     .avatar-md { width: 40px; height: 40px; font-size: 16px; }
@@ -622,6 +639,61 @@
     if (!u) return false;
     return HARDCODE_ADMIN_UIDS.indexOf(u) !== -1 || admin.viaRole;
   }
+
+  // ---- Верифицированные галочки около ника ----
+  const DEV_MAIN_UID = 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2';
+  const DEV_CODER_UID = 'oQcBcD0PFnS97LQ1KkH7k6nsO6w1';
+  const VCHK_TEXT = {
+    purple: 'Фиолетовая галочка — главный разработчик',
+    gray: 'Серая галочка — разработчик',
+    gold: 'Золотая галочка — официальный аккаунт разработчиков',
+  };
+  let roleUidsCache = null;   // роли {uid:'admin'} — для золотых галочек
+  function pickUpRolesCache() {
+    if (!window.HubAuth || !HubAuth.uid) return;
+    db.ref('/roles').once('value').then((s) => { roleUidsCache = s.val() || {}; }).catch(() => { roleUidsCache = {}; });
+  }
+  // Приоритет: главный разработчик → Coder20 → роль admin → ничего.
+  function verifyKind(uid) {
+    if (!uid) return null;
+    if (uid === DEV_MAIN_UID) return 'purple';
+    if (uid === DEV_CODER_UID) return 'gray';
+    if (roleUidsCache && roleUidsCache[uid] === 'admin') return 'gold';
+    return null;
+  }
+  function verifyBadge(uid) {
+    const kind = verifyKind(uid);
+    if (!kind) return '';
+    return `<span class="vchk vchk-${kind}" data-vk="${kind}">✓</span>`;
+  }
+  let vchkTimer = null;
+  function vchkToggle(btn) {
+    const old = $('#vchk-pop');
+    if (old) { old.remove(); clearTimeout(vchkTimer); vchkTimer = null; return; }
+    const text = VCHK_TEXT[btn.dataset.vk] || '';
+    if (!text) return;
+    const pop = document.createElement('div');
+    pop.id = 'vchk-pop';
+    pop.className = 'vchk-pop';
+    pop.textContent = text;
+    document.body.appendChild(pop);
+    const r = btn.getBoundingClientRect();
+    const pw = pop.offsetWidth || 220;
+    let left = r.left + r.width / 2 - pw / 2;
+    left = Math.max(8, Math.min(left, window.innerWidth - pw - 8));
+    let top = r.bottom + 8;
+    if (top + pop.offsetHeight > window.innerHeight - 8) top = Math.max(8, r.top - pop.offsetHeight - 8);
+    pop.style.left = left + 'px';
+    pop.style.top = top + 'px';
+    pop.style.opacity = '1';
+    vchkTimer = setTimeout(() => { const p = $('#vchk-pop'); if (p) p.remove(); vchkTimer = null; }, 2500);
+  }
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('.vchk');
+    if (b) { e.stopPropagation(); vchkToggle(b); return; }
+    const p = $('#vchk-pop');
+    if (p) p.remove();
+  });
   // Автоподхват роли: roles/{uid} === 'admin' → включаем админ-режим.
   function pickUpAdminRole() {
     if (!window.HubAuth || !HubAuth.uid) return;
@@ -1796,7 +1868,7 @@
             <div class="flex-1 min-w-0">
               <h4 class="font-bold text-sm ${d ? 'line-through opacity-60' : ''}">${esc(subj)}</h4>
               ${body}
-              ${author ? `<p class="text-[10px] text-slate-500 mt-0.5">Автор: ${esc(author)}${adminOn && v && v.authorUid && window.HubAuth && v.authorUid === HubAuth.uid ? ' <span title="Администратор">🛡️</span>' : ''}</p>` : ''}
+              ${author ? `<p class="text-[10px] text-slate-500 mt-0.5">Автор: ${esc(author)}${verifyBadge(v && v.authorUid)}${adminOn && v && v.authorUid && window.HubAuth && v.authorUid === HubAuth.uid ? ' <span title="Администратор">🛡️</span>' : ''}</p>` : ''}
             </div>
           </div>
           ${adminRow}
@@ -2061,6 +2133,7 @@
         <div class="${mine ? 'accent-bg text-white' : 'bg-slate-800'} rounded-2xl px-3.5 py-2 min-w-0 flex-1">
           <div class="flex items-center gap-1 mb-0.5 flex-wrap">
             <span class="text-[11px] font-bold" style="color:${mine ? '#e0e7ff' : nickColor(mname)}">${esc(mname)}</span>
+            ${verifyBadge(m.uid)}
             ${adminBadge}
             ${editedMark}
             ${m.flagged ? `<span class="msg-flagmark" title="Помечено фильтром: ${esc(m.flagReason || '')}">⚠</span>` : ''}
@@ -2581,7 +2654,7 @@
           const unread = hasReply && !m.replyRead;
           const mine = m.uid === HubAuth.uid;
           if (unread) unreadReplies++;
-          const who = adminView ? `<div class="text-[10px] text-slate-500 truncate">${esc(m.nick || 'Ученик')}${m.homeClass ? ' · ' + esc([m.homeClass.cname, m.homeClass.sname, m.homeClass.clname].filter(Boolean).join(', ')) : ''}</div>` : '';
+          const who = adminView ? `<div class="text-[10px] text-slate-500 truncate">${esc(m.nick || 'Ученик')}${verifyBadge(m.uid)}${m.homeClass ? ' · ' + esc([m.homeClass.cname, m.homeClass.sname, m.homeClass.clname].filter(Boolean).join(', ')) : ''}</div>` : '';
           return `
           <div class="rounded-xl bg-slate-800/50 border ${unread ? 'border-rose-500/50' : 'border-slate-700'} p-3 fade-up">
             <div class="flex items-center justify-between gap-2">
@@ -2648,7 +2721,7 @@
         <div class="flex items-center gap-3">
           ${avatarHtml(n, 'lg')}
           <div class="flex-1 min-w-0">
-            <div class="font-bold text-base truncate">${esc(n)}</div>
+            <div class="font-bold text-base truncate">${esc(n)}${verifyBadge(window.HubAuth && HubAuth.uid)}</div>
             <div class="text-[11px] text-slate-500 truncate">${esc(s.cname || '')}, ${esc(s.sname || '')}, ${esc(s.clname || '')}</div>
             <button id="profile-edit-nick" class="text-[11px] accent-text underline mt-1">Изменить ник</button>
           </div>
@@ -2751,7 +2824,8 @@
         </div>
         <button id="admin-full-btn" class="w-full rounded-xl bg-slate-800 hover:bg-slate-700 py-3 text-sm font-bold fade-up">Полная админ-панель</button>
         <button id="admin-exit-btn" class="w-full rounded-xl bg-rose-600/80 hover:bg-rose-600 py-3 text-sm font-bold fade-up">Выйти из режима администратора</button>
-      ` : ''}`;
+      ` : ''}
+      <p class="text-center text-[10px] mt-6" style="color:#6b7280">Developers: ZakveZ, Coder20</p>`;
 
     $('#profile-edit-nick').addEventListener('click', changeNick);
     const applyTheme = (name) => {
@@ -3256,6 +3330,7 @@
       const users = usv || {};
       const roles = rv || {};
       const roleMeta = mv || {};
+      roleUidsCache = roles;   // свежие роли для золотых галочек
       const nickOf = (uid) => (users[uid] && users[uid].nick) || '';
       // ---- Текущие администраторы ----
       const adminsEl = $('#admins-list');
@@ -3276,6 +3351,7 @@
             return `
             <div class="row rounded-xl bg-slate-900 border border-slate-800 p-3 flex items-center gap-2 flex-wrap fade-up">
               <span class="text-xs font-bold">${esc(nickOf(uid) || '—')}</span>
+              ${verifyBadge(uid)}
               <span class="text-[10px] text-slate-500">UID: ${esc(uid).slice(0, 14)}…</span>
               ${meta.grantedAt ? `<span class="text-[10px] text-slate-500">Выдан ${fmtDate(meta.grantedAt)}</span>` : ''}
               ${roleLabel('admin')}
@@ -3302,6 +3378,7 @@
           return `
           <div class="row rounded-xl bg-slate-900 border border-slate-800 p-3 flex items-center gap-2 flex-wrap fade-up">
             <span class="text-xs font-bold">${esc(u.nick)}</span>
+            ${verifyBadge(u.uid)}
             <span class="text-[10px] text-slate-500">UID: ${esc(u.uid).slice(0, 14)}…</span>
             ${roleLabel(u.role)}
             <span class="flex gap-1.5 ml-auto">${actions}</span>
@@ -3514,7 +3591,7 @@
         return `
         <div class="border-b border-slate-800/60 py-2.5">
           <div class="flex items-center justify-between gap-2 flex-wrap">
-            <span class="text-xs font-bold">${esc(nick2)} <span class="text-[10px] text-slate-500">${esc(mn.cname)}, ${esc(mn.sname)}, ${esc(mn.clname)}</span></span>
+            <span class="text-xs font-bold">${esc(nick2)}${verifyBadge(uid)} <span class="text-[10px] text-slate-500">${esc(mn.cname)}, ${esc(mn.sname)}, ${esc(mn.clname)}</span></span>
             <span class="text-[10px] text-slate-500">${fmtDate(f.m.time)}</span>
           </div>
           <p class="text-sm mt-1 break-words">${esc(f.m.text || '')}</p>
@@ -3626,7 +3703,7 @@
             return `
             <div class="border-b border-slate-800/60 py-2.5">
               <div class="flex items-center justify-between gap-2 flex-wrap">
-                <span class="text-xs font-bold">${esc(nick2)} <span class="text-[10px] text-slate-500">${esc(mn.cname)}, ${esc(mn.sname)}, ${esc(mn.clname)}</span></span>
+                <span class="text-xs font-bold">${esc(nick2)}${verifyBadge(uid)} <span class="text-[10px] text-slate-500">${esc(mn.cname)}, ${esc(mn.sname)}, ${esc(mn.clname)}</span></span>
                 <span class="text-[10px] text-slate-500">${fmtDate(f.m.time)}</span>
               </div>
               <p class="text-sm mt-1 break-words">${esc(f.m.text || '')}</p>
@@ -4018,6 +4095,7 @@
       checkWarnings();
       loadHomeClass();
       pickUpAdminRole();
+      pickUpRolesCache();
     });
   }
   document.addEventListener('DOMContentLoaded', start);
