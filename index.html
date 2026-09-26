@@ -2803,6 +2803,7 @@
   const voiceRegistry = {};   // kljuch soobsheniya -> { url, mime }
   let voiceAudio = null, voiceKey = null;
   let recState = null;        // { rec, stream, chunks, startedAt, timer, btn, onDone, stopTimer }
+  let voiceStarting = false;  // идёт ли запрос разрешения на микрофон
 
   function voiceSupported() {
     return !!(window.MediaRecorder && navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
@@ -2841,8 +2842,9 @@
 
   // Nachinat zapis. onDone(blob, dataUrl, mime, seconds) | onDone(null, errText)
   function startVoice(btn, onDone) {
-    if (recState) return;
+    if (recState || voiceStarting) return;
     if (!voiceSupported()) { showToast('Браузер не умеет записывать звук'); onDone(null, 'unsupported'); return; }
+    voiceStarting = true;
     const mime = pickVoiceMime();
     const opts = { audioBitsPerSecond: 16000, audioChannels: 1 };
     if (mime) opts.mimeType = mime;
@@ -2850,11 +2852,15 @@
       .then((stream) => {
         let rec;
         try { rec = new MediaRecorder(stream, opts); }
-        catch (e) { stopStream(stream); onDone(null, 'Не удалось начать запись'); return; }
+        catch (e) { voiceStarting = false; stopStream(stream); onDone(null, 'Не удалось начать запись'); return; }
         const chunks = [];
         rec.ondataavailable = (ev) => { if (ev.data && ev.data.size) chunks.push(ev.data); };
-        rec.onerror = () => { finishVoice(null); };
+        rec.onerror = () => { if (recState && recState.rec === rec) finishVoice(null); };
+        // Остановка: когда stop() сработал, данные уже собраны (последний
+        // dataavailable приходит ДО stop-события) — завершаем и отправляем.
+        rec.onstop = () => { if (recState && recState.rec === rec) finishVoice(); };
         recState = { rec: rec, stream: stream, chunks: chunks, startedAt: Date.now(), btn: btn, onDone: onDone, stopTimer: null };
+        voiceStarting = false;
         if (btn) btn.classList.add('rec');
         const usedMime = (rec.mimeType || mime || 'audio/webm');
         rec.start();
@@ -2867,7 +2873,7 @@
         recState.stopTimer = setTimeout(() => { if (recState) stopVoice(); }, VOICE_MAX_SEC * 1000);
         recState.usedMime = usedMime;
       })
-      .catch(() => { showToast('Нет доступа к микрофону'); onDone(null, 'mic'); });
+      .catch(() => { voiceStarting = false; showToast('Нет доступа к микрофону'); onDone(null, 'mic'); });
   }
   function stopStream(stream) {
     if (!stream) return;
@@ -2894,7 +2900,17 @@
     blobToDataUrl(blob).then((url) => st.onDone({ blob: blob, url: url, mime: type, dur: sec, kb: Math.round(blob.size / 1024) }))
       .catch(() => st.onDone(null, 'Запись не прочиталась'));
   }
-  function stopVoice() { if (recState) { try { recState.rec.stop(); } catch (e) { finishVoice('err'); } } }
+  function stopVoice() {
+    if (!recState) return;
+    const st = recState;
+    try {
+      // Уже остановлен (например, повторный клик): просто завершаем сбор и отправляем.
+      if (st.rec.state === 'inactive') { finishVoice(); return; }
+      st.rec.stop();   // onstop → finishVoice()
+    } catch (e) {
+      finishVoice('err');
+    }
+  }
   function cancelVoice() { if (recState) finishVoice('cancel'); }
 
   // Pleer golosovogo: odin obshchiy <audio> na vse soobsheniya.
