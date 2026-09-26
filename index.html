@@ -570,62 +570,7 @@
     </form>
   </div>
 
-  <!-- ======================= РЕГИСТРАЦИЯ / ВХОД ======================= -->
-  <div id="reg-screen" class="hidden fixed inset-0 z-[90] flex flex-col items-center justify-center bg-slate-950 p-5 overflow-y-auto">
-    <div class="w-full max-w-sm">
-      <div id="reg-logo" class="mx-auto w-14 h-14 rounded-2xl accent-bg flex items-center justify-center shadow-lg">
-        <svg class="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.25c-1.8-1.3-4.6-1.75-7.75-1.25v12.5c3.15-.5 5.95-.05 7.75 1.25 1.8-1.3 4.6-1.75 7.75-1.25V5c-3.15-.5-5.95-.05-7.75 1.25z"/>
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.25v12.5"/>
-        </svg>
-      </div>
-      <h1 class="text-center text-xl font-extrabold mt-3">Регистрация</h1>
-      <p id="reg-lead" class="text-center text-xs text-slate-400 mt-1">Придумай себе логин и сохрани пароль — потом вводить не придётся.</p>
-
-      <div id="reg-wait" class="hidden mt-6 rounded-2xl bg-slate-900 border border-slate-800 p-5 text-center">
-        <div class="w-7 h-7 mx-auto rounded-full border-2 border-slate-700 border-t-indigo-400 animate-spin"></div>
-        <p id="reg-wait-text" class="text-xs text-slate-400 mt-3">Проверяем вход…</p>
-      </div>
-
-      <div id="reg-card" class="mt-5 rounded-2xl bg-slate-900 border border-slate-800 p-4">
-        <div class="text-[11px] font-bold text-slate-400 mb-1.5">Твой логин</div>
-        <input id="reg-uname" type="text" maxlength="20" autocomplete="username" spellcheck="false"
-               class="w-full rounded-xl bg-slate-800 border border-slate-700 px-4 py-2.5 text-sm outline-none focus:border-indigo-500 transition">
-        <p id="reg-uname-hint" class="text-[10px] text-slate-500 mt-1">3–20 символов: латиница, цифры, _ . -</p>
-
-        <div class="text-[11px] font-bold text-slate-400 mb-1.5 mt-4">Твой пароль</div>
-        <div class="rounded-xl bg-slate-800 border border-slate-700 px-4 py-2.5 flex items-center gap-3">
-          <div id="reg-pass" class="text-xl font-extrabold tracking-[.35em] text-white">— — — — —</div>
-          <button id="reg-pass-copy" type="button" class="ml-auto text-[11px] accent-text underline shrink-0">Скопировать</button>
-        </div>
-        <p class="text-[10px] text-slate-500 mt-1">Пароль из 5 цифр нужен, чтобы войти с другого устройства. Запиши его — второй раз не покажем.</p>
-
-        <label class="mt-3 flex items-start gap-2 cursor-pointer">
-          <input id="reg-remember" type="checkbox" checked class="mt-0.5 w-4 h-4 accent-indigo-500 shrink-0">
-          <span class="text-[11px] text-slate-400">Запомнить на этом устройстве — тогда пароль вводить больше не придётся</span>
-        </label>
-
-        <button id="reg-save" type="button" class="mt-4 w-full rounded-xl accent-bg py-3 text-sm font-bold text-white hover:opacity-90 active:scale-[.98] transition">
-          Запомнил, войти
-        </button>
-        <p id="reg-err" class="hidden text-xs text-rose-400 mt-2"></p>
-      </div>
-
-      <div id="login-card" class="hidden mt-5 rounded-2xl bg-slate-900 border border-slate-800 p-4">
-        <div class="text-sm font-bold mb-2">Вход по логину и паролю</div>
-        <p class="text-[10px] text-slate-500 mb-2">Если ты уже регистрировался на другом устройстве. Логин и пароль переносятся сюда, а старая история сообщений остаётся на старом устройстве.</p>
-        <input id="log-uname" type="text" maxlength="20" autocomplete="username" placeholder="Логин"
-               class="w-full rounded-xl bg-slate-800 border border-slate-700 px-4 py-2.5 text-sm outline-none focus:border-indigo-500 transition">
-        <input id="log-pass" inputmode="numeric" autocomplete="current-password" maxlength="5" placeholder="5 цифр"
-               class="mt-2 w-full rounded-xl bg-slate-800 border border-slate-700 px-4 py-2.5 text-sm outline-none focus:border-indigo-500 transition">
-        <p id="log-err" class="hidden text-xs text-rose-400 mt-2"></p>
-        <button id="log-go" type="button" class="mt-3 w-full rounded-xl bg-slate-800 hover:bg-slate-700 py-2.5 text-sm font-bold">Войти</button>
-      </div>
-
-      <button id="reg-toggle-login" type="button" class="mt-4 w-full text-center text-[11px] text-slate-500 underline">Уже регистрировался? Войти по логину</button>
-      <p class="mt-4 text-center text-[10px]" style="color:#6b7280">Developers: ZakveZ, Coder20</p>
-    </div>
-  </div>
+<!-- ======================= РЕГИСТРАЦИЯ / ВХОД (удалено — входим без регистрации) ======================= -->
 
   <!-- ======================= МОДАЛКА НИКА ======================= -->
   <div id="nick-modal" class="hidden fixed inset-0 z-[60] items-center justify-center bg-black/70 backdrop-blur-sm p-4">
@@ -1895,253 +1840,29 @@
     c20Timer = null;
   }
 
-  /* ============================================================
-     AKKAUNT: REGISTRATSIYA I VKHOD
-     Pri pervom zahode vydayom login i 5-znachnyy parol, odin raz
-     pokazyvaem, zapominaem na etom ustroystve — dalshe vvodit
-     nichego ne nuzhno.
-     V BD: users/{uid} = { uname, unameLower, passHash, salt, regAt }
-            unames/{login v nizhnem registrе} = { uid, at }  (unikalnost)
+/* ============================================================
+     VKHOD BEZ REGISTRATSII
+     Registraciya, loginy i 5-znachnye paroli udaleny. Prilozhenie
+     otkryvaetsya srazu, UID Firebase podtyagivaetsya v fonе.
+     Starye funkcii ekrana registracii ostavleny pustymi (их никто
+     не вызывает), чтобы не ломать другие обработчики.
      ============================================================ */
-  const ACCOUNT_KEY = 'sh_account';    // { uname, pass } — lokalno, dlya tikhogo vhoda
-  const UNAME_RE = /^[A-Za-z0-9_.-]{3,20}$/;
-  const UNAME_CHARS = 'abcdefghijkmnpqrstuvwxyz23456789';
-  const PASS_SALT_TAG = 'sh7k';
-  let regDraft = null;                  // { uname, pass, salt } — na vsyu zanyatuyu sessiyu
+  let accCheckCb = null;   // chego zhdet zavershenie vkhoda
 
-  function localAccount() {
-    try { return JSON.parse(localStorage.getItem(ACCOUNT_KEY) || 'null'); } catch (e) { return null; }
-  }
-  function setLocalAccount(a) {
-    if (a) localStorage.setItem(ACCOUNT_KEY, JSON.stringify(a));
-    else localStorage.removeItem(ACCOUNT_KEY);
-  }
-  function autoAccOn() { return localStorage.getItem('sh_autoacc') !== '0'; }
-  function setAutoAcc(on) { localStorage.setItem('sh_autoacc', on ? '1' : '0'); }
-
-  function genUname() {
-    let s = '';
-    for (let i = 0; i < 6; i++) s += UNAME_CHARS[Math.floor(Math.random() * UNAME_CHARS.length)];
-    return 'user_' + s;
-  }
-  function genPass() { return String(10000 + Math.floor(Math.random() * 90000)); }
-  function genSalt() {
-    const h = '0123456789abcdef';
-    let s = '';
-    for (let i = 0; i < 12; i++) s += h[Math.floor(Math.random() * 16)];
-    return s;
-  }
-  // Hesh parolya so solyu: v BD lezhit tolko hesh, sam parol — tolko u tebya.
-  function passHashFor(salt, pass) { return sha256(PASS_SALT_TAG + ':' + salt + ':' + String(pass)); }
-
-  function myUname() { return (regDraft && regDraft.uname) || (localAccount() || {}).uname || ''; }
-
-  function hideReg() {
-    const s = $('#reg-screen');
-    if (s) s.classList.add('hidden');
-    paintRegWait(false);
-  }
-  // mode: 'reg' | 'login' | null (пока ждём UID от Firebase — карточки спрятаны)
-  function showReg(mode) {
-    const s = $('#reg-screen');
-    if (!s) return;
-    s.classList.remove('hidden');
-    if (!regDraft) regDraft = { uname: genUname(), pass: genPass(), salt: genSalt() };
-    const isLogin = mode === 'login';
-    const waiting = mode === null;
-    $('#reg-card').classList.toggle('hidden', isLogin || waiting);
-    $('#login-card').classList.toggle('hidden', !isLogin || waiting);
-    $('#reg-toggle-login').classList.toggle('hidden', waiting);
-    paintRegWait(waiting);
-    if (isLogin) {
-      const lu = $('#log-uname'), lp = $('#log-pass');
-      if (lu && regDraft && !lu.value) lu.value = regDraft.uname;
-      if (lp) lp.value = '';
-      logErr('');
-    }
-    $('#reg-toggle-login').textContent = isLogin ? 'Нет аккаунта? Зарегистрироваться' : 'Уже регистрировался? Войти по логину';
-    $('#reg-lead').textContent = isLogin
-      ? 'Введи логин и 5-значный пароль от другого устройства.'
-      : 'Придумай себе логин и сохрани пароль — потом вводить не придётся.';
-    paintRegDraft();
-  }
-  function paintRegDraft() {
-    const u = $('#reg-uname'), p = $('#reg-pass');
-    if (!u || !p || !regDraft) return;
-    if (document.activeElement !== u) u.value = regDraft.uname;
-    p.textContent = String(regDraft.pass).split('').join(' ');
-  }
-  function regErr(msg) {
-    const e = $('#reg-err');
-    if (!e) return;
-    e.textContent = msg || '';
-    e.classList.toggle('hidden', !msg);
-  }
-  function logErr(msg) {
-    const e = $('#log-err');
-    if (!e) return;
-    e.textContent = msg || '';
-    e.classList.toggle('hidden', !msg);
-  }
-
-  // Odna zhgutka: 1) zapis hesha v users/{svoi uid}, 2) zanyatye logina
-  // cherez transaction (tak login ne zanyaty dvukh lyudey odnovremenno).
-  function commitAccount(uname, pass, salt) {
-    const uid = HubAuth.uid;
-    const lower = String(uname).toLowerCase();
-    return sha256(PASS_SALT_TAG + ':' + salt + ':' + pass).then((h) => {
-      return db.ref('/users/' + uid).update({
-        uname: uname,
-        unameLower: lower,
-        passHash: h,
-        salt: salt,
-        regAt: firebase.database.ServerValue.TIMESTAMP,
-      }).then(() => db.ref('/unames/' + lower).transaction((cur) => {
-        if (cur !== null && cur.uid !== uid) return;   // login zanyat — otmenyaem
-        return { uid: uid, at: Date.now() };
-      })).then((res) => {
-        if (res && res.committed === false) {
-          return db.ref('/users/' + uid).update({ uname: null, unameLower: null, passHash: null, salt: null })
-            .then(() => Promise.reject(new Error('Этот логин уже занят — придумай другой')));
-        }
-        return h;
-      });
-    });
-  }
-
-  function saveAccount() {
-    regErr('');
-    if (!window.HubAuth || !HubAuth.uid) { regErr('Авторизация ещё не готова, подожди пару секунд'); return; }
-    if (!regDraft) regDraft = { uname: genUname(), pass: genPass(), salt: genSalt() };
-    const uname = ($('#reg-uname').value || '').trim();
-    if (!UNAME_RE.test(uname)) { regErr('Логин: 3–20 символов, латиница, цифры, _ . -'); return; }
-    const btn = $('#reg-save');
-    btn.disabled = true;
-    btn.textContent = 'Сохраняем…';
-    commitAccount(uname, regDraft.pass, regDraft.salt).then(() => {
-      regDraft.uname = uname;
-      // Parol zapоминаem tolko po zhelaniyu — inache login ostaetsya, no vvod parolya trebuetsya.
-      setLocalAccount($('#reg-remember').checked ? { uname: uname, pass: regDraft.pass } : { uname: uname });
-      setAutoAcc($('#reg-remember').checked);
-      if (!nick()) setNick(uname);
-      ensureProfile();
-      hideReg();
-      showToast('Аккаунт создан: ' + uname);
-      accDone();
-    }).catch((err) => {
-      regErr((err && err.message) ? err.message : 'Не удалось создать аккаунт');
-    }).then(() => {
-      btn.disabled = false;
-      btn.textContent = 'Запомнил, войти';
-    });
-  }
-
-  // Vhod po loginu/parolyu na drugom ustroystve: login i parol perenosyatsya syuda.
-  function loginByAccount() {
-    logErr('');
-    if (!window.HubAuth || !HubAuth.uid) { logErr('Авторизация ещё не готова, подожди пару секунд'); return; }
-    const uname = ($('#log-uname').value || '').trim();
-    const pass = ($('#log-pass').value || '').trim();
-    if (!UNAME_RE.test(uname)) { logErr('Проверь логин'); return; }
-    if (!/^\d{5}$/.test(pass)) { logErr('Пароль — ровно 5 цифр'); return; }
-    const btn = $('#log-go');
-    btn.disabled = true;
-    btn.textContent = 'Проверяем…';
-    const lower = uname.toLowerCase();
-    db.ref('/unames/' + lower).once('value').then((snap) => {
-      const holder = snap.val();
-      const target = holder && holder.uid;
-      if (!target) throw new Error('Такого логина нет');
-      return db.ref('/users/' + target).once('value').then((us) => {
-        const u = us.val() || {};
-        if (!u.salt || !u.passHash) throw new Error('У этого логина не задан пароль');
-        return sha256(PASS_SALT_TAG + ':' + u.salt + ':' + pass).then((h) => {
-          if (h !== u.passHash) throw new Error('Неверный пароль');
-          // Login zanyat etim zhe chelovekom — perenosim na tekushhee ustroystvo.
-          return commitAccount(uname, pass, u.salt);
-        });
-      });
-    }).then(() => {
-      setLocalAccount($('#reg-remember').checked ? { uname: uname, pass: pass } : { uname: uname });
-      setAutoAcc($('#reg-remember').checked);
-      if (!nick()) setNick(uname);
-      ensureProfile();
-      hideReg();
-      showToast('Вход выполнен: ' + uname);
-      accDone();
-    }).catch((err) => {
-      logErr((err && err.message) ? err.message : 'Не удалось войти');
-    }).then(() => {
-      btn.disabled = false;
-      btn.textContent = 'Войти';
-    });
-  }
-
-  // ---- ZHID IZMETENIYa SOSTOYANIIA EKSHANA REZHISTRATSII ----
-  let accCheckCb = null;      // chego zhdem ot ensureAccount
-  let accAuthWaited = false;  // zhdём li my UID ot Firebase
-
-  function paintRegWait(on, text) {
-    const w = $('#reg-wait');
-    if (!w) return;
-    w.classList.toggle('hidden', !on);
-    const t = $('#reg-wait-text');
-    if (on && t) t.textContent = text || 'Проверяем вход…';
-  }
-
-  // Vyzov pri starte: molcha vhodin, esli akkaunt zapomnili, inache — stranica registratcii.
+  function hideReg() {}
+  function showReg() {}
+  // Vyzov pri starte: srazu otkryvaem prilozhenie.
   function ensureAccount(cb) {
     accCheckCb = (typeof cb === 'function') ? cb : null;
-    const local = localAccount();
-    // remembered v etom browser — idem v app, nichego ne sprashivaya
-    if (local && local.uname && autoAccOn()) { hideReg(); accDone(); return; }
-    // inache zhdem UID: do nego reshit, pokazat li stranicu registratcii
-    accAuthWaited = true;
-    paintRegWait(true);
-    showReg(null);
-    accountAuthReady();
+    hideReg();
+    accDone();
   }
-
   // Vyzyvaetsya iz start(), kogda Firebase uzhe skazal svoy uid (ili otkazal).
   function accountAuthReady() {
-    if (!accAuthWaited) return;
-    // UID eshcho ne izvesten — zhdём, poka HubAuth.start soobshchit o sebe.
-    if (!window.HubAuth || !HubAuth.ready) return;
-    accAuthWaited = false;
-    if (!HubAuth.uid) {
-      // Firebase nedostupen — ne blokiruem prilozhenie, prosto propuskayaem etap.
-      paintRegWait(false);
-      hideReg();
-      accDone();
-      return;
-    }
-    // Akkaunt mog uzhe byt v BD (naprimer, localStorage ochishchen), a v etom ustroystve net.
-    db.ref('/users/' + HubAuth.uid).once('value').then((snap) => {
-      const u = snap.val() || {};
-      if (u.uname && autoAccOn()) { setLocalAccount({ uname: u.uname }); hideReg(); accDone(); return; }
-      if (u.uname) {
-        // аккаунт на этом UID уже есть, но пароль не запомнен — показываем форму входа
-        regDraft = { uname: u.uname, pass: genPass(), salt: u.salt || genSalt() };
-        setLocalAccount({ uname: u.uname });
-        paintRegWait(false);
-        showReg('login');
-        return;
-      }
-      // В БД этого UID нет, но логин на устройстве сохранён (например, регистрация
-      // не успела записаться или БД отвечает не сразу) — спросим пароль, а не новый логин.
-      const loc = localAccount();
-      if (loc && loc.uname) {
-        regDraft = { uname: loc.uname, pass: genPass(), salt: u.salt || genSalt() };
-        paintRegWait(false);
-        showReg('login');
-        return;
-      }
-      paintRegWait(false);
-      showReg('reg');
-    }).catch(() => { paintRegWait(false); showReg('reg'); });
+    hideReg();
+    accDone();
   }
-
-  // Kogda vse, cto blokirovalo vxod, gotovo — pokazyvaem osnovnoy ekran.
+  // Kogda vse, chto blokirovalo vkhod, gotovo — pokazyvaem osnovnoy ekran.
   function accDone() {
     const cb = accCheckCb;
     accCheckCb = null;
@@ -2395,16 +2116,60 @@
   /* ---- Объявления ---- */
   let annCache = [];
   let annDraft = '';
+  let annPollDraft = [];
+  let annPollBoxOpen = false;
   function renderAnnouncements(snap) {
     annCache = snapArr(snap).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
     paintAnnouncements();
+  }
+  function annPollHtml(a, key, interactive) {
+    if (!a || !a.poll || !Array.isArray(a.poll.options) || a.poll.options.length < 2) return '';
+    const votes = a.poll.votes || {};
+    const counts = a.poll.options.map(() => 0);
+    let total = 0;
+    const me = (window.HubAuth && window.HubAuth.uid);
+    let myIdx = null;
+    if (me && votes[me] != null) myIdx = parseInt(votes[me], 10);
+    Object.keys(votes).forEach((uid) => {
+      const idx = parseInt(votes[uid], 10);
+      if (idx >= 0 && idx < counts.length) { counts[idx]++; total++; }
+    });
+    const rows = a.poll.options.map((opt, i) => {
+      const pct = total ? Math.round((counts[i] / total) * 100) : 0;
+      const sel = myIdx === i;
+      const mark = sel ? ' <span class="text-[10px] accent-text font-bold">✓ выбор</span>' : '';
+      return `
+      <button class="poll-opt w-full text-left rounded-lg px-2.5 py-1.5 border ${sel ? 'accent-border bg-slate-800/70' : 'border-slate-700 bg-slate-800/40'} ${interactive ? 'hover:bg-slate-700 active:scale-[.99] transition' : 'cursor-default'}" data-ann="${esc(key)}" data-opt="${i}">
+        <div class="flex items-center justify-between gap-2 mb-1">
+          <span class="text-xs text-slate-200">${esc(opt)}${mark}</span>
+          <span class="text-[10px] text-slate-500 shrink-0">${counts[i]} · ${pct}%</span>
+        </div>
+        <div class="h-1.5 rounded-full bg-slate-700 overflow-hidden"><div class="h-full ${sel ? 'accent-bg' : 'bg-slate-500'}" style="width:${pct}%"></div></div>
+      </button>`;
+    }).join('');
+    const hint = interactive ? ' · нажми вариант, чтобы проголосовать' : '';
+    return `
+      <div class="rounded-xl border border-slate-700 bg-slate-900/70 p-2 mt-2 space-y-1.5">
+        ${rows}
+        <div class="text-[10px] text-slate-500">Голосов: ${total}${hint}</div>
+      </div>`;
   }
   function paintAnnouncements() {
     const el = $('#tab-announcements');
     const compose = `
       <div class="rounded-2xl bg-slate-900 border border-slate-800 p-3 space-y-2 fade-up">
         <textarea id="ann-input" rows="2" maxlength="500" placeholder="Новое объявление..." class="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-xs resize-none outline-none focus:border-indigo-500">${esc(annDraft)}</textarea>
-        <button id="ann-post" class="w-full rounded-xl accent-bg text-white py-2.5 text-sm font-bold hover:opacity-90">📢 Опубликовать</button>
+        <div id="ann-poll-box" class="${annPollBoxOpen ? '' : 'hidden'} space-y-2">
+          ${[0, 1, 2, 3].map((i) => `
+            <input data-poll-i="${i}" value="${esc(annPollDraft[i] || '')}" placeholder="${i < 2 ? 'Вариант ' + (i + 1) : 'Вариант ' + (i + 1) + ' (необязательно)'}" maxlength="60" class="ann-poll-input w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-xs outline-none focus:border-indigo-500">
+          `).join('')}
+          <button id="ann-poll-apply" class="w-full rounded-lg bg-slate-800 hover:bg-slate-700 py-2 text-xs font-semibold">📊 Применить опрос</button>
+          <button id="ann-poll-clear" class="w-full rounded-lg bg-slate-800 hover:bg-slate-700 py-2 text-xs font-semibold">✕ Убрать опрос</button>
+        </div>
+        <div class="flex gap-2">
+          <button id="ann-post" class="flex-1 rounded-xl accent-bg text-white py-2.5 text-sm font-bold hover:opacity-90">📢 Опубликовать</button>
+          <button id="ann-poll-toggle" class="rounded-xl bg-slate-800 hover:bg-slate-700 px-3 py-2.5 text-sm font-bold ${annPollDraft.length ? 'accent-bg' : ''}" title="Добавить опрос">📊</button>
+        </div>
       </div>`;
     let body;
     if (!annCache.length) {
@@ -2416,11 +2181,13 @@
       <div class="rounded-2xl p-4 border-2 accent-border bg-amber-500/5 fade-up">
         <div class="flex items-center gap-2 mb-2"><span class="text-xs font-bold text-amber-400">📌 ЗАКРЕПЛЕНО</span></div>
         <p class="text-sm whitespace-pre-wrap break-words ${isCtrl(first.text) ? 'text-amber-200 font-semibold' : 'text-slate-200'}">${esc(first.text)}</p>
+        ${annPollHtml(first, first.key, true)}
         <p class="text-[11px] text-slate-500 mt-2">${fmtDate(first.createdAt)}</p>
       </div>` +
       (rest.length ? rest.map((a) => `
       <div class="rounded-2xl p-4 border fade-up ${isCtrl(a.text) ? 'bg-amber-500/10 border-amber-500/40' : 'bg-slate-900 border-slate-800'}">
         <p class="text-sm whitespace-pre-wrap break-words ${isCtrl(a.text) ? 'text-amber-200 font-semibold' : 'text-slate-200'}">${esc(a.text)}</p>
+        ${annPollHtml(a, a.key, true)}
         <p class="text-[11px] text-slate-500 mt-2">${fmtDate(a.createdAt)}</p>
       </div>`).join('') : '');
     }
@@ -2428,17 +2195,48 @@
     const ta = $('#ann-input');
     if (ta) ta.addEventListener('input', () => { annDraft = ta.value; });
     if ($('#ann-post')) $('#ann-post').addEventListener('click', postAnnouncement);
+    $$('#ann-poll-box .ann-poll-input').forEach((inp) => inp.addEventListener('input', () => {
+      annPollDraft[parseInt(inp.dataset.pollI, 10)] = inp.value;
+    }));
   }
   function postAnnouncement() {
     const text = annDraft.trim();
-    if (!text) return;
+    if (!text) { showToast('Введите текст объявления'); return; }
     if (!(window.HubAuth && window.HubAuth.ready && window.HubAuth.uid)) { showToast('Авторизация ещё не готова, попробуйте снова'); return; }
-    const send = () => db.ref(curClassPath() + '/announcements').push({ text, createdAt: Date.now() })
-      .then(() => { annDraft = ''; showToast('Объявление опубликовано'); })
+    const rec = { text, createdAt: Date.now() };
+    if (annPollDraft.filter((s) => (s || '').trim()).length >= 2) {
+      rec.poll = { options: annPollDraft.map((s) => (s || '').trim()).filter(Boolean).slice(0, 4) };
+    }
+    const send = () => db.ref(curClassPath() + '/announcements').push(rec)
+      .then(() => { annDraft = ''; annPollDraft = []; annPollBoxOpen = false; showToast('Объявление опубликовано'); })
       .catch((e) => showToast('Ошибка: ' + ((e && e.message) ? e.message : e)));
     if (window.HubModeration) window.HubModeration.checkCanSend((err) => { if (err) showToast(err); else send(); });
     else send();
   }
+  function voteAnnouncement(key, idx) {
+    const me = window.HubAuth && window.HubAuth.uid;
+    if (!me) { showToast('Авторизация ещё не готова'); return; }
+    if (!key || idx < 0) return;
+    db.ref(curClassPath() + '/announcements/' + key + '/poll/votes/' + me).set(idx)
+      .catch((e) => showToast('Ошибка голосования: ' + ((e && e.message) ? e.message : e)));
+  }
+  $('#tab-announcements').addEventListener('click', (e) => {
+    const po = e.target.closest('.poll-opt');
+    if (po) { voteAnnouncement(po.dataset.ann, parseInt(po.dataset.opt, 10)); return; }
+    if (e.target.closest('#ann-poll-toggle')) { annPollBoxOpen = !annPollBoxOpen; paintAnnouncements(); return; }
+    if (e.target.closest('#ann-poll-clear')) { annPollDraft = []; annPollBoxOpen = false; paintAnnouncements(); return; }
+    if (e.target.closest('#ann-poll-apply')) {
+      const vals = [0, 1, 2, 3].map((i) => {
+        const inp = document.querySelector('#ann-poll-box input[data-poll-i="' + i + '"]');
+        return inp ? inp.value : '';
+      }).map((s) => s.trim()).filter(Boolean);
+      if (vals.length < 2) { showToast('Нужно минимум 2 варианта'); annPollDraft = []; }
+      else annPollDraft = vals.slice(0, 4);
+      annPollBoxOpen = true;
+      paintAnnouncements();
+      return;
+    }
+  });
 
   function buildCalendar() {
     const now = new Date();
@@ -3451,12 +3249,47 @@
     modal.classList.add('flex');
     setTimeout(() => $('#nick-input').focus(), 100);
   }
-  function saveNick() {
-    const val = $('#nick-input').value.trim();
-    setNick(val ? val.slice(0, 30) : 'Ученик');
+  function showNickErr(msg) {
+    const e = $('#nick-error');
+    if (e) { e.textContent = msg || ''; e.classList.toggle('hidden', !msg); }
+  }
+  function nickExists(val) {
+    const own = (window.HubAuth && window.HubAuth.uid) || '';
+    const v = String(val).trim().toLowerCase();
+    if (!v) return Promise.resolve(false);
+    return db.ref('/users').once('value').then((snap) => {
+      const users = snap.val() || {};
+      return Object.keys(users).some((uid) => uid !== own && users[uid] && String(users[uid].nick || '').toLowerCase() === v);
+    }).catch(() => false);
+  }
+  // Стандартный «Ученик» занят — подбираем «Ученик2», «Ученик3»…, чтобы одинаковых ников не было.
+  function freeDefaultNick(n, depth) {
+    const d = depth || 0;
+    if (d > 50) return Promise.resolve(n + ' ' + Date.now());
+    return nickExists(n).then((taken) => {
+      if (!taken) return n;
+      const num = parseInt((n.match(/\d+$/) || ['1'])[0], 10) + 1;
+      return freeDefaultNick(n.replace(/\d+$/, '') + num, d + 1);
+    });
+  }
+  function commitNick(val) {
+    setNick(val);
     closeNickModal();
     $('#chat-nick').textContent = nick();
     ensureProfile();
+  }
+  function saveNick() {
+    const raw = $('#nick-input').value.trim();
+    const val = raw ? raw.slice(0, 30) : '';
+    showNickErr('');
+    if (!val) {
+      freeDefaultNick('Ученик').then((final) => commitNick(final));
+      return;
+    }
+    nickExists(val).then((taken) => {
+      if (taken) { showNickErr('Этот ник уже занят — выбери другой'); return; }
+      commitNick(val);
+    });
   }
   function closeNickModal() {
     const modal = $('#nick-modal');
@@ -3650,31 +3483,6 @@
       <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
         <div class="flex items-center justify-between gap-3">
           <div class="min-w-0">
-            <div class="font-bold text-sm">🔑 Мой аккаунт</div>
-            <p class="text-[11px] text-slate-500 mt-0.5" id="acc-summary">—</p>
-          </div>
-          <button id="acc-show-btn" class="shrink-0 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold">Показать</button>
-        </div>
-        <div id="acc-creds" class="hidden mt-2 rounded-lg bg-slate-800/70 border border-slate-700 p-3 space-y-1">
-          <div class="text-[11px]"><span class="text-slate-500">Логин:</span> <b id="acc-uname">—</b></div>
-          <div class="text-[11px]"><span class="text-slate-500">Пароль:</span> <b id="acc-pass">—</b></div>
-        </div>
-        <label class="mt-3 flex items-start gap-2 cursor-pointer">
-          <input id="acc-auto" type="checkbox" class="mt-0.5 w-4 h-4 accent-indigo-500 shrink-0">
-          <span class="text-[11px] text-slate-400">Заходить сразу, без ввода пароля</span>
-        </label>
-        <p class="text-[10px] text-slate-600 mt-2 leading-snug">
-          Вход привязан к этому устройству: Firebase выдаёт постоянный ID браузеру, поэтому пароль вводить заново не нужно.
-          Чтобы зайти с другого устройства, нажми «Показать» и введи эти данные на странице входа.
-        </p>
-        <button id="acc-reset-btn" class="mt-3 w-full rounded-lg border border-slate-700 hover:bg-slate-800 py-2 text-[11px] font-semibold text-slate-300">
-          Сбросить запомненный вход
-        </button>
-      </div>
-
-      <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
-        <div class="flex items-center justify-between gap-3">
-          <div class="min-w-0">
             <div class="font-bold text-sm">🏠 Мой класс</div>
             <p class="text-[11px] text-slate-500 mt-0.5" id="home-class-name">${esc(homeNameFull())}</p>
             <p class="text-[10px] text-slate-500 mt-0.5">${homeChangeAllowed() ? 'Смену можно выполнить сейчас' : 'Смена — не чаще 1 раза в 30 дней. Доступно с ' + homeChangeAvailableAt()}</p>
@@ -3773,37 +3581,6 @@
       <p class="text-center text-[10px] mt-6" style="color:#6b7280">Developers: ZakveZ, Coder20</p>`;
 
     $('#profile-edit-nick').addEventListener('click', changeNick);
-    /* ---- Аккаунт в настройках ---- */
-    {
-      const acc = localAccount();
-      const un = myUname() || '—';
-      $('#acc-summary').textContent = acc && autoAccOn()
-        ? 'Логин: ' + un + ' · вход запомнен'
-        : (acc ? 'Логин: ' + un + ' · пароль спрашивается при входе' : 'Аккаунт не создан');
-      $('#acc-uname').textContent = un;
-      $('#acc-pass').textContent = (acc && acc.pass) ? acc.pass : '— (не сохранён на этом устройстве)';
-      $('#acc-auto').checked = autoAccOn();
-    }
-    $('#acc-show-btn').addEventListener('click', () => {
-      const box = $('#acc-creds');
-      const open = box.classList.contains('hidden');
-      box.classList.toggle('hidden', !open);
-      $('#acc-show-btn').textContent = open ? 'Скрыть' : 'Показать';
-    });
-    $('#acc-auto').addEventListener('change', (e) => {
-      setAutoAcc(e.target.checked);
-      renderSettingsTab();
-      showToast(e.target.checked ? 'Вход запомнен' : 'Теперь нужен логин и пароль');
-    });
-    $('#acc-reset-btn').addEventListener('click', () => {
-      askConfirm('Сбросить запомненный вход?', () => {
-        setLocalAccount(null);
-        setAutoAcc(true);
-        regDraft = null;   // новый логин, а не тот, что был
-        showReg('reg');
-        showToast('Введи логин и пароль заново');
-      }, 'Сбросить');
-    });
     $('#theme-light').addEventListener('click', () => { applyTheme('light'); renderSettingsTab(); showToast('Тема: ' + THEME_LABELS.light); });
     $('#theme-dark').addEventListener('click', () => { applyTheme('dark'); renderSettingsTab(); showToast('Тема: ' + THEME_LABELS.dark); });
     $('#theme-coder').addEventListener('click', () => { applyTheme('coder20'); renderSettingsTab(); showToast('Тема: ' + THEME_LABELS.coder20); });
@@ -4193,6 +3970,7 @@
           wrap.innerHTML = items.length ? items.map((a) => `
             <div class="row rounded-xl bg-slate-900 border border-slate-800 p-3 space-y-2 fade-up">
               <p class="text-sm whitespace-pre-wrap break-words">${esc(a.text || '')}</p>
+              ${annPollHtml(a, a.key, false)}
               <p class="text-[11px] text-slate-500">${fmtDate(a.createdAt)}</p>
               <button data-ann-del data-key="${esc(a.key)}" class="rounded-lg px-3 py-2 text-xs font-bold bg-rose-600">Удалить</button>
             </div>`).join('') : emptyNote('Пусто');
@@ -5021,6 +4799,10 @@
 
   $('#nick-save').addEventListener('click', saveNick);
   $('#nick-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') saveNick(); });
+  $('#nick-input').addEventListener('input', () => {
+    const e = $('#nick-error');
+    if (e) e.classList.add('hidden');
+  });
   $('#pass-btn').addEventListener('click', tryLogin);
   $('#pass-cancel').addEventListener('click', closePassModal);
   $('#pass-overlay').addEventListener('click', closePassModal);
@@ -5037,26 +4819,6 @@
     else { $('#chat-search-input').value = ''; applyChatSearch(); }
   });
   $('#chat-search-input').addEventListener('input', applyChatSearch);
-
-  /* ---- Регистрация / вход ---- */
-  $('#reg-uname').addEventListener('input', () => { if (regDraft) regDraft.uname = $('#reg-uname').value; regErr(''); });
-  $('#reg-save').addEventListener('click', saveAccount);
-  $('#reg-toggle-login').addEventListener('click', () => {
-    const isLogin = !$('#login-card').classList.contains('hidden');
-    showReg(isLogin ? 'reg' : 'login');
-  });
-  $('#log-go').addEventListener('click', loginByAccount);
-  $('#log-pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') loginByAccount(); });
-  $('#log-uname').addEventListener('keydown', (e) => { if (e.key === 'Enter') loginByAccount(); });
-  $('#reg-pass-copy').addEventListener('click', () => {
-    if (!regDraft) return;
-    const text = 'Логин: ' + regDraft.uname + '\nПароль: ' + regDraft.pass;
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(() => showToast('Скопировано')).catch(() => showToast('Скопируй вручную: ' + regDraft.uname + ' / ' + regDraft.pass));
-    } else {
-      showToast('Логин ' + regDraft.uname + ', пароль ' + regDraft.pass);
-    }
-  });
 
   /* ---- Голосовые ---- */
   $('#mic-btn').addEventListener('click', toggleVoiceChat);
