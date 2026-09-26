@@ -476,6 +476,10 @@
   };
 
   let authRefs = [], mainRefs = [], adminRefs = [];
+  // Двухступенчатый выбор класса: цифра → буква. Кеш классов текущей школы
+  // (чтобы «Назад» не перезагружал данные).
+  let classCache = null;      // [{ digit: число, items: [{key, name, letter}] }] — по возрастанию цифр
+  let classDigitActive = false; // true = показываем буквы, «Назад» ведёт к цифрам
   const offRefs = (arr) => arr.forEach((r) => r.off());
   const addRef = (arr, ref) => { arr.push(ref); return ref; };
 
@@ -1056,6 +1060,7 @@ __lastModeration = {
     addRef(authRefs, db.ref(P.cities())).once('value', (snap) => {
       const cities = snapArr(snap);
       state.sel.cid = state.sel.cname = state.sel.sid = state.sel.sname = state.sel.clid = state.sel.clname = null;
+      classCache = null;
       renderList(cities, 'Пока нет городов. Добавьте первый город в админ-панели.', (key, it) => {
         state.sel.cid = key; state.sel.cname = it.name;
         loadSchools();
@@ -1071,19 +1076,86 @@ __lastModeration = {
       state.sel.sid = state.sel.sname = state.sel.clid = state.sel.clname = null;
       renderList(schools, 'Школ в этом городе пока нет.', (key, it) => {
         state.sel.sid = key; state.sel.sname = it.name;
+        classCache = null;
         loadClasses();
       });
     });
   }
+  // Разбор класса: берём name (или class_id, если name нет) и отделяем цифру от буквы.
+  // "7А" → { digit: 7, letter: "А" }; "8а" → { digit: 8, letter: "а" }.
+  function parseClassEntry(key, it) {
+    const raw = String((it && it.name) || key).trim();
+    const m = /^(\d+)\s*(.*)$/.exec(raw);
+    const digit = m ? parseInt(m[1], 10) : -1;
+    const letter = m ? m[2].trim() : raw;
+    return { key: key, name: (it && it.name) || key, digit: digit, letter: letter };
+  }
+  // Сортировка букв по русскому алфавиту: А, Б, В, Г, Д…
+  function classLetterCmp(a, b) {
+    const c = a.letter.localeCompare(b.letter, 'ru');
+    return c !== 0 ? c : String(a.name).localeCompare(String(b.name), 'ru');
+  }
   function loadClasses() {
     detachAuth(); state.step = 3;
+    classDigitActive = false;
     setStepView('Выберите класс', `${state.sel.cname} · ${state.sel.sname}`);
+    if (classCache) { renderClassDigits(); return; }
     $('#select-list').innerHTML = spinner();
     addRef(authRefs, db.ref(P.classes(state.sel.cid, state.sel.sid))).once('value', (snap) => {
       const classes = snapArr(snap);
       state.sel.clid = state.sel.clname = null;
-      renderList(classes, 'Классов в школе пока нет.', (key, it) => {
-        state.sel.clid = key; state.sel.clname = it.name;
+      const byDigit = {}; // цифра → классы
+      classes.forEach((it) => {
+        const p = parseClassEntry(it.key, it);
+        const arr = (byDigit[p.digit] = byDigit[p.digit] || []);
+        arr.push({ key: it.key, name: p.name, letter: p.letter });
+      });
+      const buckets = Object.keys(byDigit).map((d) => ({ digit: parseInt(d, 10), items: byDigit[d] }));
+      buckets.sort((a, b) => a.digit - b.digit); // 5, 6, 7, 8, 9, 10, 11 — числовая сортировка
+      buckets.forEach((b) => b.items.sort(classLetterCmp));
+      classCache = buckets;
+      renderClassDigits();
+    });
+  }
+  // Шаг 1: крупные кнопки с цифрами. Только цифры, для которых есть классы.
+  function renderClassDigits() {
+    if (!classCache) return;
+    classDigitActive = false;
+    setStepView('Выберите класс', `${state.sel.cname} · ${state.sel.sname}`);
+    state.sel.clid = state.sel.clname = null;
+    if (!classCache.length) { $('#select-list').innerHTML = emptyNote('Классов в школе пока нет.'); return; }
+    const cols = classCache.length <= 2 ? 'grid-cols-2' : classCache.length <= 4 ? 'grid-cols-4' : 'grid-cols-5';
+    $('#select-list').innerHTML = `<div class="grid ${cols} gap-2">
+      ${classCache.map((b) => `
+        <button data-digit="${b.digit}" class="digit-btn flex flex-col items-center justify-center rounded-xl bg-slate-900 border border-slate-800 py-5 hover:border-indigo-500/60 active:scale-95 transition fade-up">
+          <span class="text-2xl font-extrabold">${b.digit === -1 ? '—' : b.digit}</span>
+          <span class="text-[10px] text-slate-500 mt-0.5">${b.items.length} класс.</span>
+        </button>`).join('')}
+    </div>`;
+    $('#select-list').querySelectorAll('.digit-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const bucket = classCache.find((x) => x.digit === parseInt(btn.dataset.digit, 10));
+        if (bucket) renderClassLetters(bucket);
+      });
+    });
+  }
+  // Шаг 2: классы выбранной цифры, по алфавиту (7А, 7Б, 7В, 7Г, 7Д).
+  function renderClassLetters(bucket) {
+    classDigitActive = true;
+    setStepView('Выберите класс', `${state.sel.cname} · ${state.sel.sname} · параллель ${bucket.digit === -1 ? '—' : bucket.digit}`);
+    const list = $('#select-list');
+    list.innerHTML = bucket.items.map((it) => `
+      <button data-key="${esc(it.key)}" data-name="${esc(it.name)}"
+        class="choice w-full flex items-center justify-between gap-3 rounded-xl bg-slate-900 border border-slate-800 px-4 py-4 text-left hover:border-indigo-500/60 active:scale-[.98] transition fade-up">
+        <span class="flex-1 min-w-0"><span class="block font-semibold truncate">${esc(it.name)}</span></span>
+        <svg class="w-5 h-5 shrink-0 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+        </svg>
+      </button>`).join('');
+    list.querySelectorAll('.choice').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        state.sel.clid = btn.dataset.key;
+        state.sel.clname = btn.dataset.name;
         saveSelection();
         showMainScreen();
       });
@@ -1101,7 +1173,10 @@ __lastModeration = {
     showAuth();
   }
   function onBack() {
-    if (state.step === 3) loadSchools();
+    if (state.step === 3) {
+      if (classDigitActive) renderClassDigits();
+      else loadSchools();
+    }
     else if (state.step === 2) loadCities();
   }
   function showAuth() {
