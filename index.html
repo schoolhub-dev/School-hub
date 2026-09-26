@@ -55,7 +55,7 @@
       cursor: pointer; user-select: none; -webkit-user-select: none;
       vertical-align: middle; margin-left: 2px; flex-shrink: 0;
     }
-    .vchk-purple { background: #a855f7; color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.45); }
+    .vchk-green { background: #22c55e; color: #001a00; box-shadow: 0 1px 3px rgba(0,0,0,.45); }
     .vchk-gray { background: #9ca3af; color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.45); }
     .vchk-gold { background: linear-gradient(135deg, #ffd700, #e8b800); color: #3a2f00; box-shadow: 0 1px 3px rgba(0,0,0,.45); }
     .vchk-pop {
@@ -411,18 +411,51 @@
     html.zakvez[data-accent] .accent-border { border-color: var(--accent) !important; }
 
     /* Knopki: tyomnyy akcent-fon + zelyonaya ramka + zelyonyy tekst */
-    html.zakvez button.accent-bg {
+    html.zakvez[data-accent] button.accent-bg {
       background-color: var(--accent-bg) !important;
       box-shadow: inset 0 0 0 1px var(--accent);
-      color: var(--accent) !important;
+      color: var(--text-primary) !important;
     }
-    html.zakvez button.accent-bg:hover { background-color: var(--bg-hover) !important; }
+    html.zakvez[data-accent] button.accent-bg:hover { background-color: var(--avatar-bg) !important; }
+    /* Ikony/svg vnutri knopok — zelyonye, vidimy na tyomnom fone */
+    html.zakvez[data-accent] button.accent-bg .text-white { color: var(--accent) !important; }
+
+    /* ZAlivka accent-bg (ney knopki: logotip, badge, mo-ye soobshchenie,
+       aktivnye indeksy): yarko-zelyonyy fon + temnyy znak/kontent delki distinct */
+    html.zakvez .accent-bg.text-white:not(button) { color: #001a00 !important; }
+    html.zakvez[data-accent] button.accent-bg.text-white { color: var(--text-primary) !important; }
+    html.zakvez .accent-bg .text-white:not(button .text-white) { color: #001a00 !important; }
+
+    /* Krug avatara s emodzhi: ochen' tmmnyy zelyonyy fon, kontrast chto emodzhi vidyt */
+    html.zakvez .avatar-emoji {
+      background-color: var(--avatar-bg) !important;
+      box-shadow: inset 0 0 0 1px rgba(0, 255, 65, .18);
+    }
+
+    /* Galochki verifikacii: ne perekrashivaytsya, no temnaya obvodka, chtoby
+       ne slivalis' s zelyonym fonem */
+    html.zakvez .vchk { outline: 1px solid rgba(0, 0, 0, .5); }
+
+    /* Melkie ikonki-deystviya u soobshcheniy (redakt/udalenie/react/mute):
+       temnyy chip s zelyonoy ramkoy, chtoby ne terilis' na fone */
+    html.zakvez .msg-edit,
+    html.zakvez .msg-del,
+    html.zakvez .msg-react,
+    html.zakvez .msg-reply,
+    html.zakvez .msg-mute {
+      background-color: var(--accent-bg);
+      box-shadow: inset 0 0 0 1px var(--accent);
+      color: var(--text-primary);
+      opacity: .85;
+    }
+    html.zakvez .msg-edit:hover,
+    html.zakvez .msg-del:hover,
+    html.zakvez .msg-react:hover,
+    html.zakvez .msg-reply:hover,
+    html.zakvez .msg-mute:hover { background-color: var(--avatar-bg); }
 
     /* Aktivnye vkladki/nav: tmnyy akcent na fone accent-bg */
     html.zakvez .bg-indigo-500\/10 { background-color: rgba(4, 26, 8, .92) !important; }
-
-    /* Avatary s emodzhi: tyomno-zelyonyy krug, chtoby emodzhi vyydylyaliis */
-    html.zakvez .avatar-emoji { background-color: var(--avatar-bg) !important; }
 
     /* Teni — chyotkiy obvod, bez blura i rasmytiya */
     html.zakvez .shadow-lg,
@@ -435,13 +468,15 @@
     .zakvez-aside { display: none; }
 
     @media (min-width: 600px) {
+      /* Storonya page ne skroltitsya: samo stroen joyit vyutri levoy oblasti */
+      html.zakvez body { overflow: hidden; }
       /* Levaya chast': sobstvennaya oblast' prokrutki, ne zayezzhaet pod kolonku */
       html.zakvez #main-screen,
       html.zakvez #auth-screen {
         height: 100vh;
         height: 100dvh;
         overflow-y: auto;
-        padding-right: var(--zakvez-aside);
+        margin-right: var(--zakvez-aside);
       }
       /* Deti rastyagivayutsya na otvedyennuyu oblast' (bez zayezda pod titry) */
       html.zakvez #main-screen > *:not(.zakvez-aside),
@@ -459,6 +494,7 @@
         width: var(--zakvez-aside);
         border-left: 1px solid var(--border);
         background: var(--bg-primary);
+        overflow: hidden;
         z-index: 30;
         pointer-events: none;
       }
@@ -476,8 +512,10 @@
     }
     #credits-pre {
       position: absolute;
-      left: 28px; right: 28px; top: 0;
+      left: 0; right: 0; top: 0;
       margin: 0;
+      padding: 0 32px;
+      box-sizing: border-box;
       white-space: pre;
       line-height: 1.7;
       font-size: clamp(12px, 1.9vw, 15px);
@@ -922,7 +960,7 @@
   const DEV_MAIN_UID = 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2';
   const DEV_CODER_UID = 'oQcBcD0PFnS97LQ1KkH7k6nsO6w1';
   const VCHK_TEXT = {
-    purple: 'Фиолетовая галочка — главный разработчик',
+    green: 'Зелёная галочка — главный разработчик',
     gray: 'Серая галочка — главный разработчик',
     gold: 'Золотая галочка — официальный аккаунт разработчиков',
   };
@@ -934,7 +972,7 @@
   // Приоритет: главный разработчик → Coder20 → роль admin → ничего.
   function verifyKind(uid) {
     if (!uid) return null;
-    if (uid === DEV_MAIN_UID) return 'purple';
+    if (uid === DEV_MAIN_UID) return 'green';
     if (uid === DEV_CODER_UID) return 'gray';
     if (roleUidsCache && roleUidsCache[uid] === 'admin') return 'gold';
     return null;
@@ -3972,6 +4010,7 @@
         <p class="text-[10px] text-slate-600 mt-1.5 leading-snug">В теме ZakveZ интерфейс становится чёрно-зелёным как в терминале, а справа идут кинематографические титры.</p>
       </div>
 
+      ${theme === 'light' || theme === 'dark' ? `
       <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
         <div class="font-bold text-sm mb-3">Цвет акцента</div>
         <div class="flex flex-wrap gap-3 justify-center">
@@ -3981,6 +4020,7 @@
           }).join('')}
         </div>
       </div>
+      ` : ''}
 
       <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
         <div class="flex items-center justify-between gap-3">
