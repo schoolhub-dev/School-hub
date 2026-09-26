@@ -57,8 +57,22 @@ parse_schedule.py — выгрузка расписания из источни�
   расписание каждые N секунд (по умолчанию 900 = 15 минут) и загружает в
   Firebase ТОЛЬКО если данные изменились (по дайджесту записанных файлов).
   Работает с обоими источниками; прерывается по Ctrl+C. Пример:
-      python parse_schedule.py --watch 900 --school "Школа №25" \
-          https://raspisanie.nikasoft.ru/86111512.html
+      python parse_schedule.py --watch 900 --school "Школа №25"
+      python parse_schedule.py --watch 900 --school "Школа №12" --create-classes
+
+  URL источника можно задать позиционно либо флагом --nikasoft-url:
+      python parse_schedule.py --all-classes --nikasoft-url "https://..."
+  Если URL не передан вовсе, по умолчанию берётся расписание школы №25
+  «Гелиос» (https://raspisanie.nikasoft.ru/86111512.html). Примеры без URL:
+      python parse_schedule.py --all-classes --school "Школа №25" --create-classes
+      python parse_schedule.py --grade 7 --school "Школа №25"
+
+  АВТО-СОЗДАНИЕ КЛАССОВ (--create-classes): используется вместе с --school.
+  Если класс из расписания не найден в Firebase-школе — его узел создаётся
+  автоматически (класы-имя + /schedule) вместо пропуска с предупреждением.
+  ВАЖНО: применимо обычно к nikasoft (где список классов берётся из данных
+  сайта); для Google-листа --all-classes найдёт все параллели из вкладок, и
+  без фильтрации (--grade/--classes) создаст классы всех этих параллелей.
 
   --week   принудительно взять текущую неделю,
   --date YYYY-MM-DD — взять неделю, содержащую указанную дату,
@@ -103,10 +117,13 @@ parse_schedule.py — выгрузка расписания из источни�
     python parse_schedule.py --list https://raspisanie.nikasoft.ru/86111512.html
     python parse_schedule.py --class 7А https://raspisanie.nikasoft.ru/86111512.html
     python parse_schedule.py --class 7А --no-push https://raspisanie.nikasoft.ru/86111512.html
-    python parse_schedule.py --grade 7 --no-push https://raspisanie.nikasoft.ru/86111512.html
+    # все классы школы №25 одним запуском (URL по умолчанию; без URL тоже работает):
+    python parse_schedule.py --all-classes --school "Школа №25" --create-classes
+    python parse_schedule.py --all-classes --school "Школа №25" --no-push
+    python parse_schedule.py --grade 6 --school "Школа №25" --no-push
     # разделение школ и слежение
-    python parse_schedule.py --class 6А --school "Школа №25" https://raspisanie.nikasoft.ru/86111512.html
-    python parse_schedule.py --watch --school "Школа №25" https://raspisanie.nikasoft.ru/86111512.html
+    python parse_schedule.py --watch --school "Школа №25"
+    python parse_schedule.py --watch --school "Школа №12"
 """
 
 import argparse
@@ -737,12 +754,27 @@ def to_hub_schedule(rows):
 
 # ---------------- Firebase (--push) ----------------
 
+def read_text_any_encoding(path):
+    """Читает файл с авто-определением кодировки: UTF-8 (с BOM и без),
+    затем CP1251 — на случай если файл сохранён в кодировке Windows
+    (иначе чтение как UTF-8 падает с UnicodeDecodeError)."""
+    with open(path, "rb") as f:
+        raw = f.read()
+    for enc in ("utf-8-sig", "cp1251"):
+        try:
+            return raw.decode(enc)
+        except (LookupError, UnicodeDecodeError):
+            continue
+    return raw.decode("utf-8", errors="replace")
+
+
 def load_api_key(arg):
     if arg:
         return arg
     try:
+        print("Читаю API-ключ Firebase…")
         m = re.search(r'apiKey:\s*"([^"]+)"',
-                      open("firebase-config.js", encoding="utf-8").read())
+                      read_text_any_encoding("firebase-config.js"))
         if m:
             return m.group(1)
     except OSError:
@@ -756,6 +788,7 @@ def firebase_base(db_url):
 
 def firebase_token(api_key):
     import requests
+    print("Подключаюсь к Firebase…")
     r = requests.post(
         "https://identitytoolkit.googleapis.com/v1/accounts:signUp",
         params={"key": api_key}, json={"returnSecureToken": True}, timeout=30)
@@ -765,16 +798,20 @@ def firebase_token(api_key):
 
 
 def firebase_class_nodes(db_url, token, school=None):
-    """Возвращает (nodes, base): nodes[NAME_норм] = [(node, school_name), ...].
+    """Возвращает (nodes, base, school_bases).
 
+    nodes[NAME_норм] = [(node, school_name), ...] — расписания классов.
     Один и тот же класс может быть сразу в нескольких школах (это расписания
     разных школ!). Без --school загрузка не будет знать, куда писать.
     school — подстрока названия школы (например «Школа №25») или её sid:
-    узлы других школ отбрасываются."""
+    узлы других школ отбрасываются.
+    school_bases — [(имя_школы, cities/{c}/schools/{s}/classes), ...] по тем же
+    школам (нужно для авто-создания класса --create-classes)."""
     import requests
     base = firebase_base(db_url)
     cities = requests.get(base + "cities.json?shallow=true", timeout=30).json() or {}
     nodes = {}
+    school_bases = []
     school_mask = (school or "").strip().lower()
     found_schools = set()
     for cid in cities:
@@ -789,6 +826,7 @@ def firebase_class_nodes(db_url, token, school=None):
                 continue
             if school_mask:
                 found_schools.add(sname)
+            school_bases.append((sname, f"cities/{cid}/schools/{sid}/classes"))
             classes = requests.get(f"{base}cities/{cid}/schools/{sid}/classes.json?shallow=true",
                                    timeout=30).json() or {}
             for clid in classes:
@@ -800,7 +838,7 @@ def firebase_class_nodes(db_url, token, school=None):
                         (f"cities/{cid}/schools/{sid}/classes/{clid}/schedule", sname))
     if school_mask and not found_schools:
         raise RuntimeError(f"Школа «{school}» не найдена в Firebase.")
-    return nodes, base
+    return nodes, base, school_bases
 
 
 def resolve_firebase_node(nodes, class_name):
@@ -830,10 +868,32 @@ def _push_schedule(base, node, schedule, token):
         raise RuntimeError(f"Firebase вернул {resp.status_code}: {resp.text[:160]}")
 
 
+def create_firebase_class(base, school_base, class_name, days, token):
+    """Авто-создание узла класса в школе и запись расписания (--create-classes).
+
+    school_base — «cities/{c}/schools/{s}/classes». Пустой POST создаёт
+    Firebase-ключ; дальше пишутся name и schedule. Возвращает clid."""
+    import requests
+    resp = requests.post(base + school_base + ".json", params={"auth": token},
+                         json={}, timeout=30)
+    if resp.status_code != 200:
+        raise RuntimeError(f"Не удалось создать класс: {resp.status_code} "
+                           f"{resp.text[:160]}")
+    clid = resp.json().get("name")
+    if not clid:
+        raise RuntimeError("Firebase не вернул ключ нового класса.")
+    resp = requests.put(base + school_base + "/" + clid + "/name.json",
+                        params={"auth": token}, json=class_name, timeout=30)
+    if resp.status_code != 200:
+        raise RuntimeError(f"Не удалось записать имя класса: "
+                           f"{resp.status_code} {resp.text[:160]}")
+    _push_schedule(base, school_base + "/" + clid + "/schedule", days, token)
+    return clid
+
+
 def push_to_firebase(schedule, class_name, api_key, db_url, school=None):
-    print(f"Загружаю расписание «{class_name}» в Firebase…")
     token = firebase_token(api_key)
-    nodes, base = firebase_class_nodes(db_url, token, school=school)
+    nodes, base, _bases = firebase_class_nodes(db_url, token, school=school)
     node = resolve_firebase_node(nodes, class_name)
     if not node:
         if school:
@@ -841,29 +901,52 @@ def push_to_firebase(schedule, class_name, api_key, db_url, school=None):
                                f"«{school}» в Firebase.")
         raise RuntimeError(f"Класс «{class_name}» не найден в Firebase "
                            f"(или имя неоднозначно).")
+    print(f"Загружаю расписание для {class_name}…")
     _push_schedule(base, node[0], schedule, token)
     print(f"OK: {node[0]} ({node[1]}) обновлён.")
 
 
-def push_all_schedules(schedules, api_key, db_url, school=None):
+def push_all_schedules(schedules, api_key, db_url, school=None, create=False):
     """Загружает расписания всех классов: {имя: {mon..sun}} -> /schedule.
-    school — подстрока названия школы (см. firebase_class_nodes)."""
+    school — подстрока названия школы (см. firebase_class_nodes).
+    create — если класс не найден в нужной школе, создать его узел и записать
+    расписание (нужно указание --school)."""
     print("Загружаю расписания в Firebase…")
     token = firebase_token(api_key)
-    nodes, base = firebase_class_nodes(db_url, token, school=school)
-    ok, missing = [], []
+    nodes, base, school_bases = firebase_class_nodes(db_url, token, school=school)
+    ok, created, missing = [], [], []
+    create_base = None
+    if create and school and len(school_bases) == 1:
+        create_base = school_bases[0][1]
     for cl, days in schedules.items():
         node = resolve_firebase_node(nodes, cl)
+        if not node and create_base:
+            try:
+                clean = normalize_class_display(cl) or str(cl)
+                create_firebase_class(base, create_base, clean, days, token)
+                created.append(cl)
+                print(f"  {cl}: создан узел класса в "
+                      f"«{school_bases[0][0]}» и записано расписание.")
+                continue
+            except Exception as e:
+                missing.append(cl)
+                print(f"  {cl}: ошибка создания класса: {e}")
+                continue
         if not node:
             missing.append(cl)
             continue
+        print(f"  {cl}: загружаю расписание…")
         try:
             _push_schedule(base, node[0], days, token)
             ok.append(cl)
         except Exception as e:
             missing.append(cl)
             print(f"  {cl}: ошибка загрузки: {e}")
-    print(f"Загружено: {len(ok)} из {len(schedules)}.")
+    total = len(schedules)
+    print(f"Загружено расписание для {len(ok) + len(created)} из {total} классов "
+          f"(создано новых: {len(created)}).")
+    if created:
+        print("Создано: " + ", ".join(created))
     if ok:
         print("OK: " + ", ".join(ok))
     for cl in missing:
@@ -903,6 +986,7 @@ NIKA_DAY_SHORT = {"пн": "mon", "вт": "tue", "ср": "wed", "чт": "thu",
 NIKA_DAY_LONG = [("mon", "понед"), ("tue", "вторн"), ("wed", "сред"),
                  ("thu", "четверг"), ("fri", "пятниц"), ("sat", "суббот"),
                  ("sun", "воскрес")]
+NIKA_DEFAULT_URL = "https://raspisanie.nikasoft.ru/86111512.html"
 
 
 def http_get(url):
@@ -1030,32 +1114,35 @@ def nika_format_time(s):
 
 
 def nika_lesson_text(en, subjects, rooms):
-    """Собирает строку урока: «Предмет кабинет/кабинет…». "" если урок отменён."""
+    """Возвращает список строк урока: по одной на каждый предмет («Предмет кабинет»).
+
+    Ячейка может объединять параллельные группы (несколько предметов) — каждый
+    предмет выводится отдельной строкой, как в дневном виде на сайте. [] если урок отменён.
+    """
     s = en.get("s") or []
     if isinstance(s, str):
         s = [s]
     if s and s[0] == "F":
-        return ""
+        return []
     r = en.get("r") or []
     if isinstance(r, str):
         r = [r]
-    subs, rms = [], []
-    for i in range(max(len(s), len(r))):
-        sv = s[i] if i < len(s) else None
-        rv = r[i] if i < len(r) else None
-        if sv is not None:
-            nm = (subjects.get(str(sv)) or
-                  subjects.get(str(sv).zfill(3)) or None)
-            if nm and nm not in subs:
-                subs.append(str(nm))
-        if rv is not None:
+    out = []
+    for i in range(len(s)):
+        sv = str(s[i])
+        if sv and sv[0] == "F":
+            continue
+        nm = (subjects.get(sv) or subjects.get(sv.zfill(3)))
+        if not nm:
+            nm = "(нет)"
+        line = str(nm)
+        if i < len(r):
+            rv = r[i]
             rm = rooms.get(str(rv).zfill(3)) if str(rv).isdigit() else str(rv)
-            if rm and rm not in rms:
-                rms.append(str(rm))
-    txt = "/".join(subs)
-    if rms:
-        txt += " " + "/".join(rms)
-    return txt
+            if rm:
+                line += " " + str(rm)
+        out.append(line)
+    return out
 
 
 def nika_build_week(data, class_id, monday, sunday):
@@ -1073,6 +1160,7 @@ def nika_build_week(data, class_id, monday, sunday):
     last = int(data.get("LESSONSINDAY") or 12)
     subjects = data.get("SUBJECTS") or {}
     rooms = data.get("ROOMS") or {}
+    cancel_str = data.get("LESSON_CANCELED_STR") or "урок отменен"
     days = {k: [] for k in HUB_KEYS}
     used = []
     skipped = []
@@ -1104,26 +1192,31 @@ def nika_build_week(data, class_id, monday, sunday):
             used.append((hub, d, pid))
             for lsn in range(first, last + 1):
                 en = pat.get(f"{col}{lsn:02d}")
-                if en is None:
-                    continue
                 ex = exc.get(str(lsn))
+                lines = None
                 if ex is not None:
-                    sx = ex.get("s")
-                    sxs = [sx] if isinstance(sx, str) else sx
+                    sxs = ex.get("s")
+                    if isinstance(sxs, str):
+                        sxs = [sxs]
                     if sxs and sxs[0] == "F":
-                        continue
-                    en = ex
-                name = nika_lesson_text(en, subjects, rooms)
-                if not name:
+                        en = None
+                        lines = [cancel_str]
+                    else:
+                        en = ex
+                        lines = nika_lesson_text(en, subjects, rooms)
+                elif en is not None:
+                    lines = nika_lesson_text(en, subjects, rooms)
+                if not lines:
                     continue
                 tt = lesson_times.get(str(lsn))
                 head = ""
                 if tt:
-                    a = nika_format_time(tt[0]) if tt else ""
+                    a = nika_format_time(tt[0])
                     b = nika_format_time(tt[1]) if len(tt) > 1 else ""
                     if a and b:
                         head = f"{a}-{b} "
-                days[hub].append(head + name)
+                for line in lines:
+                    days[hub].append(head + line)
         d += datetime.timedelta(days=1)
     return days, used, active, skipped
 
@@ -1169,6 +1262,7 @@ def nika_run(args, monday, sunday, allow_push=True):
         if not names:
             print("Не найдено классов для обработки.")
             return 1
+        print(f"Найдено классов: {', '.join(names)}")
         print(f"Неделя {span_f}; обрабатываю " + "… ".join(names) + "…")
         results, missing = {}, []
         for nm in names:
@@ -1203,7 +1297,8 @@ def nika_run(args, monday, sunday, allow_push=True):
         if allow_push and not args.no_push:
             try:
                 push_all_schedules(results, load_api_key(args.api_key),
-                                   args.database_url, school=args.school)
+                                   args.database_url, school=args.school,
+                                   create=args.create_classes)
             except Exception as e:
                 print(f"Firebase-загрузка не удалась: {e}")
         return 0
@@ -1285,10 +1380,17 @@ def main(argv=None):
     ap.add_argument("--nikasoft", action="store_true",
                     help="Принудительно использовать raspisanie.nikasoft.ru "
                          "(иначе источник определяется по домену)")
+    ap.add_argument("--nikasoft-url", default=None,
+                    help="URL страницы raspisanie.nikasoft.ru (по умолчанию "
+                         f"{NIKA_DEFAULT_URL} — школа №25 «Гелиос», Находка)")
     ap.add_argument("--school", default=None,
                     help="Firebase-школа для загрузки (подстрока названия, "
                          "например «Школа №25»). Нужно, когда расписания двух "
                          "разных школ, а классы называются одинаково.")
+    ap.add_argument("--create-classes", action="store_true",
+                    help="Вместе с --school: класс, которого нет в Firebase, "
+                         "создавать автоматически (узел + расписание) вместо "
+                         "пропуска с предупреждением")
     ap.add_argument("--no-push", action="store_true",
                     help="НЕ загружать в Firebase (по умолчанию загружает)")
     ap.add_argument("--push", action="store_true",
@@ -1301,6 +1403,9 @@ def main(argv=None):
                     help="Перепроверять расписание каждые N секунд (по умолчанию "
                          "900 = 15 минут) и загружать в Firebase только при изменениях")
     args = ap.parse_args(argv)
+
+    if not args.url:
+        args.url = args.nikasoft_url or NIKA_DEFAULT_URL
 
     # ---- целевая дата и неделя ----
     if args.date:
@@ -1502,7 +1607,8 @@ def run_once(args, anchor, monday, sunday, allow_push=True):
             if allow_push and not args.no_push:
                 try:
                     push_all_schedules(results, load_api_key(args.api_key),
-                                       args.database_url, school=args.school)
+                                       args.database_url, school=args.school,
+                                       create=args.create_classes)
                 except Exception as e:
                     print(f"Firebase-загрузка не удалась: {e}")
             return 0

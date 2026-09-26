@@ -1,4 +1,4 @@
-// For Firebase JS SDK v9+ (compat), measurementId is optional.
+// Firebase JS SDK v9+ (compat), measurementId is optional.
 // Конфиг Firebase проекта school-hub-9d8aa.
 const firebaseConfig = {
   apiKey: "AIzaSyAWWpIGsIDNE1lR7OeW9Mx3e7Af7tMmcXo",
@@ -11,12 +11,11 @@ const firebaseConfig = {
   measurementId: "G-M3RLSLR9QV"
 };
 
-// ИИ-модерация сообщений (xKiro, OpenAI-совместимый роутер).
-// ВАЖНО: ключ лежит в клиентском JS и виден любому, кто откроет сайт.
-// Для продакшена модерацию лучше выносить на сервер.
+// ИИ-модерация сообщений — через прокси на Deno Deploy (обход CORS).
+// Ключ xKiro хранится ТОЛЬКО на прокси (env.XKIRO_API_KEY), клиент его не видит.
+// Запросы идут на workerUrl + '/moderate'.
 const aiConfig = {
-  base: "https://api.xkiro.com/v1",
-  key: "sk-xt-e46331fadadcd6a0da7d222c6c1d510ff6d12442a6ea59c2",
-  model: "deepseek/deepseek-chat"
+  workerUrl: "https://broad-kestrel-9916.schoolhub-dev.deno.net",
+  model: "qwen/qwen3.6-plus:free"
 };
 window.AI_CONFIG = aiConfig;

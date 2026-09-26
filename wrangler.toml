@@ -1,0 +1,6 @@
+name = "school-moderation"
+main = "worker.js"
+compatibility_date = "2024-11-01"
+
+# Прямых секретов в этом файле НЕТ.
+# Ключ задаётся отдельно: `npx wrangler secret put XKIRO_API_KEY`
