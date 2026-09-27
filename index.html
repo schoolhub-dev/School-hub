@@ -2590,10 +2590,18 @@
     try { state.sel = JSON.parse(localStorage.getItem(LS.sel)) || {}; } catch (e) { state.sel = {}; }
   }
   function resetSelection() {
-    detachMain();
+    // Полный сброс выбора: state + localStorage.
+    // homeClass в Firebase НЕ трогаем — это «свой класс» пользователя,
+    // он должен остаться как есть (роли, админка, галочки не зависят от выбора).
     state.sel = { cid: null, cname: null, sid: null, sname: null, clid: null, clname: null };
-    saveSelection();
-    showAuth();
+    saveSelection();   // LS.sel ('sh_selection') → пустой выбор
+    // Подстраховка: чистим и возможные «старые» ключи выбора, чтобы при следующем
+    // заходе не подхватился сохранённый город/школа/класс.
+    ['sh_sel', 'sh_city', 'sh_school', 'sh_class'].forEach((k) => {
+      try { localStorage.removeItem(k); } catch (e) { /* приватный режим */ }
+    });
+    try { detachMain(); } catch (e) { console.error('resetSelection: detachMain:', e); }
+    showAuth();   // экран выбора: город → школа → класс
   }
   function onBack() {
     if (state.step === 3) {
@@ -6373,7 +6381,7 @@
         .catch((e) => showToast('Ошибка: ' + ((e && e.message) ? e.message : e)));
     });
     editor.querySelector('#bells-clear').addEventListener('click', () => {
-      askConfirm('Убрать звонки и каникулы? Отсчёты в шапке выключатся.', () => {
+      askConfirm('Убрать сохранённые звонки и каникулы? Ученики перестанут их видеть.', () => {
         schoolRef.child('bells').set(null);
         schoolRef.child('holidays').set(null);
         showToast('Сброшено');
@@ -7095,13 +7103,7 @@
      ============================================================ */
   $('#toast-close').addEventListener('click', hideToast);
   $('#back-btn').addEventListener('click', onBack);
-  $('#change-btn').addEventListener('click', () => {
-    askConfirm(
-      'Сменить класс? Текущее расписание и чат закроются — надо будет заново выбрать город, школу и класс.',
-      () => resetSelection(),
-      'Сменить'
-    );
-  });
+  $('#change-btn').addEventListener('click', resetSelection);
   $$('.tab-btn').forEach((b) => b.addEventListener('click', () => switchTab(b.dataset.tab)));
   $('#chat-form').addEventListener('submit', sendMessage);
   $('#chat-nick').addEventListener('click', changeNick);
