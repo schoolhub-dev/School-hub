@@ -133,6 +133,14 @@ const parseRusDate = (s) => {
   if (yr < 100) yr += 2000;
   return new Date(Date.UTC(yr, parseInt(m[2], 10) - 1, parseInt(m[1], 10)));
 };
+const addDays = (d, n) =>
+  new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + n));
+// даты всех дней недели (пн..вс) в формате «дд.мм.гггг», monday — Date UTC
+const weekDates = (monday) => {
+  let out = {};
+  HUB_KEYS.forEach((k, i) => { out[k] = fmtD(addDays(monday, i)); });
+  return out;
+};
 
 // ------------------------------- /moderate ---------------------------------
 
@@ -275,9 +283,9 @@ function parseTabDate(name) {
   return best ? { key, date: best } : null;
 }
 
-// Отбор вкладок на текущую неделю (строгий проход, как в Python select_week_tabs).
-function selectWeekTabs(sheets) {
-  const day0 = todayDate();
+// Отбор вкладок на неделю вокруг day0 (по умолчанию — сегодня; day0+7 = следующая).
+function selectWeekTabs(sheets, day0) {
+  day0 = day0 || todayDate();
   const monday = weekStart(day0);
   const sunday = new Date(Date.UTC(monday.getUTCFullYear(), monday.getUTCMonth(), monday.getUTCDate() + 6));
   const year = day0.getUTCFullYear();
@@ -598,22 +606,36 @@ async function handleParseGoogle(body) {
     return json({ updated: 0, errors: errors.length ? errors : ["Google Sheets недоступен"] }, 502);
   }
 
-  // 3) Выбор вкладок текущей недели + колонка класса
+  // 3) Выбор вкладок текущей и следующей недели + колонка класса
   console.log("Выбираю вкладки текущей недели…");
   const picked = selectWeekTabs(sheets);
   if (!picked.length) {
     console.error("[parse/google] вкладки текущей недели не найдены:", sheets.map((s) => s.name).join(", "));
     return json({ updated: 0, errors: ["нет вкладок текущей недели"], tabs: sheets.map((s) => s.name) }, 502);
   }
+  const pickedNext = selectWeekTabs(sheets, addDays(todayDate(), 7));
+  if (pickedNext.length) {
+    console.log("Вкладки следующей недели:", pickedNext.map((p) => p.name).join(", "));
+  } else {
+    console.log("Вкладок следующей недели не найдено — schedule_next не пишу.");
+  }
   const byName = new Map(sheets.map((s) => [s.name, s.rows]));
 
+  const monday = weekStart(todayDate());
+  const nextMonday = addDays(monday, 7);
   const days = emptyDays();
+  const daysNext = emptyDays();
   let colFound = false;
   for (const p of picked) {
     console.log("Парсю вкладку «" + p.name + "»…");
     const { lessons, found } = extractClassDay(byName.get(p.name) || [], className);
     if (found) colFound = true;
     days[p.key] = lessons;
+  }
+  for (const p of pickedNext) {
+    const { lessons, found } = extractClassDay(byName.get(p.name) || [], className);
+    if (found) colFound = true;
+    daysNext[p.key] = lessons;
   }
   if (!colFound) {
     return json({ updated: 0, errors: ["класс «" + className + "» не найден во вкладках недели"] }, 502);
@@ -623,12 +645,29 @@ async function handleParseGoogle(body) {
 
   // 4) Сравнение с Firebase и запись ТОЛЬКО изменений
   console.log("Сравниваю с Firebase…");
+  const dates = weekDates(monday);
+  const datesNext = weekDates(nextMonday);
+  const writeNext = pickedNext.length > 0;
   const current = await fbGet(base + "/schedule");
-  if (equal(current, days)) {
+  const currentDates = await fbGet(base + "/schedule_dates");
+  let currentNext = null, currentDatesNext = null;
+  if (writeNext) {
+    currentNext = await fbGet(base + "/schedule_next");
+    currentDatesNext = await fbGet(base + "/schedule_dates_next");
+  }
+  const sameNext = !writeNext ||
+    (currentNext != null && equal(currentNext, daysNext) &&
+     currentDatesNext != null && equal(currentDatesNext, datesNext));
+  if (equal(current, days) && equal(currentDates, dates) && sameNext) {
     console.log("Расписание не изменилось (updated=0)");
     return json({ updated: 0 });
   }
   await fbPut(base + "/schedule", days);
+  await fbPut(base + "/schedule_dates", dates);
+  if (writeNext) {
+    await fbPut(base + "/schedule_next", daysNext);
+    await fbPut(base + "/schedule_dates_next", datesNext);
+  }
   console.log("Расписание записано (updated=1)");
   return json({ updated: 1 });
 }
@@ -792,6 +831,30 @@ async function firebaseClassBySid(cid, sid, name) {
   return null;
 }
 
+// Запись двух недель в узлы класса (schedule/schedule_dates/schedule_next/schedule_dates_next).
+// pathBase — базовый путь узла класса (без «/schedule»). Возвращает 1, если что-то изменилось.
+async function pushClassWeek(pathBase, days, dates, daysNext, datesNext) {
+  const writeNext = daysNext != null;
+  const cur = await fbGet(pathBase + "/schedule");
+  const curDates = await fbGet(pathBase + "/schedule_dates");
+  let curNext = null, curDatesNext = null;
+  if (writeNext) {
+    curNext = await fbGet(pathBase + "/schedule_next");
+    curDatesNext = await fbGet(pathBase + "/schedule_dates_next");
+  }
+  const sameNext = !writeNext ||
+    (curNext != null && equal(curNext, daysNext) &&
+     curDatesNext != null && equal(curDatesNext, datesNext));
+  if (equal(cur, days) && equal(curDates, dates) && sameNext) return 0;
+  await fbPut(pathBase + "/schedule", days);
+  await fbPut(pathBase + "/schedule_dates", dates);
+  if (writeNext) {
+    await fbPut(pathBase + "/schedule_next", daysNext);
+    await fbPut(pathBase + "/schedule_dates_next", datesNext);
+  }
+  return 1;
+}
+
 async function handleParseNikasoft(body) {
   const errors = [];
   const cid = String(body.cid || ""), sid = String(body.sid || ""), clid = String(body.clid || "");
@@ -808,7 +871,12 @@ async function handleParseNikasoft(body) {
 
   const monday = weekStart(todayDate());
   const sunday = new Date(Date.UTC(monday.getUTCFullYear(), monday.getUTCMonth(), monday.getUTCDate() + 6));
-  console.log("Неделя:", fmtD(monday), "—", fmtD(sunday));
+  const nextMonday = addDays(monday, 7);
+  const nextSunday = addDays(monday, 13);
+  const dates = weekDates(monday);
+  const datesNext = weekDates(nextMonday);
+  console.log("Неделя:", fmtD(monday), "—", fmtD(sunday),
+              "; следующая:", fmtD(nextMonday), "—", fmtD(nextSunday));
 
   // ---- все классы или один ----
   let updated = 0;
@@ -823,14 +891,12 @@ async function handleParseNikasoft(body) {
       const days = nikaBuildWeek(data, classId, monday, sunday);
       const total = HUB_KEYS.reduce((a, k) => a + days[k].length, 0);
       if (!total) continue;
+      const daysNext = nikaBuildWeek(data, classId, nextMonday, nextSunday);
       const fcid = await firebaseClassBySid(cid, sid, nm);
       if (!fcid) { errors.push("«" + nm + "» нет в Firebase"); continue; }
-      const path = base + fcid + "/schedule";
+      const path = base + fcid;
       console.log("Парсю «" + nm + "» (" + total + " уроков), узел " + path + "…");
-      const cur = await fbGet(path);
-      if (equal(cur, days)) continue;
-      await fbPut(path, days);
-      updated++;
+      updated += await pushClassWeek(path, days, dates, daysNext, datesNext);
     }
   } else {
     const className = String(body.className || body.class || "").trim();
@@ -843,18 +909,13 @@ async function handleParseNikasoft(body) {
     const days = nikaBuildWeek(data, classId, monday, sunday);
     const total = HUB_KEYS.reduce((a, k) => a + days[k].length, 0);
     if (!total) return json({ updated: 0, errors: ["нет расписания на эту неделю"] }, 502);
+    const daysNext = nikaBuildWeek(data, classId, nextMonday, nextSunday);
 
     const targetClid = clid || await firebaseClassBySid(cid, sid, className);
     if (!targetClid) return json({ updated: 0, errors: ["класс не найден в Firebase"] }, 502);
-    const path = base + targetClid + "/schedule";
+    const path = base + targetClid;
     console.log("Сравниваю с Firebase…");
-    const cur = await fbGet(path);
-    if (equal(cur, days)) {
-      console.log("Расписание не изменилось (updated=0)");
-      return json({ updated: 0 });
-    }
-    await fbPut(path, days);
-    updated = 1;
+    updated = await pushClassWeek(path, days, dates, daysNext, datesNext);
   }
 
   console.log("Итого обновлено:", updated, errors.length ? "errors: " + errors.join("; ") : "");

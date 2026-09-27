@@ -2012,6 +2012,9 @@
     detachMain();
     const root = db.ref(curClassPath());
     addRef(mainRefs, root.child('schedule')).on('value', renderSchedule);
+    addRef(mainRefs, root.child('schedule_next')).on('value', renderScheduleNext);
+    addRef(mainRefs, root.child('schedule_dates')).on('value', renderScheduleDates);
+    addRef(mainRefs, root.child('schedule_dates_next')).on('value', renderScheduleDatesNext);
     addRef(mainRefs, root.child('homework')).on('value', renderHomework);
     addRef(mainRefs, root.child('announcements')).on('value', renderAnnouncements);
     addRef(mainRefs, root.child('announcements')).on('child_added', onNewAnnouncement);
@@ -2259,15 +2262,36 @@
 
   /* ---- Расписание ---- */
   let scheduleCache = {};
+  let scheduleNextCache = {};
+  let scheduleDatesCache = {};
+  let scheduleDatesNextCache = {};
   let scheduleView = 'today';
   function renderSchedule(snap) {
     scheduleCache = snap.val() || {};
     paintSchedule();
   }
+  function renderScheduleNext(snap) {
+    scheduleNextCache = snap.val() || {};
+    paintSchedule();
+  }
+  function renderScheduleDates(snap) {
+    scheduleDatesCache = snap.val() || {};
+    paintSchedule();
+  }
+  function renderScheduleDatesNext(snap) {
+    scheduleDatesNextCache = snap.val() || {};
+    paintSchedule();
+  }
   function paintSchedule() {
-    const data = scheduleCache;
-    const todayIdx = new Date().getDay();
-    const tomorrowIdx = (todayIdx + 1) % 7;
+    const today = new Date();
+    const fmtD = (d) => `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
+    const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+    const keyOf = (d) => DAY_KEYS[d.getDay()];
+    const mondayOf = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate() - ((d.getDay() + 6) % 7));
+    const todayKey = keyOf(today);
+    const tomorrowKey = keyOf(tomorrow);
+    // Завтра = понедельник следующей недели, только если сегодня воскресенье.
+    const tomorrowNextWeek = mondayOf(tomorrow).getTime() > mondayOf(today).getTime();
     const el = $('#tab-schedule');
     const head = `
       <div class="flex gap-1 bg-slate-900 border border-slate-800 rounded-xl p-1">
@@ -2279,8 +2303,8 @@
       <button id="sch-refresh" class="w-full rounded-xl bg-slate-900 border border-slate-800 py-2.5 text-xs font-bold hover:bg-slate-800 active:scale-95 transition">
         🔄 Обновить расписание
       </button>` : '';
-    const dayBlock = (key, title, dayName) => {
-      const lessons = Array.isArray(data[key]) ? data[key] : [];
+    const dayBlock = (data, dates, key, title) => {
+      const lessons = Array.isArray(data && data[key]) ? data[key] : [];
       const inner = lessons.length
         ? lessons.map((l, i) => `
             <li class="flex items-center gap-3 px-1">
@@ -2288,18 +2312,26 @@
               <span class="flex-1 min-w-0 text-sm break-words">${esc(l)}</span>
             </li>`).join('')
         : '<li class="text-sm text-slate-500 px-1">Уроков нет 😌</li>';
+      const dayName = DAY_NAMES[DAY_KEYS.indexOf(key)];
+      const dt = (dates && dates[key]) ? dates[key] : '';
       return `
         <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
-          <h3 class="font-bold text-sm mb-3">${title} · ${dayName}</h3>
+          <h3 class="font-bold text-sm mb-3">${title}${title ? ' · ' : ''}${dayName}${dt ? ', ' + dt : ''}</h3>
           <ul class="space-y-2.5">${inner}</ul>
         </div>`;
     };
     let body = '';
-    if (scheduleView === 'today') body = dayBlock(DAY_KEYS[todayIdx], 'Сегодня', DAY_NAMES[todayIdx]);
-    else if (scheduleView === 'tomorrow') body = dayBlock(DAY_KEYS[tomorrowIdx], 'Завтра', DAY_NAMES[tomorrowIdx]);
-    else {
+    if (scheduleView === 'today') {
+      body = dayBlock(scheduleCache, scheduleDatesCache, todayKey, 'Сегодня');
+    } else if (scheduleView === 'tomorrow') {
+      if (tomorrowNextWeek) {
+        body = dayBlock(scheduleNextCache, scheduleDatesNextCache, tomorrowKey, 'Завтра');
+      } else {
+        body = dayBlock(scheduleCache, scheduleDatesCache, tomorrowKey, 'Завтра');
+      }
+    } else {
       const order = ['mon','tue','wed','thu','fri','sat','sun'];
-      body = order.map((k) => dayBlock(k, DAY_NAMES[DAY_KEYS.indexOf(k)], '')).join('');
+      body = order.map((k) => dayBlock(scheduleCache, scheduleDatesCache, k, '')).join('');
     }
     const copyBtn = `<button id="sch-copy" class="w-full rounded-xl bg-slate-800 hover:bg-slate-700 py-2.5 text-xs font-bold">📋 Скопировать расписание</button>`;
     el.innerHTML = (head + (refreshBtn ? '<div>' + refreshBtn + '</div>' : '')) + body + copyBtn;

@@ -868,7 +868,33 @@ def _push_schedule(base, node, schedule, token):
         raise RuntimeError(f"Firebase вернул {resp.status_code}: {resp.text[:160]}")
 
 
-def create_firebase_class(base, school_base, class_name, days, token):
+def _week_paths(node):
+    """Пути четырёх узлов недели одного класса из пути …/classes/{clid}/schedule.
+
+    Возвращает (schedule, schedule_next, schedule_dates, schedule_dates_next).
+    schedule_next — расписание следующей недели (уроки), schedule_dates /
+    schedule_dates_next — даты дней текущей/следующей недели («дд.мм.гггг»)."""
+    root = node.rsplit("/schedule", 1)[0]
+    return (root + "/schedule", root + "/schedule_next",
+            root + "/schedule_dates", root + "/schedule_dates_next")
+
+
+def _push_week_schedule(base, node, token, schedule, schedule_next=None,
+                        dates=None, dates_next=None):
+    """PUT всех узлов недели класса: schedule (обязателен), schedule_next и
+    узлы дат — только если данные для них переданы (иначе не трогаем)."""
+    s_path, sn_path, d_path, dn_path = _week_paths(node)
+    _push_schedule(base, s_path, schedule, token)
+    if schedule_next is not None:
+        _push_schedule(base, sn_path, schedule_next, token)
+    if dates is not None:
+        _push_schedule(base, d_path, dates, token)
+    if dates_next is not None:
+        _push_schedule(base, dn_path, dates_next, token)
+
+
+def create_firebase_class(base, school_base, class_name, days, token,
+                          schedule_next=None, dates=None, dates_next=None):
     """Авто-создание узла класса в школе и запись расписания (--create-classes).
 
     school_base — «cities/{c}/schools/{s}/classes». Пустой POST создаёт
@@ -887,11 +913,14 @@ def create_firebase_class(base, school_base, class_name, days, token):
     if resp.status_code != 200:
         raise RuntimeError(f"Не удалось записать имя класса: "
                            f"{resp.status_code} {resp.text[:160]}")
-    _push_schedule(base, school_base + "/" + clid + "/schedule", days, token)
+    _push_week_schedule(base, school_base + "/" + clid + "/schedule", token,
+                        days, schedule_next=schedule_next, dates=dates,
+                        dates_next=dates_next)
     return clid
 
 
-def push_to_firebase(schedule, class_name, api_key, db_url, school=None):
+def push_to_firebase(schedule, class_name, api_key, db_url, school=None,
+                     schedule_next=None, dates=None, dates_next=None):
     token = firebase_token(api_key)
     nodes, base, _bases = firebase_class_nodes(db_url, token, school=school)
     node = resolve_firebase_node(nodes, class_name)
@@ -902,12 +931,17 @@ def push_to_firebase(schedule, class_name, api_key, db_url, school=None):
         raise RuntimeError(f"Класс «{class_name}» не найден в Firebase "
                            f"(или имя неоднозначно).")
     print(f"Загружаю расписание для {class_name}…")
-    _push_schedule(base, node[0], schedule, token)
+    _push_week_schedule(base, node[0], token, schedule,
+                        schedule_next=schedule_next, dates=dates,
+                        dates_next=dates_next)
     print(f"OK: {node[0]} ({node[1]}) обновлён.")
 
 
-def push_all_schedules(schedules, api_key, db_url, school=None, create=False):
+def push_all_schedules(schedules, api_key, db_url, school=None, create=False,
+                       schedules_next=None, dates=None, dates_next=None):
     """Загружает расписания всех классов: {имя: {mon..sun}} -> /schedule.
+    schedules_next — {имя: {mon..sun}} (расписание следующей недели) -> /
+    schedule_next; dates / dates_next — даты дней текущей/следующей недели.
     school — подстрока названия школы (см. firebase_class_nodes).
     create — если класс не найден в нужной школе, создать его узел и записать
     расписание (нужно указание --school)."""
@@ -919,11 +953,14 @@ def push_all_schedules(schedules, api_key, db_url, school=None, create=False):
     if create and school and len(school_bases) == 1:
         create_base = school_bases[0][1]
     for cl, days in schedules.items():
+        next_days = (schedules_next or {}).get(cl)
         node = resolve_firebase_node(nodes, cl)
         if not node and create_base:
             try:
                 clean = normalize_class_display(cl) or str(cl)
-                create_firebase_class(base, create_base, clean, days, token)
+                create_firebase_class(base, create_base, clean, days, token,
+                                      schedule_next=next_days,
+                                      dates=dates, dates_next=dates_next)
                 created.append(cl)
                 print(f"  {cl}: создан узел класса в "
                       f"«{school_bases[0][0]}» и записано расписание.")
@@ -937,7 +974,9 @@ def push_all_schedules(schedules, api_key, db_url, school=None, create=False):
             continue
         print(f"  {cl}: загружаю расписание…")
         try:
-            _push_schedule(base, node[0], days, token)
+            _push_week_schedule(base, node[0], token, days,
+                                schedule_next=next_days,
+                                dates=dates, dates_next=dates_next)
             ok.append(cl)
         except Exception as e:
             missing.append(cl)
@@ -972,6 +1011,12 @@ def instructions_manual():
 
 def fmt_date(dt):
     return f"{dt.day:02d}.{dt.month:02d}.{dt.year}"
+
+
+def week_dates(monday):
+    """Даты всех дней недели {key: «дд.мм.гггг»} от понедельника monday."""
+    return {k: fmt_date(monday + datetime.timedelta(days=idx))
+            for k, idx in PY_KEYS.items()}
 
 
 def parse_week_from_date(dt):
@@ -1264,7 +1309,12 @@ def nika_run(args, monday, sunday, allow_push=True):
             return 1
         print(f"Найдено классов: {', '.join(names)}")
         print(f"Неделя {span_f}; обрабатываю " + "… ".join(names) + "…")
+        next_monday = sunday + datetime.timedelta(days=1)
+        next_sunday = next_monday + datetime.timedelta(days=6)
+        span_n = (f"{next_monday.day:02d}.{next_monday.month:02d}"
+                  f"–{next_sunday.day:02d}.{next_sunday.month:02d}")
         results, missing = {}, []
+        results_next = {}
         for nm in names:
             cid = nika_class_id(data, nm)
             if cid is None:
@@ -1278,27 +1328,38 @@ def nika_run(args, monday, sunday, allow_push=True):
                 missing.append(nm)
                 continue
             results[nm] = days
+            days_next, _u2, _a2, _s2 = nika_build_week(data, cid,
+                                                       next_monday, next_sunday)
+            results_next[nm] = days_next
             print(f"  {nm}: {total} уроков за неделю")
             if days["sat"]:
                 print(f"    {DAY_NAMES['sat']}: " + " | ".join(days["sat"]))
         if not results:
             print("Ни один класс не распознан в данных.")
             return 1
+        dates = week_dates(monday)
+        dates_next = week_dates(next_monday)
         with open("schedule_all.json", "w", encoding="utf-8") as f:
-            json.dump({"week": span_f, "classes": results}, f,
+            json.dump({"week": span_f, "week_next": span_n,
+                       "classes": results, "classes_next": results_next,
+                       "dates": dates, "dates_next": dates_next}, f,
                       ensure_ascii=False, indent=2)
         print("Записал: schedule_all.json")
         for nm, days in results.items():
             fname = "".join(ch for ch in str(nm) if ch.isalnum())
             with open(f"schedule_{fname}.json", "w", encoding="utf-8") as f:
-                json.dump({"class": nm, "days": days}, f,
+                json.dump({"class": nm, "days": days,
+                           "days_next": results_next.get(nm),
+                           "dates": dates, "dates_next": dates_next}, f,
                           ensure_ascii=False, indent=2)
         print("Записал: schedule_<класс>.json для каждого класса.")
         if allow_push and not args.no_push:
             try:
                 push_all_schedules(results, load_api_key(args.api_key),
                                    args.database_url, school=args.school,
-                                   create=args.create_classes)
+                                   create=args.create_classes,
+                                   schedules_next=results_next,
+                                   dates=dates, dates_next=dates_next)
             except Exception as e:
                 print(f"Firebase-загрузка не удалась: {e}")
         return 0
@@ -1328,7 +1389,17 @@ def nika_run(args, monday, sunday, allow_push=True):
     for hk, d, reason in skipped:
         print(f"  {DAY_NAMES[hk]} {fmt_date(d)}: {reason} — день пропущен")
 
-    payload = {"class": args.class_name, "days": days}
+    next_monday = sunday + datetime.timedelta(days=1)
+    next_sunday = next_monday + datetime.timedelta(days=6)
+    span_n = (f"{next_monday.day:02d}.{next_monday.month:02d}"
+              f"–{next_sunday.day:02d}.{next_sunday.month:02d}")
+    days_next, _u2, _a2, _s2 = nika_build_week(data, class_id,
+                                               next_monday, next_sunday)
+    dates = week_dates(monday)
+    dates_next = week_dates(next_monday)
+
+    payload = {"class": args.class_name, "days": days,
+               "days_next": days_next, "dates": dates, "dates_next": dates_next}
     with open(args.out, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=2)
     print(f"Записал: {args.out}")
@@ -1337,7 +1408,7 @@ def nika_run(args, monday, sunday, allow_push=True):
                    "school": data.get("SCHOOL_NAME"),
                    "schedule_id": schedule_id,
                    "class": args.class_name, "class_id": class_id,
-                   "week": span_f, "periods": active,
+                   "week": span_f, "week_next": span_n, "periods": active,
                    "days": [{ "day": hk, "date": d.isoformat(),
                               "period": pid, "lessons": days[hk] }
                             for hk, d, pid in used]},
@@ -1348,7 +1419,9 @@ def nika_run(args, monday, sunday, allow_push=True):
         try:
             push_to_firebase(days, args.class_name,
                              load_api_key(args.api_key), args.database_url,
-                             school=args.school)
+                             school=args.school,
+                             schedule_next=days_next, dates=dates,
+                             dates_next=dates_next)
         except Exception as e:
             print(f"Firebase-загрузка не удалась: {e}")
     return 0
@@ -1452,13 +1525,18 @@ def watch_loop(args, anchor, monday, sunday):
         api = load_api_key(args.api_key)
         if is_multi:
             with open("schedule_all.json", encoding="utf-8") as f:
-                results = json.load(f)["classes"]
-            push_all_schedules(results, api, args.database_url, school=args.school)
+                j = json.load(f)
+            push_all_schedules(j.get("classes") or {}, api, args.database_url,
+                               school=args.school,
+                               schedules_next=j.get("classes_next") or None,
+                               dates=j.get("dates"), dates_next=j.get("dates_next"))
         else:
             with open(args.out, encoding="utf-8") as f:
-                days = json.load(f)["days"]
-            push_to_firebase(days, args.class_name, api, args.database_url,
-                             school=args.school)
+                j = json.load(f)
+            push_to_firebase(j.get("days") or {}, args.class_name, api,
+                             args.database_url, school=args.school,
+                             schedule_next=j.get("days_next") or None,
+                             dates=j.get("dates"), dates_next=j.get("dates_next"))
 
     last = None
     first = True
@@ -1544,7 +1622,11 @@ def run_once(args, anchor, monday, sunday, allow_push=True):
             print("Флаги --all-classes/--grade/--classes не поддерживаются вместе с --sheet.")
             return 2
         if multi:
+            next_monday = sunday + datetime.timedelta(days=1)
+            next_sunday = next_monday + datetime.timedelta(days=6)
             picked = select_week_tabs(sheets, monday, sunday, anchor.year)
+            picked_next = select_week_tabs(sheets, next_monday, next_sunday,
+                                           anchor.year)
             if not picked:
                 parsed_all = [r for r in (parse_tab_date(nm) for nm in names) if r]
                 avail = sorted({(key, dt) for key, dt in parsed_all}, key=lambda x: x[1])
@@ -1562,6 +1644,14 @@ def run_once(args, anchor, monday, sunday, allow_push=True):
             if loose_names:
                 print("Внимание: у вкладок " + ", ".join(loose_names)
                       + " дата не совпадает с днём недели в названии (беру их как есть).")
+            if picked_next:
+                span_n = f"{picked_next[0][1].day:02d}.{picked_next[0][1].month:02d}" \
+                         f"–{picked_next[-1][1].day:02d}.{picked_next[-1][1].month:02d}"
+                print(f"Следующая неделя: {span_n}; найдено: "
+                      + ", ".join(nm for _k, _d, nm, _s in picked_next))
+            else:
+                span_n = None
+                print("Вкладок следующей недели не найдено — schedule_next не пишу.")
 
             by_name = {nm: m for nm, m in sheets}
             tab_names = [nm for _k, _d, nm, _s in picked]
@@ -1587,6 +1677,15 @@ def run_once(args, anchor, monday, sunday, allow_push=True):
             if not results:
                 print("\nНи один класс не распознан в таблице.")
                 return 1
+            results_next, missing_next = {}, []
+            if picked_next:
+                results_next, missing_next = build_class_weeks(picked_next,
+                                                               by_name, clist)
+                for cl in missing_next:
+                    print(f"  {cl}: класс не найден в вкладках следующей недели "
+                          "— schedule_next пропускается.")
+            dates = week_dates(monday)
+            dates_next = week_dates(next_monday) if picked_next else {}
             for cl, days in results.items():
                 total = sum(len(days[k]) for k in HUB_KEYS)
                 print(f"  {cl}: {total} уроков за неделю")
@@ -1594,13 +1693,17 @@ def run_once(args, anchor, monday, sunday, allow_push=True):
                     print(f"    {DAY_NAMES['sat']}: " + " | ".join(days["sat"]))
 
             with open("schedule_all.json", "w", encoding="utf-8") as f:
-                json.dump({"week": span_f, "classes": results}, f,
+                json.dump({"week": span_f, "week_next": span_n,
+                           "classes": results, "classes_next": results_next,
+                           "dates": dates, "dates_next": dates_next}, f,
                           ensure_ascii=False, indent=2)
             print("Записал: schedule_all.json")
             for cl, days in results.items():
                 name = "".join(ch for ch in cl if ch.isalnum())
                 with open(f"schedule_{name}.json", "w", encoding="utf-8") as f:
-                    json.dump({"class": cl, "days": days}, f,
+                    json.dump({"class": cl, "days": days,
+                               "days_next": results_next.get(cl),
+                               "dates": dates, "dates_next": dates_next}, f,
                               ensure_ascii=False, indent=2)
             print("Записал: schedule_<класс>.json для каждого класса.")
 
@@ -1608,7 +1711,9 @@ def run_once(args, anchor, monday, sunday, allow_push=True):
                 try:
                     push_all_schedules(results, load_api_key(args.api_key),
                                        args.database_url, school=args.school,
-                                       create=args.create_classes)
+                                       create=args.create_classes,
+                                       schedules_next=results_next or None,
+                                       dates=dates, dates_next=dates_next or None)
                 except Exception as e:
                     print(f"Firebase-загрузка не удалась: {e}")
             return 0
@@ -1646,8 +1751,12 @@ def run_once(args, anchor, monday, sunday, allow_push=True):
                     print(f"Firebase-загрузка не удалась: {e}")
             return 0
 
-        # ---- НОВЫЙ режим: вкладки с датами за текущую неделю ----
+        # ---- НОВЫЙ режим: вкладки с датами за текущую и следующую недели ----
+        next_monday = sunday + datetime.timedelta(days=1)
+        next_sunday = next_monday + datetime.timedelta(days=6)
         picked = select_week_tabs(sheets, monday, sunday, anchor.year)
+        picked_next = select_week_tabs(sheets, next_monday, next_sunday,
+                                       anchor.year)
         if not picked:
             parsed_all = [r for r in (parse_tab_date(nm) for nm in names) if r]
             avail = sorted({(key, dt) for key, dt in parsed_all}, key=lambda x: x[1])
@@ -1665,6 +1774,14 @@ def run_once(args, anchor, monday, sunday, allow_push=True):
         if loose_names:
             print("Внимание: у вкладок " + ", ".join(loose_names)
                   + " дата не совпадает с днём недели в названии (беру их как есть).")
+        if picked_next:
+            span_n = f"{picked_next[0][1].day:02d}.{picked_next[0][1].month:02d}" \
+                     f"–{picked_next[-1][1].day:02d}.{picked_next[-1][1].month:02d}"
+            print(f"Следующая неделя: {span_n}; найдено: "
+                  + ", ".join(nm for _k, _d, nm, _s in picked_next))
+        else:
+            span_n = None
+            print("Вкладок следующей недели не найдено — schedule_next не пишу.")
 
         days = {k: [] for k in HUB_KEYS}
         any_col = False
@@ -1689,13 +1806,25 @@ def run_once(args, anchor, monday, sunday, allow_push=True):
                 dt = monday + datetime.timedelta(days=PY_KEYS[k])
                 print(f"  Нет вкладки на {DAY_NAMES[k]} {fmt_date(dt)} — день пропущен.")
 
-        payload = {"class": args.class_name, "days": days}
+        days_next = {k: [] for k in HUB_KEYS}
+        for key, dt, nm, _strict in picked_next:
+            lessons, _has_col = extract_class_day(by_name.get(nm, []), args.class_name)
+            days_next[key] = lessons
+        dates = week_dates(monday)
+        dates_next = week_dates(next_monday) if picked_next else {}
+
+        payload = {"class": args.class_name, "days": days,
+                   "days_next": days_next or None,
+                   "dates": dates, "dates_next": dates_next or None}
         with open(args.out, "w", encoding="utf-8") as f:
             json.dump(payload, f, ensure_ascii=False, indent=2)
         print(f"Записал: {args.out}")
         raw_tabs = {nm: by_name.get(nm, []) for _k, _d, nm, _s in picked}
+        raw_tabs_next = {nm: by_name.get(nm, []) for _k, _d, nm, _s in picked_next}
         with open("schedule_raw.json", "w", encoding="utf-8") as f:
-            json.dump({"class": args.class_name, "week": span_f, "tabs": raw_tabs}, f,
+            json.dump({"class": args.class_name, "week": span_f,
+                       "week_next": span_n, "tabs": raw_tabs,
+                       "tabs_next": raw_tabs_next}, f,
                       ensure_ascii=False, indent=2)
         print("Записал: schedule_raw.json")
 
@@ -1703,7 +1832,9 @@ def run_once(args, anchor, monday, sunday, allow_push=True):
             try:
                 push_to_firebase(days, args.class_name,
                                  load_api_key(args.api_key), args.database_url,
-                                 school=args.school)
+                                 school=args.school,
+                                 schedule_next=days_next or None,
+                                 dates=dates, dates_next=dates_next or None)
             except Exception as e:
                 print(f"Firebase-загрузка не удалась: {e}")
         return 0
