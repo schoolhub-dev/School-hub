@@ -1130,7 +1130,7 @@
         <button id="admin-close" class="h-9 w-9 rounded-full bg-slate-800 flex items-center justify-center font-bold hover:bg-slate-700" aria-label="Закрыть">✕</button>
       </div>
 
-      <nav id="admin-nav" class="grid grid-cols-8 gap-0.5 px-2 py-3 border-b border-slate-800">
+      <nav id="admin-nav" class="grid grid-cols-9 gap-0.5 px-2 py-3 border-b border-slate-800">
         <button data-apage="cities"  class="apage-btn py-2 rounded-lg text-[11px] leading-tight font-semibold bg-slate-800 text-white">Города</button>
         <button data-apage="schools" class="apage-btn py-2 rounded-lg text-[11px] leading-tight font-semibold text-slate-400">Школы</button>
         <button data-apage="classes" class="apage-btn py-2 rounded-lg text-[11px] leading-tight font-semibold text-slate-400">Классы</button>
@@ -1139,6 +1139,7 @@
         <button data-apage="stats"   class="apage-btn py-2 rounded-lg text-[11px] leading-tight font-semibold text-slate-400">Статы</button>
         <button data-apage="messages" class="apage-btn py-2 rounded-lg text-[11px] leading-tight font-semibold text-slate-400">Вопросы</button>
         <button data-apage="flagged"  class="apage-btn py-2 rounded-lg text-[11px] leading-tight font-semibold text-slate-400">Интересное</button>
+        <button data-apage="dms"      class="apage-btn py-2 rounded-lg text-[11px] leading-tight font-semibold text-slate-400">ЛС</button>
       </nav>
 
       <div id="admin-body" class="flex-1 overflow-y-auto p-4"></div>
@@ -1292,6 +1293,8 @@
     authorized: sessionStorage.getItem('sh_admin_auth') === '1',
     viaRole: false,   // админ по roles/{uid} === 'admin'
   };
+  // Открытый в «ЛС» диалог модератора: { uid, peer } (только чтение).
+  let adminDmV = { uid: null, peer: null };
 
   // UID администраторов, зашитые прямо в клиент (главный админ — его нельзя «снять»).
   const HARDCODE_ADMIN_UIDS = ['LEOnIfZks4hFIVJe1o2YMqcCdeZ2'];
@@ -3917,7 +3920,7 @@
   // Обратите внимание: сообщение сразу пишется в chat, а проверка xKiro идёт
   // параллельно и не блокирует UI. Если ИИ определит нарушение — копия
   // сохраняется в /flagged_messages/{city}/{school}/{class}/{messageId}.
-  function writeFlaggedCopy(text, chatPath, messageId, details, scope) {
+  function writeFlaggedCopy(text, chatPath, messageId, details, scope, extra) {
     // Единый путь: сегменты берём из state.sel (ключи города/школы/класса),
     // а не из строки chatPath. Это исключает разнобой вида classes/6Б vs.
     // classes/6б vs. classes/6b для отдельного класса.
@@ -3932,19 +3935,30 @@
         else if (p === 'classes') clid = parts[i + 1];
       });
     }
-    // Лента живёт не в классе, а в школе: её флаги складываем
-    // в подветку _feed, чтобы не смешивать с сообщениями класса.
-    // Для ленты школы класс не указан — пишем в корзину _feed, чтобы
-    // такие флаги не сыпались в общий список класса.
+    // Корзина флага зависит от раздела:
+    //  - лента / комментарии ленты  -> общая корзина _feed школы
+    //  - общий чат школы            -> корзина _school
+    //  - личные сообщения           -> корзина _dms (ЛС живут вне классов/школ)
+    //  - чат класса                 -> свой класс clid
     const sc = scope || 'class';
-    const bucket = (sc.indexOf('feed') === 0) ? '_feed' : clid;
+    let bucket;
+    if (sc === 'dm') bucket = '_dms';
+    else if (sc.indexOf('feed') === 0) bucket = '_feed';
+    else if (sc === 'school') bucket = '_school';
+    else bucket = clid;
+    // Для ЛС класс/школу всегда берём из «своего класса» отправителя: выбранный
+    // в шапке класс может быть чужим, а автор флага пишет свой адрес школы.
+    if (sc === 'dm') {
+      const h = homeClassData;
+      if (h && h.cityId && h.schoolId) { cid = h.cityId; sid = h.schoolId; }
+    }
     if (!cid || !sid || !bucket || !messageId) {
-      console.error('[flagAfter] не собрать путь флага:', chatPath, 'id=', messageId);
+      console.error('[flagAfter] не собрать путь флага:', chatPath, 'id=', messageId, 'scope=', sc);
       return;
     }
     const flagPath = '/flagged_messages/' + cid + '/' + sid + '/' + bucket + '/' + messageId;
     console.log('writeFlaggedCopy: пишу флаг ->', flagPath);
-    const rec = {
+    const rec = Object.assign({
       text: text,
       nick: nick(),
       uid: HubAuth.uid,
@@ -3958,23 +3972,23 @@
       category: (details && details.category) || '',
       reason: (details && details.reason) || '',
       flagged: true,
-    };
+    }, extra || {});
     return db.ref(flagPath)
       .set(rec)
-      .then(() => console.log('[flagAfter] флаг записан:', flagPath))
+      .then(() => console.log('Флаг записан:', flagPath))
       .catch((err) => console.error('[flagAfter] не удалось записать флаг:', err));
   }
   // Фоновая проверка: сообщение уже в чате, ИИ идёт параллельно и не блокирует UI.
   // При вердикте BAN пишем копию в flagged_messages. При OK — тишина.
   // REVIEW (сбой ИИ/сети/таймаут) — флаг не создаём, но громко пишем об этом.
-  function flagAfterModeration(text, chatPath, messageId, scope) {
+  function flagAfterModeration(text, chatPath, messageId, scope, extra) {
     const sc = scope || (chatScope === 'school' ? 'school' : 'class');
     console.log('[flagAfter] старт:', chatPath, '| scope =', sc, '| messageId =', messageId);
     const details = {};
     moderateMessage(text, details)
       .then(function (verdict) {
         console.log('[flagAfter] moderateMessage ответ:', verdict, '| ', (details && details.category) || '', '| ', (details && details.reason) || '');
-        if (verdict === 'BAN') return writeFlaggedCopy(text, chatPath, messageId, details, sc);
+        if (verdict === 'BAN') return writeFlaggedCopy(text, chatPath, messageId, details, sc, extra);
         if (verdict === 'REVIEW') {
           // ИИ не дал вердикт (воркер недоступен/500/таймаут) — подстраховка
           // локальным фильтром, чтобы мат/оскорбления всё равно попали
@@ -3984,12 +3998,26 @@
             console.warn('[flagAfter] REVIEW, но локальный фильтр нашёл нарушение:', hits.join(', '), '→ флаг создаётся');
             details.category = 'мат';
             details.reason = 'локальный фильтр (' + hits.join(', ') + ')';
-            return writeFlaggedCopy(text, chatPath, messageId, details, sc);
+            return writeFlaggedCopy(text, chatPath, messageId, details, sc, extra);
           }
           console.warn('[flagAfter] REVIEW → флаг не создан (нет ответа ИИ / ошибка сети). Проверьте worker.');
         }
       })
       .catch((err) => console.error('[flagAfter] ОШИБКА цепочки модерации:', err));
+  }
+  // Обе ветки ЛС (своя и зеркальная) записываются одним деревом; при флаге
+  // храним пути обеих, чтобы модератор в админке мог удалить оба экземпляра.
+  function flagDm(text, mineKey, peerKey, dmPath) {
+    const me = window.HubAuth && HubAuth.uid;
+    const peer = dmPeer;
+    if (!me || !peer || !mineKey) return;
+    console.log('Модерация ЛС: отправляю запрос →', text.slice(0, 80) + (text.length > 80 ? '…' : ''));
+    flagAfterModeration(text, dmPath, mineKey, 'dm', {
+      from_uid: me,
+      to_uid: peer,
+      dm_path: dmPath + '/' + mineKey,
+      dm_peer_path: '/dms/' + peer + '/' + me + '/' + (peerKey || ''),
+    });
   }
 
   function sendMessage(e) {
@@ -4018,8 +4046,8 @@
           clearEdit();
           input.value = '';
           showToast('Сообщение изменено');
-          console.log('sendMessage: вызываю flagAfterModeration (edit)');
-          flagAfterModeration(text, chatPath, editMsg.key);
+          console.log('sendMessage: вызываю flagAfterModeration (edit)', chatPath);
+          flagAfterModeration(text, chatPath + '/chat', editMsg.key, isSchoolChat() ? 'school' : 'class');
         }).catch((err2) => showToast('Ошибка: ' + (err2.message || err2)));
         return;
       }
@@ -4045,7 +4073,7 @@
       input.value = '';
       setTimeout(refreshChat, 500);
       console.log('sendMessage: вызываю flagAfterModeration (new)');
-      flagAfterModeration(text, chatPath, pushed.key);
+      flagAfterModeration(text, chatPath + '/chat', pushed.key, isSchoolChat() ? 'school' : 'class');
     });
   }
 
@@ -4498,7 +4526,14 @@
     }, rec || {});
     const base = '/dms/';
     return db.ref(base + me + '/' + peer).push(mk(true)).then((mine) => {
-      return db.ref(base + peer + '/' + me).push(mk(false)).then(() => mine);
+      return db.ref(base + peer + '/' + me).push(mk(false)).then((peerRef) => {
+        // Push-ключи двух копий одного сообщения разные — проставим друг другу
+        // mirrorKey, чтобы модератор мог удалить обе копии (см. ЛС в админке).
+        return Promise.all([
+          db.ref(base + me + '/' + peer + '/' + mine.key).update({ mirrorKey: peerRef.key }),
+          db.ref(base + peer + '/' + me + '/' + peerRef.key).update({ mirrorKey: mine.key }),
+        ]).then(() => ({ mine: mine, peer: peerRef }));
+      });
     });
   }
   function sendDmText(e) {
@@ -4511,7 +4546,12 @@
       if (err) { showToast(err); return; }
       if (!quietGuard()) return;
       pushDm({ text: text.slice(0, 500) })
-        .then(() => { input.value = ''; })
+        .then((refs) => {
+          input.value = '';
+          // Ветка отправителя — источник истины для флага; по ней модератор
+          // откроет диалог в админке (пути обеих копий кладутся в флаг).
+          flagDm(text, refs.mine.key, refs.peer.key, '/dms/' + window.HubAuth.uid + '/' + dmPeer);
+        })
         .catch((e2) => showToast('Ошибка: ' + ((e2 && e2.message) ? e2.message : e2)));
     });
   }
@@ -5192,7 +5232,7 @@
     const ck = db.ref(path).push().key;
     db.ref(`${path}/${ck}`).set(rec).then(() => {
       inp.value = '';
-      flagAfterModeration(text, `${feedPath()}/${k}`, ck, 'feed_cmt');
+      flagAfterModeration(text, path, ck, 'feed_cmt', { postKey: k, commentKey: ck });
     }).catch((e) => showToast('Комментарий не отправлен: ' + ((e && e.message) ? e.message : e)));
   }
   function deleteComment(k, ck) {
@@ -6026,6 +6066,7 @@
     else if (name === 'stats') renderAdminStats(body);
     else if (name === 'messages') renderAdminMessages(body);
     else if (name === 'flagged') renderAdminFlagged(body);
+    else if (name === 'dms') renderAdminDms(body);
   }
 
   const aInput = (cls) => `w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-sm placeholder-slate-500 outline-none focus:border-indigo-500 transition ${cls || ''}`;
@@ -6603,6 +6644,35 @@
       }));
     }).catch((err) => { wrap.innerHTML = emptyNote('Не удалось загрузить: ' + ((err && err.message) ? err.message : err)); });
   }
+  // Бейдж раздела на флаге: общий чат / ЛС / лента / комментарий.
+  function flagScopeBadge(sc) {
+    if (sc === 'school') return ' <span class="text-[9px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-bold align-middle">ОБЩИЙ ЧАТ</span>';
+    if (sc === 'dm') return ' <span class="text-[9px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 font-bold align-middle">ЛС</span>';
+    if (sc === 'feed') return ' <span class="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold align-middle">ЛЕНТА</span>';
+    if (sc === 'feed_cmt') return ' <span class="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold align-middle">КОММЕНТАРИЙ</span>';
+    return '';
+  }
+  // Подпись места для флагов из общих корзин (у них нет класса).
+  function flagLocText(f, mn) {
+    if (f.clid === '_dms') return 'ЛС';
+    if (f.clid === '_feed') return 'Лента школы';
+    if (f.clid === '_school') return 'Общий чат школы';
+    return mn.cname + ', ' + mn.sname + ', ' + mn.clname;
+  }
+  // Данные флага для кнопок «Открыть…» / «Игнорировать» / «Удалить».
+  function fdataOf(f, mn) {
+    return JSON.stringify({
+      cid: f.cid, sid: f.sid, clid: f.clid, key: f.key,
+      cname: mn.cname, sname: mn.sname, clname: mn.clname,
+      chatPath: (f.m && f.m.chatPath) || '',
+      scope: (f.m && f.m.scope) || '',
+      dmPath: (f.m && f.m.dm_path) || '',
+      dmPeerPath: (f.m && f.m.dm_peer_path) || '',
+      fromUid: (f.m && f.m.from_uid) || '',
+      toUid: (f.m && f.m.to_uid) || '',
+    });
+  }
+
   function renderAdminStats(body) {
     body.innerHTML = `<div id="stats-cards" class="grid grid-cols-3 gap-2">${spinner()}</div>
       <div id="stats-extra" class="mt-3 rounded-2xl bg-slate-900 border border-slate-800 p-4">${spinner()}</div>
@@ -6721,13 +6791,15 @@
         const nick2 = (uid && usersById[uid] && usersById[uid].nick) || f.m.nick || f.m.name || 'Ученик';
         const st = uid ? HubModeration.statusOf(bans[uid] || null) : { label: 'не определён', cls: 'text-slate-500' };
         const mn = classNames[f.cid + '/' + f.sid + '/' + f.clid] || { cname: f.cid, sname: f.sid, clname: f.clid };
-        const fdata = JSON.stringify({ cid: f.cid, sid: f.sid, clid: f.clid, key: f.key, cname: mn.cname, sname: mn.sname, clname: mn.clname, chatPath: (f.m && f.m.chatPath) || '' });
+        const fdata = fdataOf(f, mn);
+        const scopeBadge = flagScopeBadge(f.m.scope);
+        const locText = flagLocText(f, mn);
         const dis = uid ? '' : ' opacity-40 pointer-events-none';
         const bt = (label, act, extra) => `<button data-act="${act}" ${extra} class="rounded-lg bg-slate-800 hover:bg-slate-700 px-2.5 py-1.5 text-[11px] font-semibold">${label}</button>`;
         return `
         <div class="border-b border-slate-800/60 py-2.5">
           <div class="flex items-center justify-between gap-2 flex-wrap">
-            <span class="text-xs font-bold">${esc(nick2)}${verifyBadge(uid)} <span class="text-[10px] text-slate-500">${esc(mn.cname)}, ${esc(mn.sname)}, ${esc(mn.clname)}</span></span>
+            <span class="text-xs font-bold">${esc(nick2)}${verifyBadge(uid)}${scopeBadge} <span class="text-[10px] text-slate-500">${esc(locText)}</span></span>
             <span class="text-[10px] text-slate-500">${fmtDate(f.m.time)}</span>
           </div>
           <p class="text-sm mt-1 break-words">${esc(f.m.text || '')}</p>
@@ -6740,7 +6812,9 @@
               '</div>'
             : ''}
           <div class="flex gap-1.5 mt-2 flex-wrap">
-            ${bt('Открыть чат', 'flagOpen', `data-f="${esc(fdata)}"`)}
+            ${f.m.scope === 'dm'
+              ? bt('Открыть диалог', 'dmOpen', `data-f="${esc(fdata)}"`)
+              : bt('Открыть чат', 'flagOpen', `data-f="${esc(fdata)}"`)}
             ${bt('Игнорировать', 'flagIgnore', `data-f="${esc(fdata)}"`)}
             ${bt('Удалить', 'flagDel', `data-f="${esc(fdata)}"`)}
             <span class="flex gap-1.5 flex-wrap${dis}">
@@ -6834,21 +6908,22 @@
             const nick2 = (uid && usersById[uid] && usersById[uid].nick) || f.m.nick || f.m.name || 'Ученик';
             const st = uid ? HubModeration.statusOf(bans[uid] || null) : { label: 'не определён', cls: 'text-slate-500' };
             const mn = classNames[f.cid + '/' + f.sid + '/' + f.clid] || { cname: f.cid, sname: f.sid, clname: f.clid };
-            const fdata = JSON.stringify({ cid: f.cid, sid: f.sid, clid: f.clid, key: f.key, cname: mn.cname, sname: mn.sname, clname: mn.clname, chatPath: (f.m && f.m.chatPath) || '' });
+            const fdata = fdataOf(f, mn);
             const dis = uid ? '' : ' opacity-40 pointer-events-none';
-            const scopeBadge = f.m.scope === 'school'
-              ? ' <span class="text-[9px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-bold align-middle">ОБЩИЙ ЧАТ</span>'
-              : '';
+            const scopeBadge = flagScopeBadge(f.m.scope);
+            const locText = flagLocText(f, mn);
             return `
             <div class="border-b border-slate-800/60 py-2.5">
               <div class="flex items-center justify-between gap-2 flex-wrap">
-                <span class="text-xs font-bold">${esc(nick2)}${verifyBadge(uid)}${scopeBadge} <span class="text-[10px] text-slate-500">${esc(mn.cname)}, ${esc(mn.sname)}, ${esc(mn.clname)}</span></span>
+                <span class="text-xs font-bold">${esc(nick2)}${verifyBadge(uid)}${scopeBadge} <span class="text-[10px] text-slate-500">${esc(locText)}</span></span>
                 <span class="text-[10px] text-slate-500">${fmtDate(f.m.time)}</span>
               </div>
               <p class="text-sm mt-1 break-words">${esc(f.m.text || '')}</p>
               <div class="text-[11px] mt-1 ${st.cls}">${uid ? 'UID: ' + esc(uid).slice(0, 14) + '…' : 'UID не определён'} · ${esc(st.label)}</div>
               <div class="flex gap-1.5 mt-2 flex-wrap">
-                ${bt('Открыть чат', 'flagOpen', `data-f="${esc(fdata)}"`)}
+                ${f.m.scope === 'dm'
+                  ? bt('Открыть диалог', 'dmOpen', `data-f="${esc(fdata)}"`)
+                  : bt('Открыть чат', 'flagOpen', `data-f="${esc(fdata)}"`)}
                 ${bt('Игнорировать', 'flagIgnore', `data-f="${esc(fdata)}"`)}
                 ${bt('Удалить', 'flagDel', `data-f="${esc(fdata)}"`)}
                 <span class="flex gap-1.5 flex-wrap${dis}">
@@ -6948,6 +7023,156 @@
     })().catch((err) => { body.innerHTML = emptyNote('Ошибка: ' + ((err && err.message) ? err.message : err)); });
   }
 
+  /* ---- ЛС в админке: только чтение, модерация участников ---- */
+  // /dms/{a}/{b} -> /dms/{b}/{a} (зеркальная ветка того же диалога).
+  function dmMirrorPath(p) {
+    const sp = String(p || '').split('/').filter(Boolean);
+    if (sp.length < 3) return p;
+    return '/' + sp[0] + '/' + sp[2] + '/' + sp[1];
+  }
+  function renderAdminDms(body) {
+    if (!isAdmin()) { body.innerHTML = emptyNote('Доступ только для администраторов'); return; }
+    const open = adminDmV && adminDmV.uid && adminDmV.peer;
+    body.innerHTML = `
+      <div class="rounded-2xl bg-amber-500/10 border border-amber-500/30 px-4 py-2.5 mb-3">
+        <div class="text-[11px] font-bold text-amber-300">🛡 Режим модератора — только чтение</div>
+        <div class="text-[10px] text-amber-200/70 mt-0.5">Чужие диалоги открываются без права писать от чужого имени. Доступны только мут, предупреждения и удаление нарушений.</div>
+      </div>
+      <div id="dm-admin-box">${spinner()}</div>`;
+    const box = $('#dm-admin-box');
+    if (open) renderAdminDmThread(box, adminDmV.uid, adminDmV.peer);
+    else renderAdminDmList(box);
+  }
+  // Список всех диалогов: /dms -> { отправитель: { собеседник: { сообщения } } }.
+  function renderAdminDmList(box) {
+    const bt = (label, act, extra) => `<button data-act="${act}" ${extra} class="rounded-lg bg-slate-800 hover:bg-slate-700 px-2.5 py-1.5 text-[11px] font-semibold">${label}</button>`;
+    (async () => {
+      const [dmv, usv] = await Promise.all([
+        db.ref('/dms').once('value').then((s) => s.val() || {}).catch(() => null),
+        db.ref('/users').once('value').then((s) => s.val() || {}).catch(() => ({})),
+      ]);
+      if (dmv == null) {
+        box.innerHTML = emptyNote('Не удалось прочитать /dms. По правилам read для модераторов разрешён — опубликуйте rules.json (README, раздел 5).') + '<div class="pt-2 text-[10px] text-amber-400/80">' + bt('Назад', 'dmBack', '') + '</div>';
+        return;
+      }
+      const users = usv || {};
+      const nickOf = (uid) => (users[uid] && users[uid].nick) || '';
+      const dialogs = [];
+      const seenPairs = {};
+      const key = (a, b2) => [a, b2].sort().join('|');
+      Object.keys(dmv || {}).forEach((uid) => {
+        Object.keys((dmv[uid] || {}).peers || dmv[uid] || {}).forEach((peer) => {
+          const p = key(uid, peer);
+          if (seenPairs[p]) return;
+          seenPairs[p] = true;
+          const msgs = (dmv[uid] || {})[peer] || {};
+          const mkeys = Object.keys(msgs);
+          let last = null;
+          mkeys.forEach((mk2) => { const m = msgs[mk2] || {}; if (!last || (m.time || 0) > (last.time || 0)) last = m; });
+          dialogs.push({
+            a: uid, b: peer,
+            count: mkeys.length,
+            lastMsg: last,
+            lastTime: (last && last.time) || 0,
+            text: (last && (last.text || '🎤 голосовое')) || '',
+          });
+        });
+      });
+      dialogs.sort((x, y) => y.lastTime - x.lastTime);
+      if (!dialogs.length) {
+        box.innerHTML = emptyNote('Диалогов пока нет') + '<div class="pt-2">' + bt('Обновить', 'dmRefresh', '') + '</div>';
+        return;
+      }
+      const row = (d) => {
+        const na = nickOf(d.a) || d.a.slice(0, 8);
+        const nb = nickOf(d.b) || d.b.slice(0, 8);
+        return `<button data-act="dmOpenDlg" data-uid="${esc(d.a)}" data-peer="${esc(d.b)}"
+          class="dm-dlg-row w-full text-left rounded-xl bg-slate-900 border border-slate-800 p-3 mb-2 hover:border-slate-700 transition">
+          <div class="flex items-center gap-2">
+            <div class="shrink-0 flex gap-1 items-center">
+              ${avatarHtml(na, 'sm', userAvatarOf(d.a), avatarImgOf(d.a))}
+              <span class="text-slate-600 text-xs">↔</span>
+              ${avatarHtml(nb, 'sm', userAvatarOf(d.b), avatarImgOf(d.b))}
+            </div>
+            <div class="min-w-0 flex-1">
+              <div class="text-xs font-bold truncate">${esc(na)} ↔ ${esc(nb)}</div>
+              <div class="text-[11px] text-slate-500 truncate">${esc(d.text) || '…'} · ${d.count} сообщ.</div>
+            </div>
+            <span class="text-[10px] text-slate-500 shrink-0">${fmtDate(d.lastTime)}</span>
+          </div>
+        </button>`;
+      };
+      box.innerHTML = `
+        <div class="flex items-center justify-between mb-2 gap-2">
+          <div class="font-bold text-sm">💬 Диалоги <span class="text-slate-500 text-[11px]">(${dialogs.length})</span></div>
+          ${bt('Обновить', 'dmRefresh', '')}
+        </div>
+        <input id="dm-admin-search" placeholder="Поиск по нику или UID…" class="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-sm placeholder-slate-500 outline-none focus:border-indigo-500 transition mb-2">
+        <div id="dm-admin-list">${dialogs.map(row).join('')}</div>`;
+      const inp = $('#dm-admin-search');
+      if (inp) inp.addEventListener('input', () => {
+        const q = inp.value.trim().toLowerCase();
+        $$('.dm-dlg-row').forEach((el) => {
+          if (!el.isConnected) return;
+          const u = el.dataset.uid || '', p = el.dataset.peer || '';
+          const hay = (nickOf(u) || u) + ' ' + (nickOf(p) || p) + ' ' + u + ' ' + p;
+          el.classList.toggle('hidden', !!(q && hay.toLowerCase().indexOf(q) === -1));
+        });
+      });
+    })().catch((err) => { box.innerHTML = emptyNote('Ошибка: ' + ((err && err.message) ? err.message : err)); });
+  }
+  // Просмотр диалога (только чтение) с кнопками модерации для каждого сообщения.
+  function renderAdminDmThread(box, uid, peer) {
+    const bt = (label, act, extra) => `<button data-act="${act}" ${extra} class="rounded-lg bg-slate-800 hover:bg-slate-700 px-2.5 py-1.5 text-[11px] font-semibold">${label}</button>`;
+    const branch = '/dms/' + uid + '/' + peer;
+    (async () => {
+      const [dmv, usv, bv] = await Promise.all([
+        db.ref(branch).once('value').then((s) => s.val() || {}).catch(() => null),
+        db.ref('/users').once('value').then((s) => s.val() || {}).catch(() => ({})),
+        db.ref('/bannedUsers').once('value').then((s) => s.val() || {}).catch(() => ({})),
+      ]);
+      if (dmv == null) {
+        box.innerHTML = emptyNote('Не удалось прочитать диалог (нет доступа / правил).') + '<div class="pt-2">' + bt('Назад', 'dmBack', '') + '</div>';
+        return;
+      }
+      const users = usv || {};
+      const nickOf = (u) => (users[u] && users[u].nick) || '';
+      const keys = Object.keys(dmv).sort((a, b2) => (dmv[a].time || 0) - (dmv[b2].time || 0));
+      const msgs = keys.map((k) => Object.assign({ __key: k }, dmv[k] || {}));
+      const nA = nickOf(uid) || uid.slice(0, 8), nB = nickOf(peer) || peer.slice(0, 8);
+      box.innerHTML = `
+        <div class="flex items-center justify-between gap-2 mb-2">
+          <button data-act="dmBack" class="rounded-lg bg-slate-800 hover:bg-slate-700 px-2.5 py-1.5 text-[11px] font-semibold">← Назад</button>
+          <div class="font-bold text-sm truncate">${esc(nA)} ↔ ${esc(nB)}</div>
+          <div class="text-[9px] text-slate-500">${esc(branch)}</div>
+        </div>
+        <div id="dm-admin-msgs" class="space-y-2">${spinner()}</div>`;
+      const list = $('#dm-admin-msgs');
+      const bans = bv || {};
+      if (!msgs.length) { list.innerHTML = emptyNote('Сообщений нет'); return; }
+      list.innerHTML = msgs.map((m) => {
+        const authorUid = m.from || m.uid || '';
+        const authorNick = (authorUid && nickOf(authorUid)) || m.fromNick || m.nick || 'Участник';
+        const st = authorUid ? HubModeration.statusOf(bans[authorUid] || null) : { label: 'не определён', cls: 'text-slate-500' };
+        const dis = authorUid ? '' : ' opacity-40 pointer-events-none';
+        const body = m.voice ? `<audio controls preload="none" class="max-w-[220px]" src="${esc(m.voice.url || '')}"></audio>`
+                             : `<span class="break-words">${esc(m.text || '')}</span>`;
+        return `<div class="rounded-2xl bg-slate-900 border border-slate-800 px-3 py-2">
+          <div class="text-[10px] text-slate-500">${esc(authorNick)} · ${fmtDate(m.time)}</div>
+          <div class="text-sm mt-1">${body}</div>
+          <div class="text-[10px] mt-0.5 ${st.cls || 'text-slate-500'}">${authorUid ? 'UID: ' + esc(authorUid).slice(0, 14) + '…' : ''} · ${esc(st.label || 'пользователь')}</div>
+          <div class="flex gap-1.5 mt-2 flex-wrap${dis}">
+            ${bt('Мут 1ч', 'dmMute1', `data-uid="${esc(authorUid)}"`)}
+            ${bt('Мут 24ч', 'dmMute24', `data-uid="${esc(authorUid)}"`)}
+            ${bt('Мут 7д', 'dmMute7', `data-uid="${esc(authorUid)}"`)}
+            ${bt('Предупредить', 'dmWarn', `data-uid="${esc(authorUid)}"`)}
+            ${bt('Удалить', 'dmMsgDel', `data-dmpath="${esc(branch)}" data-key="${esc(m.__key)}"`)}
+          </div>
+        </div>`;
+      }).join('');
+    })().catch((err) => { box.innerHTML = emptyNote('Ошибка: ' + ((err && err.message) ? err.message : err)); });
+  }
+
   function bindAdminActions() {
     $('#admin-body').addEventListener('click', (e) => {
       const t = e.target.closest('button[data-act]') ||
@@ -7018,21 +7243,28 @@
       if (act === 'flagIgnore' || act === 'flagDel') {
         const f = JSON.parse(t.dataset.f || '{}');
         // Реальное сообщение удаляем по сохранённому chatPath (класс/school
-        // общий чат/лента), а не по жестко собранному пути класса — иначе для
+        // общий чат/лента/ЛС), а не по жестко собранному пути класса — иначе для
         // флагов школы и ленты удаление целится не туда.
         const msgPath = (f.chatPath && f.key)
           ? f.chatPath.replace(/\/+$/, '') + '/' + f.key
           : P.classNode(f.cid, f.sid, f.clid) + '/chat/' + f.key;
+        // Пометка "игнорировано" живёт в классе под /_flags — для общих корзин
+        // (ЛС/лента/общий чат школы) её не существует, пишем только сам флаг.
+        const classFlagsOk = !!(f.clid && String(f.clid).charAt(0) !== '_');
         if (act === 'flagDel') {
           askConfirm('Удалить сообщение?', () => {
-            db.ref(msgPath).remove()
+            const ops = [db.ref(msgPath).remove()];
+            // В ЛС то же сообщение лежит зеркалом в другой ветке — удаляем оба,
+            // а не только одно. Старые флаги могут не знать зеркальный ключ.
+            if (f.dmPeerPath) ops.push(db.ref(f.dmPeerPath).remove().catch(() => {}));
+            Promise.all(ops)
               .catch((e) => showToast('Не удалось удалить: ' + ((e && e.message) ? e.message : 'нет прав')));
-            db.ref(P.classNode(f.cid, f.sid, f.clid) + '/_flags/' + f.key).remove().catch(() => {});
+            if (classFlagsOk) db.ref(P.classNode(f.cid, f.sid, f.clid) + '/_flags/' + f.key).remove().catch(() => {});
             db.ref('/flagged_messages/' + f.cid + '/' + f.sid + '/' + f.clid + '/' + f.key).remove().catch(() => {});
             renderAdminPage(admin.page);
           });
         } else {
-          db.ref(P.classNode(f.cid, f.sid, f.clid) + '/_flags/' + f.key)
+          if (classFlagsOk) db.ref(P.classNode(f.cid, f.sid, f.clid) + '/_flags/' + f.key)
             .set({ ignored: true, at: firebase.database.ServerValue.TIMESTAMP }).catch(() => {});
           db.ref('/flagged_messages/' + f.cid + '/' + f.sid + '/' + f.clid + '/' + f.key).remove().catch(() => {});
           renderAdminPage(admin.page);
@@ -7040,11 +7272,71 @@
       }
       if (act === 'flagOpen') {
         const f = JSON.parse(t.dataset.f || '{}');
+        // Флаг ленты/комментария ведёт в ленту школы: класс не выбираем,
+        // chatPath у флага уже включает /feed, а switchTab('feed') работает от cid/sid.
+        const isFeed = f.scope && f.scope.indexOf('feed') === 0;
         $('#admin-panel').classList.add('hidden');
-        state.sel = { cid: f.cid, cname: f.cname, sid: f.sid, sname: f.sname, clid: f.clid, clname: f.clname };
+        state.sel = {
+          cid: f.cid, cname: f.cname, sid: f.sid, sname: f.sname,
+          clid: isFeed ? '' : f.clid, clname: isFeed ? '' : f.clname,
+        };
         saveSelection();
         showMainScreen();
-        switchTab('chat');
+        switchTab(isFeed ? 'feed' : 'chat');
+      }
+      // ---- ЛС модератора ----
+      if (act === 'dmOpen') {
+        const f = JSON.parse(t.dataset.f || '{}');
+        // Флаг ЛС хранит uid/peer участников — из них собираем диалог.
+        adminDmV = { uid: f.fromUid || '', peer: f.toUid || '' };
+        if (!adminDmV.uid || !adminDmV.peer) {
+          showToast('Для этого флага нет данных диалога');
+          return;
+        }
+        renderAdminPage('dms');
+      }
+      if (act === 'dmOpenDlg') {
+        adminDmV = { uid: t.dataset.uid, peer: t.dataset.peer };
+        renderAdminPage('dms');
+      }
+      if (act === 'dmBack' || act === 'dmRefresh') {
+        if (act === 'dmBack') adminDmV = { uid: null, peer: null };
+        renderAdminPage('dms');
+      }
+      if (act === 'dmMute1' || act === 'dmMute24' || act === 'dmMute7') {
+        const uid = t.dataset.uid;
+        if (!uid) { showToast('Нет UID автора'); return; }
+        const hours = act === 'dmMute1' ? 1 : act === 'dmMute24' ? 24 : 168;
+        HubModeration.muteHours(uid, hours, 'мут модератором (ЛС)')
+          .then(() => { showToast('Мут применён: ' + (hours === 168 ? '7 дней' : hours === 24 ? '24 часа' : '1 час')); renderAdminPage('dms'); })
+          .catch((e) => showToast('Не удалось замутить: ' + ((e && e.message) ? e.message : 'нет прав')));
+      }
+      if (act === 'dmWarn') {
+        const uid = t.dataset.uid;
+        if (!uid) { showToast('Нет UID автора'); return; }
+        const text = window.prompt('Текст предупреждения:');
+        if (text == null) return;
+        db.ref('/warnings/' + uid).push({ text: String(text).slice(0, 300), at: firebase.database.ServerValue.TIMESTAMP })
+          .then(() => { showToast('Предупреждение отправлено'); renderAdminPage('dms'); })
+          .catch((e) => showToast('Не удалось отправить: ' + ((e && e.message) ? e.message : 'нет прав')));
+      }
+      if (act === 'dmMsgDel') {
+        const dmpath = t.dataset.dmpath, key = t.dataset.key;
+        if (!dmpath || !key) { showToast('Нет пути сообщения'); return; }
+        askConfirm('Удалить сообщение? (в обеих копиях диалога)', () => {
+          db.ref(dmpath + '/' + key).once('value').then((sn) => {
+            const m = sn.val() || {};
+            const ops = [db.ref(dmpath + '/' + key).remove()];
+            if (m.mirrorKey) ops.push(db.ref(dmMirrorPath(dmpath) + '/' + m.mirrorKey).remove());
+            Promise.all(ops)
+              .then(() => { showToast('Сообщение удалено'); renderAdminPage('dms'); })
+              .catch((e) => showToast('Ошибка: ' + ((e && e.message) ? e.message : 'нет прав')));
+          }).catch(() => {
+            db.ref(dmpath + '/' + key).remove()
+              .catch((e) => showToast('Ошибка: ' + ((e && e.message) ? e.message : 'нет прав')));
+            renderAdminPage('dms');
+          });
+        }, 'Удалить');
       }
       // ---- Помеченные ДЗ ----
       if (act === 'flagOpenHw') {
