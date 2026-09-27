@@ -36,6 +36,17 @@
         ".read": true,
         "$school": {
           ".read": true,
+          "bells": {
+            ".write": "auth != null && (root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true)"
+          },
+          "holidays": {
+            ".write": "auth != null && (root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true)"
+          },
+          "feed": {
+            "$key": {
+              ".write": "auth != null && (!root.child('bannedUsers').child(auth.uid).exists() || (root.child('bannedUsers').child(auth.uid).hasChild('until') && root.child('bannedUsers').child(auth.uid).child('until').val() > 0 && root.child('bannedUsers').child(auth.uid).child('until').val() < now) || root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true) && (root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true || (!data.exists() ? (newData.child('uid').val() === auth.uid && newData.child('text').isString() && newData.child('text').val().length() > 0 && newData.child('text').val().length() <= 500) : (data.child('uid').val() === auth.uid && (!newData.exists() || (newData.child('uid').val() === auth.uid && newData.child('text').isString() && newData.child('text').val().length() > 0 && newData.child('text').val().length() <= 500)))))"
+            }
+          },
           "$class": {
             ".read": true,
             "schedule": {
@@ -107,7 +118,16 @@
         },
         "avatar": {
           ".write": "auth != null && $uid === auth.uid && (newData.val() === null || (newData.isString() && newData.val().length() <= 8))"
+        },
+        "mood": {
+          ".write": "auth != null && $uid === auth.uid && (newData.val() === null || (newData.hasChild('v') && newData.child('v').isNumber() && newData.child('v').val() >= 1 && newData.child('v').val() <= 5))"
         }
+      }
+    },
+    "moods": {
+      ".read": "auth != null",
+      "$uid": {
+        ".write": "auth != null && $uid === auth.uid && (newData.val() === null || (newData.hasChild('v') && newData.child('v').isNumber() && newData.child('v').val() >= 1 && newData.child('v').val() <= 5))"
       }
     },
     "admins": {
