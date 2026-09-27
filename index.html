@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ru" class="dark">
 <head>
   <meta charset="UTF-8">
@@ -322,62 +322,8 @@
     .c20-sec { margin-top: 5px; font-size: 11px; color: #94a3b8; font-variant-numeric: tabular-nums; }
     .c20-date { margin-top: 9px; font-size: 11px; line-height: 1.3; color: #cbd5e1; }
     .c20-legend { font-size: 10px; letter-spacing: .2em; text-transform: uppercase; color: #64748b; }
-
-    /* Силуэт: набор поз, меняется по кнопке и раз в минуту */
-    .c20-figure {
-      display: flex; flex-direction: column; align-items: center; gap: 3px;
-      width: 132px; padding: 4px 0; border: 0; background: none; cursor: pointer;
-      color: #94a3b8; border-radius: 14px;
-      transition: color .2s, transform .12s;
-    }
-    .c20-figure:hover { color: #cbd5e1; }
-    .c20-figure:active { transform: scale(.96); }
-    .c20-fig-svg {
-      width: 104px; height: 104px; display: block;
-      opacity: .8;
-      animation: c20-breathe 5.2s ease-in-out infinite;
-    }
-    .c20-fig-lbl {
-      font-size: 9px; letter-spacing: .16em; text-transform: uppercase; color: #64748b;
-    }
-    @keyframes c20-breathe {
-      0%, 100% { opacity: .72; transform: translateY(0); }
-      50%      { opacity: .95; transform: translateY(-3px); }
-    }
-    /* Плеер: кнопка, название, громкость */
-    .c20-music {
-      display: flex; align-items: center; gap: 8px;
-      width: 100%; max-width: 250px; padding: 7px 10px;
-      border-radius: 12px; border: 1px solid rgba(148,163,184,.18);
-      background: rgba(15,23,42,.45);
-    }
-    .c20-music-btn {
-      flex: 0 0 auto; width: 30px; height: 30px; border-radius: 9px;
-      border: 1px solid rgba(148,163,184,.25); background: rgba(148,163,184,.14);
-      color: #cbd5e1; font-size: 13px; line-height: 1; cursor: pointer;
-      transition: background .15s, transform .1s;
-    }
-    .c20-music-btn:active { transform: scale(.92); }
-    .c20-music-txt { min-width: 0; flex: 1 1 auto; }
-    .c20-music-name {
-      display: block; font-size: 10px; color: #94a3b8;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-    .c20-music-vol {
-      -webkit-appearance: none; appearance: none;
-      width: 100%; height: 3px; margin-top: 5px; border-radius: 9999px;
-      background: rgba(148,163,184,.28); outline: none; cursor: pointer;
-    }
-    .c20-music-vol::-webkit-slider-thumb {
-      -webkit-appearance: none; appearance: none;
-      width: 11px; height: 11px; border-radius: 9999px;
-      background: #cbd5e1; border: 0; cursor: pointer;
-    }
-    .c20-music-vol::-moz-range-thumb {
-      width: 11px; height: 11px; border-radius: 9999px;
-      background: #cbd5e1; border: 0; cursor: pointer;
-    }
-    @media (max-width: 599px) { .c20-figure { display: none; } }
+    /* Музыки в панели нет намеренно: в теме coder20 она играет сама
+       и выключить её нельзя. Видимой кнопки не существует вовсе. */
 
     /* ============================================================
        TEMA ZakveZ: chyornyy fon + chistyy zelyonyy tekst (terminal).
@@ -791,6 +737,97 @@
     html:not(.dark) .feed-card { background: rgba(255,255,255,.75); border-color: #e2e8f0; }
     html:not(.dark) .feed-card.mine { background: rgba(99,102,241,.10); }
     html:not(.dark) .feed-sub, html:not(.dark) .feed-foot-time { color: #94a3b8; }
+
+    /* --- Вложения: фото и короткое видео --- */
+    .feed-media {
+      display: block; margin-top: 7px; border-radius: 12px; overflow: hidden;
+      border: 1px solid #1e293b; background: #0b1120; max-height: 340px; width: 100%;
+    }
+    .feed-media img, .feed-media video { display: block; width: 100%; max-height: 340px; object-fit: cover; }
+    .feed-media-cap { font-size: 10px; color: #64748b; margin-top: 4px; }
+    html:not(.dark) .feed-media { border-color: #e2e8f0; background: #f1f5f9; }
+    /* Превью перед отправкой */
+    .attach-box {
+      display: flex; align-items: center; gap: 9px; padding: 7px 9px; margin-bottom: 7px;
+      border-radius: 12px; border: 1px dashed rgba(148,163,184,.4); background: rgba(15,23,42,.45);
+    }
+    .attach-thumb {
+      width: 52px; height: 52px; border-radius: 10px; flex: 0 0 auto; overflow: hidden;
+      background: #0b1120; display: flex; align-items: center; justify-content: center;
+    }
+    .attach-thumb img, .attach-thumb video { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .attach-info { min-width: 0; flex: 1 1 auto; font-size: 11px; color: #94a3b8; }
+    .attach-x {
+      flex: 0 0 auto; width: 26px; height: 26px; border-radius: 8px; font-size: 13px; font-weight: 800;
+      color: #94a3b8; background: rgba(148,163,184,.14);
+    }
+
+    /* --- Лайк, реакции, комментарии, подписка --- */
+    .act-row { display: flex; align-items: center; gap: 5px; margin-top: 8px; flex-wrap: wrap; }
+    .act-btn {
+      display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700;
+      color: #94a3b8; padding: 4px 8px; border-radius: 9999px; background: rgba(148,163,184,.12);
+      transition: background .15s, color .15s, transform .1s;
+    }
+    .act-btn:active { transform: scale(.94); }
+    .act-btn.on { color: #fda4af; background: rgba(244,63,94,.18); }
+    .act-btn.cmt-on { color: #a5b4fc; background: rgba(99,102,241,.18); }
+    .act-btn .n { font-variant-numeric: tabular-nums; }
+    .act-del {
+      font-size: 10px; font-weight: 700; color: #64748b; margin-left: auto;
+      padding: 3px 7px; border-radius: 7px; background: rgba(148,163,184,.12);
+    }
+    .act-del:active { background: rgba(244,63,94,.25); color: #fda4af; }
+    /* Палитра реакций */
+    .rx-picker {
+      display: flex; gap: 3px; flex-wrap: wrap; margin-top: 7px; padding: 6px;
+      border-radius: 11px; background: rgba(15,23,42,.6); border: 1px solid #1e293b;
+    }
+    .rx-pick {
+      width: 30px; height: 30px; border-radius: 9px; font-size: 16px; line-height: 1;
+      background: rgba(148,163,184,.10);
+    }
+    .rx-pick.on { background: rgba(99,102,241,.28); }
+    .rx-list { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+    .rx-pill {
+      display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 700;
+      padding: 3px 8px; border-radius: 9999px;
+      background: rgba(148,163,184,.14); color: #cbd5e1;
+    }
+    .rx-pill.mine { background: rgba(99,102,241,.24); color: #c7d2fe; }
+    .rx-pill .n { font-variant-numeric: tabular-nums; }
+    /* Комментарии */
+    .cmt-box { margin-top: 9px; padding-top: 8px; border-top: 1px solid #1e293b; }
+    .cmt-item { display: flex; gap: 7px; align-items: flex-start; margin-bottom: 7px; }
+    .cmt-body { min-width: 0; flex: 1 1 auto; }
+    .cmt-head { font-size: 11px; font-weight: 800; color: #cbd5e1; }
+    .cmt-txt { font-size: 12px; line-height: 1.4; color: #cbd5e1; word-break: break-word; white-space: pre-wrap; }
+    .cmt-time { font-size: 9px; color: #64748b; margin-top: 1px; }
+    .cmt-del {
+      flex: 0 0 auto; font-size: 9px; font-weight: 700; color: #64748b;
+      padding: 2px 6px; border-radius: 6px; background: rgba(148,163,184,.12);
+    }
+    .cmt-form { display: flex; gap: 6px; margin-top: 8px; }
+    .cmt-inp {
+      flex: 1 1 auto; min-width: 0; font-size: 12px; padding: 7px 10px; border-radius: 10px;
+      background: #1e293b; border: 1px solid transparent; color: inherit; outline: none;
+    }
+    .cmt-inp:focus { border-color: #6366f1; }
+    .cmt-send {
+      flex: 0 0 auto; padding: 7px 12px; border-radius: 10px; font-size: 12px; font-weight: 800; color: #fff;
+    }
+    html:not(.dark) .cmt-box { border-color: #e2e8f0; }
+    html:not(.dark) .cmt-head, html:not(.dark) .cmt-txt { color: #1e293b; }
+    html:not(.dark) .cmt-inp { background: #f1f5f9; }
+
+    /* --- Аватарка: картинка вместо эмодзи --- */
+    .avatar-img { overflow: hidden; padding: 0; }
+    .avatar-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .av-pick {
+      width: 40px; height: 40px; border-radius: 12px; font-size: 20px; line-height: 1;
+      background: rgba(148,163,184,.12);
+    }
+    .av-pick.on { background: rgba(99,102,241,.28); box-shadow: 0 0 0 2px #6366f1; }
   </style>
 </head>
 
@@ -1014,9 +1051,10 @@
 
       <!-- ======================= ЛЕНТА ======================= -->
       <section id="tab-feed" class="tab hidden flex flex-col">
-        <!-- Кто смотрит: все посты школы или только мой канал -->
+        <!-- Кто смотрит: все посты школы, только мой канал или только подписки -->
         <div class="flex gap-1 bg-slate-900 border border-slate-800 rounded-xl p-1 mb-2">
-          <button data-fscope="all" class="cscope flex-1 rounded-lg">Все посты</button>
+          <button data-fscope="all" class="cscope flex-1 rounded-lg">Все</button>
+          <button data-fscope="following" class="cscope flex-1 rounded-lg">Подписки<span id="fscope-follow-tag" class="cscope-badge hidden"></span></button>
           <button data-fscope="mine" class="cscope flex-1 rounded-lg">Мой канал<span id="fscope-mine-tag" class="cscope-badge hidden"></span></button>
         </div>
 
@@ -1035,16 +1073,31 @@
 
         <div id="feed-messages" class="chat-scroll space-y-2.5 overflow-y-auto pr-1"></div>
 
-        <form id="feed-form" class="flex gap-2 mt-3 pt-3 pb-safe sticky bottom-0 z-10 bg-slate-950/90 backdrop-blur">
-          <input id="feed-input" type="text" maxlength="500" autocomplete="off"
-                 placeholder="Твоя история в ленте школы…"
-                 class="flex-1 min-w-0 rounded-xl bg-slate-800 border border-transparent px-4 py-2.5 text-sm placeholder-slate-500 outline-none focus:border-indigo-500 transition">
-          <button id="feed-send-btn" type="submit"
-                  class="shrink-0 h-11 w-11 rounded-xl accent-bg flex items-center justify-center hover:opacity-90 active:scale-95 transition disabled:opacity-40 disabled:pointer-events-none" aria-label="Опубликовать">
-            <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9-7-9-7v14zm0 0V5"/>
-            </svg>
-          </button>
+        <form id="feed-form" class="mt-3 pt-3 pb-safe sticky bottom-0 z-10 bg-slate-950/90 backdrop-blur">
+          <div id="feed-attach" class="hidden"></div>
+          <div id="feed-poll-box" class="hidden space-y-2 mb-2"></div>
+          <div class="flex gap-2">
+            <button id="feed-attach-btn" type="button" title="Прикрепить фото или видео"
+                    class="shrink-0 h-11 w-11 rounded-xl bg-slate-800 hover:bg-slate-700 flex items-center justify-center active:scale-95 transition disabled:opacity-40 disabled:pointer-events-none" aria-label="Прикрепить фото или видео">
+              <svg class="w-5 h-5 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v13.5A1.5 1.5 0 003.75 21z"/>
+              </svg>
+            </button>
+            <button id="feed-poll-toggle" type="button" title="Добавить голосование"
+                    class="shrink-0 h-11 w-11 rounded-xl bg-slate-800 hover:bg-slate-700 flex items-center justify-center active:scale-95 transition disabled:opacity-40 disabled:pointer-events-none" aria-label="Добавить голосование">
+              <span class="text-slate-300 text-lg leading-none">📊</span>
+            </button>
+            <input id="feed-file" type="file" accept="image/*,video/*" class="hidden">
+            <input id="feed-input" type="text" maxlength="500" autocomplete="off"
+                   placeholder="Твоя история в ленте школы…"
+                   class="flex-1 min-w-0 rounded-xl bg-slate-800 border border-transparent px-4 py-2.5 text-sm placeholder-slate-500 outline-none focus:border-indigo-500 transition">
+            <button id="feed-send-btn" type="submit"
+                    class="shrink-0 h-11 w-11 rounded-xl accent-bg flex items-center justify-center hover:opacity-90 active:scale-95 transition disabled:opacity-40 disabled:pointer-events-none" aria-label="Опубликовать">
+              <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9-7-9-7v14zm0 0V5"/>
+              </svg>
+            </button>
+          </div>
         </form>
         <div id="feed-readonly-notice" class="hidden rounded-xl bg-slate-800/60 border border-slate-700 p-3 mt-3 text-xs text-slate-300 fade-up">
           Лента доступна только ученикам <span id="feed-readonly-home" class="font-bold accent-text">этой школы</span>.
@@ -1110,8 +1163,14 @@
         <h3 class="text-base font-bold">Аватар</h3>
         <button id="avatar-modal-close" class="h-8 w-8 rounded-full bg-slate-800 flex items-center justify-center font-bold hover:bg-slate-700" aria-label="Закрыть">✕</button>
       </div>
-      <p class="text-xs text-slate-400 mb-3">Выбери эмодзи или оставь первую букву ника</p>
+      <p class="text-xs text-slate-400 mb-3">Выбери эмодзи, загрузи фото или оставь первую букву ника</p>
       <div id="avatar-grid" class="grid grid-cols-4 gap-2 mb-3"></div>
+      <input type="file" id="avatar-modal-file" accept="image/*" class="hidden">
+      <div class="flex gap-2 mb-2">
+        <button id="avatar-modal-upload" class="flex-1 rounded-xl accent-bg py-2.5 text-xs font-bold text-white hover:opacity-90 active:scale-[.98] transition">📷 Загрузить фото</button>
+        <button id="avatar-modal-clearimg" class="rounded-xl bg-slate-800 hover:bg-slate-700 px-3 py-2.5 text-xs font-bold">Убрать фото</button>
+      </div>
+      <p class="text-[10px] text-slate-500 mb-3" id="avatar-modal-hint">Фото ужимается до 160 px и до 60 КБ. Пока фото есть, оно важнее эмодзи.</p>
       <button id="avatar-modal-letter" class="w-full rounded-xl accent-bg py-2.5 text-xs font-bold text-white hover:opacity-90 active:scale-[.98] transition">🔤 Буква ника</button>
     </div>
   </div>
@@ -1234,11 +1293,14 @@
     lastParse: 'sh_last_parse',
     chatScope: 'sh_chat_scope',
     feedScope: 'sh_feed_scope',
-    c20Fig: 'sh_c20_fig',
-    c20Vol: 'sh_c20_vol',
-    c20Music: 'sh_c20_music',
-    c20MusicOn: 'sh_c20_music_on',
   };
+
+  // Ключи от версий, где в теме coder20 был силуэт и плеер с настройкой ссылки.
+  // Их больше нет в коде — подчищаем, чтобы не копился мусор в хранилище.
+  const LS_LEGACY = ['sh_c20_fig', 'sh_c20_vol', 'sh_c20_music', 'sh_c20_music_on'];
+  (function dropLegacyKeys() {
+    LS_LEGACY.forEach((k) => { try { localStorage.removeItem(k); } catch (e) { /* приватный режим */ } });
+  })();
 
   /* ============================================================
      РЕЖИМ ТИШИНЫ
@@ -1462,15 +1524,145 @@
     for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 360;
     return h;
   }
-  function avatarHtml(name, size, av) {
+  function avatarHtml(name, size, av, img) {
     const n = String(name || '?').trim() || '?';
     const sizeCls = size === 'sm' ? 'avatar-sm' : size === 'lg' ? 'avatar-lg' : 'avatar-md';
+    // Своё фото важнее эмодзи: если файл загружен, рисуем картинку.
+    if (img && String(img).slice(0, 5) === 'data:') {
+      return `<span class="avatar avatar-img ${sizeCls}"><img src="${esc(String(img))}" alt="${esc(n)}" loading="lazy"></span>`;
+    }
     if (av && av !== 'letter') {
       return `<span class="avatar avatar-emoji ${sizeCls}">${esc(String(av))}</span>`;
     }
     const initial = n[0].toUpperCase();
     const hue = avatarHue(n);
     return `<span class="avatar ${sizeCls}" style="background:hsl(${hue},55%,45%);color:#fff">${esc(initial)}</span>`;
+  }
+  /* Загруженные аватарки лежат в schools/{sid}/avatars/{uid}. Эта ветка
+     внутри cities, куда запись открыта уже опубликованными правилами,
+     поэтому смена аватарки работает без перепубликации rules.json. */
+  const AVATAR_IMG_MAX_PX = 160;      // хватит для кружка в 40px
+  const AVATAR_IMG_MAX_KB = 60;
+  const FEED_PHOTO_MAX_PX = 1200;
+  const FEED_PHOTO_MAX_KB = 220;
+  const FEED_VIDEO_MAX_KB = 2000;     // жёсткий потолок, база не резиновая
+  const FEED_VIDEO_MAX_SEC = 20;
+  // Потолок по длине строки data:URL. Правило .validate в rules.json режет
+  // media.url на 2 800 000 символах — держимся заметно ниже, с запасом на префикс.
+  const FEED_VIDEO_MAX_CHARS = 2600000;
+  let avatarImgCache = {}, avatarImgRef = null, avatarImgPath = '';
+  let myAvatarImg = '';
+  // Путь внутри школы: сначала «свой класс», иначе выбранный в шапке.
+  function schoolBranch(name) {
+    const h = homeClassData;
+    if (h && h.cityId && h.schoolId) return `/cities/${h.cityId}/schools/${h.schoolId}/${name}`;
+    const s = state.sel;
+    if (s && s.cid && s.sid) return `/cities/${s.cid}/schools/${s.sid}/${name}`;
+    return '';
+  }
+  function avatarImgOf(uid) {
+    if (!uid) return '';
+    if (uid === (window.HubAuth && HubAuth.uid) && myAvatarImg) return myAvatarImg;
+    return (avatarImgCache && avatarImgCache[uid]) || '';
+  }
+  function ensureAvatarsWatch() {
+    const path = schoolBranch('avatars');
+    if (!db || !path) return;
+    if (avatarImgRef && avatarImgPath === path) return;
+    if (avatarImgRef) { try { db.ref(avatarImgPath).off('value'); } catch (e) {} avatarImgRef = null; }
+    avatarImgPath = path;
+    avatarImgRef = db.ref(path).on('value', (snap) => {
+      avatarImgCache = snap.val() || {};
+      const me = window.HubAuth && HubAuth.uid;
+      if (me) myAvatarImg = avatarImgCache[me] || '';
+      paintFeed();
+      paintChatAvatars();
+      paintDmList();
+      paintMyAvatar();
+    }, () => {});
+  }
+  /* Смена аватарки: эмодзи остаются быстрым выбором, плюс своё фото.
+     Фото ужимается до 160px и уезжает в schools/{sid}/avatars/{uid},
+     эмодзи — в users/{uid}/avatar (эта ветка уже разрешена правилами). */
+  function saveAvatarEmoji(e) {
+    if (!db || !HubAuth.uid) { showToast('Авторизация ещё не готова'); return; }
+    db.ref('/users/' + meu + '/avatar').set(e).then(() => {
+      if (usersMeta && usersMeta[HubAuth.uid]) usersMeta[HubAuth.uid].avatar = e;
+      paintChatAvatars(); paintDmList(); paintFeed(); paintMyAvatar();
+      showToast('Аватарка обновлена');
+    }).catch((err) => showToast('Не сохранилось: ' + ((err && err.message) ? err.message : err)));
+  }
+  function saveAvatarImage(dataUrl) {
+    const path = schoolBranch('avatars');
+    if (!path) { showToast('Сначала выбери школу'); return; }
+    db.ref(`${path}/${HubAuth.uid}`).set(dataUrl).then(() => {
+      myAvatarImg = dataUrl;
+      if (avatarImgCache) avatarImgCache[HubAuth.uid] = dataUrl;
+      paintChatAvatars(); paintDmList(); paintFeed(); paintMyAvatar();
+      showToast('Фото загружено');
+    }).catch((err) => showToast('Не сохранилось: ' + ((err && err.message) ? err.message : err)));
+  }
+  function clearAvatarImage() {
+    const path = schoolBranch('avatars');
+    if (!path || !HubAuth.uid) return;
+    db.ref(`${path}/${HubAuth.uid}`).remove().then(() => {
+      myAvatarImg = '';
+      if (avatarImgCache) delete avatarImgCache[HubAuth.uid];
+      paintChatAvatars(); paintDmList(); paintFeed(); paintMyAvatar();
+      showToast('Фото убрано');
+    }).catch(() => showToast('Не получилось убрать фото'));
+  }
+  /* Аватарка в шапке Настроек. Фото важнее эмодзи, поэтому рисуем то, что
+     реально есть: myAvatarImg, иначе эмодзи, иначе первая буква ника. */
+  function paintMyAvatar() {
+    const pa = document.querySelector('#profile-avatar');
+    const meu = window.HubAuth && window.HubAuth.uid;
+    if (!pa) return;
+    const av = (meu && usersMeta && usersMeta[meu] && usersMeta[meu].avatar) || 'letter';
+    pa.innerHTML = avatarHtml(nick() || 'Ученик', 'lg', av, myAvatarImg);
+    const clr = document.querySelector('#avatar-modal-clearimg');
+    if (clr) clr.classList.toggle('hidden', !myAvatarImg);
+  }
+  function bindAvatarPicker(overlay) {
+    const open = overlay.querySelector('#pu-av');
+    if (!open) return;
+    open.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const cur = (usersMeta && usersMeta[HubAuth.uid] && usersMeta[HubAuth.uid].avatar) || '';
+      const card = overlay.firstElementChild;
+      if (!card) return;
+      card.innerHTML = `
+        <div class="font-bold text-sm mb-2">Аватарка</div>
+        <div class="flex flex-wrap gap-1.5 justify-center mb-3">
+          ${AVATAR_EMOJI.map((em) => `<button class="av-pick ${cur === em ? 'on' : ''}" data-av="${esc(em)}">${em}</button>`).join('')}
+        </div>
+        <input type="file" id="pu-av-file" accept="image/*" class="hidden">
+        <div class="flex gap-2">
+          <button id="pu-av-up" class="flex-1 rounded-xl accent-bg text-white py-2.5 text-sm font-bold">📷 Загрузить фото</button>
+          ${myAvatarImg ? '<button id="pu-av-del" class="rounded-xl bg-slate-800 hover:bg-slate-700 px-3 py-2.5 text-sm font-bold">Убрать фото</button>' : ''}
+        </div>
+        <p class="text-[10px] text-slate-500 mt-2">Фото ужимается до ${AVATAR_IMG_MAX_PX}px и хранится прямо в профиле — никуда не отправляется.</p>
+        <button id="pu-av-back" class="mt-3 w-full rounded-xl bg-slate-800 hover:bg-slate-700 py-2.5 text-sm font-bold">Назад</button>`;
+      const file = card.querySelector('#pu-av-file');
+      const up = card.querySelector('#pu-av-up');
+      if (up) up.addEventListener('click', () => { if (file) file.click(); });
+      if (file) file.addEventListener('change', () => {
+        const f = file.files && file.files[0];
+        if (!f) return;
+        shrinkImage(f, AVATAR_IMG_MAX_PX, AVATAR_IMG_MAX_KB)
+          .then((m) => saveAvatarImage(m.url))
+          .catch((err) => showToast((err && err.message) ? err.message : 'Файл не подошёл'));
+      });
+      const del = card.querySelector('#pu-av-del');
+      if (del) del.addEventListener('click', (ev) => { ev.stopPropagation(); clearAvatarImage(); });
+      const back = card.querySelector('#pu-av-back');
+      if (back) back.addEventListener('click', (ev) => { ev.stopPropagation(); overlay.remove(); });
+      Array.from(card.querySelectorAll('.av-pick')).forEach((b) => b.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        saveAvatarEmoji(b.dataset.av);
+        Array.from(card.querySelectorAll('.av-pick')).forEach((x) => x.classList.toggle('on', x === b));
+      }));
+    });
   }
   const AVATAR_EMOJI = ['❤️', '👻', '🔥', '⭐', '🐱', '🐶', '🌹', '⚡', '🌙', '☀️', '💀', '👽', '🦄', '🐉', '🐼', '🦊'];
   // Кэш внешних профилей (users/{uid}): nick / avatar / bio / homeClass / mood
@@ -1507,7 +1699,7 @@
     let av = 'letter';
     if (dmUsers && dmUsers[uid] && dmUsers[uid].avatar) av = dmUsers[uid].avatar;
     else if (userMeta(uid) && userMeta(uid).avatar) av = userMeta(uid).avatar;
-    return avatarHtml(name, size, av);
+    return avatarHtml(name, size, av, avatarImgOf(uid));
   }
   function peerBioOf(uid) {
     if (dmUsers && dmUsers[uid] && dmUsers[uid].bio) return dmUsers[uid].bio;
@@ -1521,7 +1713,7 @@
       const avEl = el.querySelector('.chat-bubble-row .avatar');
       if (!avEl || !uid) return;
       const nm = el.getAttribute('data-nick') || 'Ученик';
-      avEl.outerHTML = avatarHtml(nm, 'sm', userAvatarOf(uid));
+      avEl.outerHTML = avatarHtml(nm, 'sm', userAvatarOf(uid), avatarImgOf(uid));
     });
   }
   function openUserPopup(uid, fallbackName) {
@@ -1532,14 +1724,16 @@
     const build = (p) => {
       const nm = (p && p.nick) || fallbackName || 'Ученик';
       const av = (p && p.avatar) ? p.avatar : 'letter';
-      // Настроение берём из профиля, но если mirror-mirror не записан —
-      // из живого зеркала moods/ (оно обновляется без перечитки профиля).
-      let mv = moodValue(p && p.mood);
-      if (!mv && moodsCache) mv = moodValue(moodsCache[uid]);
-      const mAt = (p && p.mood && p.mood.at) || (moodsCache && moodsCache[uid] && moodsCache[uid].at) || 0;
+      const avImg = avatarImgOf(uid);
+      // Настроение — сначала живое зеркало школы (свежее), потом профиль.
+      let mv = moodValue(moodsCache && moodsCache[uid]);
+      if (!mv) mv = moodValue(p && p.mood);
+      const mAt = (moodsCache && moodsCache[uid] && moodsCache[uid].at) || (p && p.mood && p.mood.at) || 0;
+      const fol = followsMap();
+      const iFollow = !!fol[uid];
       overlay.innerHTML = `
         <div class="w-full max-w-xs rounded-2xl bg-slate-900 border border-slate-800 p-5 shadow-2xl text-center">
-          <div class="flex justify-center">${avatarHtml(nm, 'lg', av)}</div>
+          <div class="flex justify-center">${avatarHtml(nm, 'lg', av, avImg)}</div>
           <div class="mt-3 flex items-center justify-center gap-1 flex-wrap">
             <span class="font-bold text-base">${esc(nm)}</span>
             ${verifyBadge(uid)}
@@ -1558,14 +1752,20 @@
                   : `<div class="mood-head-ttl" style="color:#64748b">Настроение не задано</div>`)}
           </div>
 
-          <button class="mt-4 w-full rounded-xl bg-slate-800 hover:bg-slate-700 py-2.5 text-sm font-bold">Закрыть</button>
+          <div class="mt-3 flex gap-2">
+            ${isMe
+              ? '<button id="pu-av" class="flex-1 rounded-xl bg-slate-800 hover:bg-slate-700 py-2.5 text-sm font-bold">🖼 Сменить аватарку</button>'
+              : `<button id="pu-follow" data-uid="${esc(uid)}" class="flex-1 rounded-xl ${iFollow ? 'bg-slate-700 text-slate-300' : 'accent-bg text-white'} py-2.5 text-sm font-bold">${iFollow ? '✓ Вы подписаны' : '+ Подписаться'}</button>`}
+          </div>
+          <button class="mt-2 w-full rounded-xl bg-slate-800 hover:bg-slate-700 py-2.5 text-sm font-bold">Закрыть</button>
         </div>`;
-      if (isMe) bindMoodScale();
+      if (isMe) { bindMoodScale(); bindAvatarPicker(overlay); }
+      else bindFollowBtn(overlay);
     };
     db.ref('/users/' + uid).once('value').then((sn) => build(sn.val() || {})).catch(() => build({}));
     overlay.classList.remove('hidden');
     overlay.classList.add('flex');
-    overlay.addEventListener('click', () => overlay.remove());
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
     document.body.appendChild(overlay);
   }
 
@@ -1668,6 +1868,7 @@
       paintChatPermissions();
       paintAdminBadge();
       refreshChat();
+      ensureMoodsWatch();
     }).catch((err) => {
       console.warn('homeClass не сохранился в Firebase (проверьте правила):', err);
       paintChatPermissions();
@@ -1703,9 +1904,11 @@
         homeClassData = Object.assign({}, h, { changedAt: u.homeClassChangedAt || 0 });
         paintChatPermissions();
         paintAdminBadge();
+        ensureMoodsWatch();
         return;
       }
       homeClassData = null;
+      ensureMoodsWatch();
       selectMode = 'pickHome';
       if ($('#auth-screen').classList.contains('hidden')) {
         showAuth();
@@ -2619,34 +2822,15 @@
           <div class="c20-date">—</div>
         </div>
       </div>
-      <button id="c20-figure" class="c20-figure" type="button" title="Следующий силуэт"></button>
-      <div class="c20-music">
-        <button id="c20-music-btn" class="c20-music-btn" type="button" title="Включить / выключить звук">▶</button>
-        <div class="c20-music-txt">
-          <span class="c20-music-name" id="c20-music-name">—</span>
-          <input id="c20-music-vol" class="c20-music-vol" type="range" min="0" max="100" value="30" aria-label="Громкость">
-        </div>
-      </div>
       <div class="c20-legend">coder20</div>
     </div>`;
-  // Obruch nuzhen na oboikh ekranakh (vhod i osnovnoy) — vstaivayem odin raz v kazhdyy.
+  // Обруч нужен на обоих экранах (вход и основной) — вставляем один раз в каждый.
   function mountCoder20() {
     ['#auth-screen', '#main-screen'].forEach((sel) => {
       const host = $(sel);
       if (!host || host.querySelector('.c20-aside')) return;
       host.insertAdjacentHTML('beforeend', C20_RING_HTML);
-      const fig = host.querySelector('#c20-figure');
-      // id в двух монтированных копиях дублируются — вешаем обработчики
-      // на узлы, а не на document.getElementById.
-      if (fig) fig.addEventListener('click', nextC20Figure);
-      const mb = host.querySelector('#c20-music-btn');
-      if (mb) mb.addEventListener('click', startC20Music);
-      const mv = host.querySelector('#c20-music-vol');
-      if (mv) mv.addEventListener('input', () => C20Synth.setVol(Number(mv.value) / 100));
     });
-    paintC20Figure();
-    paintC20Music();
-    probeC20File();
   }
   function tickCoder20() {
     const d = new Date();
@@ -2677,13 +2861,12 @@
   function startCoder20() {
     mountCoder20();
     tickCoder20();
-    startC20FigureCycle();
+    c20MusicBegin();
     if (c20Timer) return;
     c20Timer = setInterval(tickCoder20, 1000);
   }
   function stopCoder20() {
-    stopC20FigureCycle();
-    stopC20Music();
+    C20Synth.stop();
     if (!c20Timer) return;
     clearInterval(c20Timer);
     c20Timer = null;
@@ -3181,11 +3364,35 @@
       </button>`;
     }).join('');
     const hint = interactive ? ' · нажми вариант, чтобы проголосовать' : '';
+    // Убрать опрос может автор объявления или админ.
+    const canDrop = canEditAnn(a);
     return `
       <div class="rounded-xl border border-slate-700 bg-slate-900/70 p-2 mt-2 space-y-1.5">
         ${rows}
-        <div class="text-[10px] text-slate-500">Голосов: ${total}${hint}</div>
+        <div class="flex items-center gap-2 text-[10px] text-slate-500">
+          <span>Голосов: ${total}${hint}</span>
+          ${canDrop ? `<button class="act-del" data-ann-drop-poll="${esc(key)}">Убрать опрос</button>` : ''}
+        </div>
       </div>`;
+  }
+  // Автор объявления или админ может его удалить / убрать из него опрос.
+  // В старых записях uid не было — их удалить может только админ.
+  function canEditAnn(a) {
+    if (isAdmin()) return true;
+    const au = a && a.uid;
+    return !!(au && HubAuth.uid && au === HubAuth.uid);
+  }
+  function deleteAnnouncement(key) {
+    if (!key) return;
+    db.ref(curClassPath() + '/announcements/' + key).remove()
+      .then(() => showToast('Объявление удалено'))
+      .catch((e) => showToast('Не получилось удалить: ' + ((e && e.message) ? e.message : e)));
+  }
+  function deleteAnnPoll(key) {
+    if (!key) return;
+    db.ref(curClassPath() + '/announcements/' + key + '/poll').remove()
+      .then(() => showToast('Опрос убран'))
+      .catch((e) => showToast('Не получилось убрать опрос: ' + ((e && e.message) ? e.message : e)));
   }
   function paintAnnouncements() {
     const el = $('#tab-announcements');
@@ -3212,7 +3419,10 @@
       const isCtrl = (txt) => CTRL_RE.test(txt || '');
       body = `
       <div class="rounded-2xl p-4 border-2 accent-border bg-amber-500/5 fade-up">
-        <div class="flex items-center gap-2 mb-2"><span class="text-xs font-bold text-amber-400">📌 ЗАКРЕПЛЕНО</span></div>
+        <div class="flex items-center gap-2 mb-2">
+          <span class="text-xs font-bold text-amber-400">📌 ЗАКРЕПЛЕНО</span>
+          ${canEditAnn(first) ? `<button class="act-del" style="margin-left:auto" data-ann-del="${esc(first.key)}">Удалить</button>` : ''}
+        </div>
         <p class="text-sm whitespace-pre-wrap break-words ${isCtrl(first.text) ? 'text-amber-200 font-semibold' : 'text-slate-200'}">${esc(first.text)}</p>
         ${annPollHtml(first, first.key, true)}
         <p class="text-[11px] text-slate-500 mt-2">${fmtDate(first.createdAt)}</p>
@@ -3221,7 +3431,10 @@
       <div class="rounded-2xl p-4 border fade-up ${isCtrl(a.text) ? 'bg-amber-500/10 border-amber-500/40' : 'bg-slate-900 border-slate-800'}">
         <p class="text-sm whitespace-pre-wrap break-words ${isCtrl(a.text) ? 'text-amber-200 font-semibold' : 'text-slate-200'}">${esc(a.text)}</p>
         ${annPollHtml(a, a.key, true)}
-        <p class="text-[11px] text-slate-500 mt-2">${fmtDate(a.createdAt)}</p>
+        <div class="flex items-center gap-2 mt-2">
+          <p class="text-[11px] text-slate-500">${fmtDate(a.createdAt)}</p>
+          ${canEditAnn(a) ? `<button class="act-del" style="margin-left:auto" data-ann-del="${esc(a.key)}">Удалить</button>` : ''}
+        </div>
       </div>`).join('') : '');
     }
     el.innerHTML = compose + body + buildCalendar();
@@ -3236,7 +3449,8 @@
     const text = annDraft.trim();
     if (!text) { showToast('Введите текст объявления'); return; }
     if (!(window.HubAuth && window.HubAuth.ready && window.HubAuth.uid)) { showToast('Авторизация ещё не готова, попробуйте снова'); return; }
-    const rec = { text, createdAt: Date.now() };
+    // uid нужен, чтобы автор мог удалить своё объявление и убрать из него опрос.
+    const rec = { text, createdAt: Date.now(), uid: HubAuth.uid, nick: nick() || 'Ученик' };
     if (annPollDraft.filter((s) => (s || '').trim()).length >= 2) {
       rec.poll = { options: annPollDraft.map((s) => (s || '').trim()).filter(Boolean).slice(0, 4) };
     }
@@ -3256,6 +3470,14 @@
   $('#tab-announcements').addEventListener('click', (e) => {
     const po = e.target.closest('.poll-opt');
     if (po) { voteAnnouncement(po.dataset.ann, parseInt(po.dataset.opt, 10)); return; }
+    const dropP = e.target.closest('[data-ann-drop-poll]');
+    if (dropP) { deleteAnnPoll(dropP.dataset.annDropPoll); return; }
+    const delA = e.target.closest('[data-ann-del]');
+    if (delA) {
+      const key = delA.dataset.annDel;
+      askConfirm('Удалить объявление?', () => deleteAnnouncement(key), 'Удалить');
+      return;
+    }
     if (e.target.closest('#ann-poll-toggle')) { annPollBoxOpen = !annPollBoxOpen; paintAnnouncements(); return; }
     if (e.target.closest('#ann-poll-clear')) { annPollDraft = []; annPollBoxOpen = false; paintAnnouncements(); return; }
     if (e.target.closest('#ann-poll-apply')) {
@@ -3746,8 +3968,10 @@
     }
     // Лента живёт не в классе, а в школе: её флаги складываем
     // в подветку _feed, чтобы не смешивать с сообщениями класса.
+    // Для ленты школы класс не указан — пишем в корзину _feed, чтобы
+    // такие флаги не сыпались в общий список класса.
     const sc = scope || 'class';
-    const bucket = (sc === 'feed') ? '_feed' : clid;
+    const bucket = (sc.indexOf('feed') === 0) ? '_feed' : clid;
     if (!cid || !sid || !bucket || !messageId) {
       console.error('[flagAfter] не собрать путь флага:', chatPath, 'id=', messageId);
       return;
@@ -4425,15 +4649,19 @@
 
   /* ============================================================
      НАСТРОЕНИЕ
-     Шкала 1..5 у каждого ученика. Хранится ДВАЖДЫ:
-       users/{uid}/mood  — часть профиля (её читает попап профиля)
-       moods/{uid}       — лёгкое зеркало { v, at } для живого среднего
-     Среднее по классу считается на клиенте из moods/ + homeClass
-     из profiles, отдельного агрегата в базе не нужно.
+     Шкала 1..5 у каждого ученика. Основное хранилище —
+     schools/{sid}/moods/{uid} = { v, at }: путь лежит внутри cities,
+     куда запись разрешена уже опубликованными правилами, поэтому
+     шкала работает сразу, без перепубликации rules.json.
+     Дополнительно оценка дублируется в профиль и в /moods — эти
+     ветки закрыты правилом «только владелец» и включатся, когда
+     rules.json обновят, а пока молча пропускаются.
+     Среднее по классу считает клиент: зеркало + homeClass из
+     профилей, отдельного агрегата в базе не требуется.
      ============================================================ */
   const MOOD_FACES = ['😢', '🙁', '😐', '🙂', '😄'];
   const MOOD_LABELS = ['ужасно', 'плохо', 'нормально', 'хорошо', 'отлично'];
-  let moodsCache = null, moodsRef = null;
+  let moodsCache = null, moodsRef = null, moodsRefPath = '';
   let myMood = null;
 
   function moodFace(v) { return MOOD_FACES[(Number(v) || 0) - 1] || '·'; }
@@ -4453,18 +4681,24 @@
     const d = Math.floor(h / 24);
     return d + ' дн назад';
   }
-  // Живая подписка на зеркало настроений.
+  // Ветка зеркала настроений школы.
+  function moodsPath() { return schoolBranch('moods'); }
+  // Живая подписка на зеркало. Школа может смениться (переезд класса),
+  // поэтому при смене пути переподписываемся.
   function ensureMoodsWatch() {
-    if (!db || moodsRef) return;
-    moodsRef = db.ref('/moods').on('value', (snap) => {
+    const path = moodsPath();
+    if (!db || !path) return;
+    if (moodsRef && moodsRefPath === path) return;
+    if (moodsRef) { try { db.ref(moodsRefPath).off('value'); } catch (e) {} moodsRef = null; }
+    moodsRefPath = path;
+    moodsRef = db.ref(path).on('value', (snap) => {
       moodsCache = snap.val() || {};
       if (window.HubAuth && HubAuth.uid) {
-        const r = moodsCache[HubAuth.uid];
-        const v = moodValue(r);
-        if (v && v !== myMood) { myMood = v; }
+        const v = moodValue(moodsCache[HubAuth.uid]);
+        if (v) myMood = v;
       }
       paintMoodClass();
-    }, () => { /* зеркала может не быть — среднее соберём из профилей */ });
+    }, () => { /* ветки может не быть — среднее соберём из профилей */ });
   }
   // Среднее настроение моего класса.
   function classMoodRows() {
@@ -4485,7 +4719,9 @@
       const h = (usersMeta && usersMeta[uid] && usersMeta[uid].homeClass) || null;
       if (!h || h.classId !== myCls) return;      // не мой класс — не в среднем
       const nm = (usersMeta && usersMeta[uid] && usersMeta[uid].nick) || 'Ученик';
-      rows.push({ uid: uid, nick: nm, v: v, at: (moodsCache && moodsCache[uid] && moodsCache[uid].at) || 0 });
+      const um = (usersMeta[uid] || {}).mood;
+      const at = (moodsCache && moodsCache[uid] && moodsCache[uid].at) || (um && um.at) || 0;
+      rows.push({ uid: uid, nick: nm, v: v, at: at });
     });
     rows.sort((a, b) => a.v - b.v);
     return rows;
@@ -4562,40 +4798,95 @@
     if (!db || !HubAuth.uid || !HubAuth.ready) { showToast('Авторизация ещё не готова'); return; }
     const uid = HubAuth.uid;
     const at = Date.now();
+    const rec = { v: v, at: at };
+    const path = moodsPath();
+    if (!path) { showToast('Сначала выбери школу'); return; }
     myMood = v;
+    if (usersMeta && usersMeta[uid]) usersMeta[uid].mood = rec;
+    if (moodsCache) moodsCache[uid] = rec;
     paintMoodClass();
-    // Профиль — источник истины, зеркало moods/ — только для среднего.
-    // Поэтому пишем по очереди: если правила для moods/ ещё не опубликованы,
-    // оценка всё равно сохранится в профиле, а среднее подхватит запасной путь.
-    db.ref('/users/' + uid + '/mood').set({ v: v, at: at })
-      .then(() => {
-        if (usersMeta && usersMeta[uid]) usersMeta[uid].mood = { v: v, at: at };
-        return db.ref('/moods/' + uid).set({ v: v, at: at })
-          .then(() => showToast('Настроение: ' + moodLabel(v)))
-          .catch((e) => {
-            console.warn('[mood] зеркало /moods недоступно:', e && e.code);
-            showToast('Настроение сохранено. Опубликуй rules.json — иначе среднее по классу не обновится у других.');
-            paintMoodClass();
-          });
-      })
-      .catch((e) => {
-        myMood = moodValue(usersMeta && usersMeta[uid] && usersMeta[uid].mood);
-        paintMoodClass();
-        showToast('Не удалось сохранить: ' + ((e && e.message) ? e.message : e));
-      });
+    // Главное — зеркало школы: оно внутри cities, куда запись открыта
+    // нынешними правилами, поэтому среднее по классу обновится сразу.
+    db.ref(path + '/' + uid).set(rec).then(() => {
+      showToast('Настроение: ' + moodLabel(v));
+      // Дубли в профиль и в /moods закроются правилом «только владелец».
+      // Пока оно не опубликовано, отказ здесь — ожидаемый и не важен.
+      db.ref('/users/' + uid + '/mood').set(rec).catch(() => {});
+      db.ref('/moods/' + uid).set(rec).catch(() => {});
+    }).catch((e) => {
+      myMood = moodValue(usersMeta && usersMeta[uid] && usersMeta[uid].mood);
+      paintMoodClass();
+      showToast('Не удалось сохранить: ' + ((e && e.message) ? e.message : e));
+    });
   }
 
   /* ============================================================
      ЛЕНТА ШКОЛЫ
-     Ветка schools/{sid}/feed/{key} — своя лента каждого ученика,
-     видна всем, кто учится в этой школе.
+     Ветка schools/{sid}/feed/{key} — общая лента школы, плюс
+     вложения (фото/видео), лайки, реакции, комментарии, опросы
+     и подписки на одноклассников.
+
+     Внутри поста:
+       text, time, uid, nick, cls      — сам пост
+       media                           — { kind, url, mime, w, h, kb, dur }
+       likes/{uid} = true              — лайк
+       rx/{uid}    = '🔥'              — одна реакция на человека
+       poll = { q, opts[], votes{} }   — опрос
+       cmts/{ckey}                     — комментарии (грузятся по требованию)
+     Вне постов, но в той же школе:
+       follows/{uid}/{target} = true   — подписки
+     Лайки, реакции и опросы лежат внутри поста, поэтому приходят
+     вместе с лентой одним снимком. Комментарии вынесены отдельно,
+     чтобы не тянуть их все при каждом обновлении.
      ============================================================ */
-  let feedScope = localStorage.getItem(LS.feedScope) === 'mine' ? 'mine' : 'all';
+  let feedScope = (function () {
+    const s = localStorage.getItem(LS.feedScope);
+    return s === 'mine' || s === 'following' ? s : 'all';
+  })();
   let feedRef = null, feedCache = {}, feedKeys = [];
+  let followCache = null, followRef = null, followPathNow = '';
+  const FEED_RX = ['👍', '🔥', '😂', '😮', '😢', '❤️'];
+  let feedPollDraft = [], feedPollDraftQ = '', feedPollOpen = false;
+  function paintFeedPollDraft() {
+    const box = $('#feed-poll-box');
+    if (!box) return;
+    box.classList.toggle('hidden', !feedPollOpen);
+    box.innerHTML = `
+      <input id="feed-poll-q" maxlength="80" value="${esc(feedPollDraftQ)}" placeholder="Вопрос голосования (необязательно)"
+             class="feed-poll-input w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-xs outline-none focus:border-indigo-500">
+      ${[0, 1, 2, 3].map((i) => `<input data-fpoll-i="${i}" maxlength="60" value="${esc(feedPollDraft[i] || '')}"
+             placeholder="${i < 2 ? 'Вариант ' + (i + 1) : 'Вариант ' + (i + 1) + ' (необязательно)'}"
+             class="feed-poll-input w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-xs outline-none focus:border-indigo-500">`).join('')}
+      <div class="flex gap-2">
+        <button type="button" id="feed-poll-done" class="flex-1 rounded-lg accent-bg text-white py-2 text-xs font-bold">Готово</button>
+        <button type="button" id="feed-poll-drop" class="rounded-lg bg-slate-800 hover:bg-slate-700 px-3 py-2 text-xs font-semibold">✕ Убрать</button>
+      </div>`;
+    const q = $('#feed-poll-q');
+    if (q) q.addEventListener('input', () => { feedPollDraftQ = q.value; });
+    $$('.feed-poll-input[data-fpoll-i]').forEach((inp) => inp.addEventListener('input', () => {
+      feedPollDraft[parseInt(inp.dataset.fpollI, 10)] = inp.value;
+    }));
+    const done = $('#feed-poll-done');
+    if (done) done.addEventListener('click', () => {
+      const n = feedPollDraft.filter((s) => (s || '').trim()).length;
+      if (n < 2) { showToast('Нужно минимум 2 варианта'); return; }
+      feedPollOpen = false;
+      paintFeedPollDraft();
+    });
+    const drop = $('#feed-poll-drop');
+    if (drop) drop.addEventListener('click', () => {
+      feedPollDraft = []; feedPollDraftQ = ''; feedPollOpen = false; paintFeedPollDraft();
+    });
+  }
 
   function feedPath() {
     const s = state.sel;
     return `/cities/${s.cid}/schools/${s.sid}/feed`;
+  }
+  function followsPath() { return schoolBranch('follows'); }
+  function followsMap() {
+    const me = (window.HubAuth && HubAuth.uid) || '';
+    return (followCache && followCache[me]) || {};
   }
   // Постить в ленту может любой, у кого «свой класс» — в этой школе.
   function canPostFeed() {
@@ -4608,7 +4899,7 @@
     return isAdmin() || (uid && uid === (window.HubAuth && HubAuth.uid));
   }
   function setFeedScope(sc) {
-    if (sc !== 'all' && sc !== 'mine') return;
+    if (sc !== 'all' && sc !== 'mine' && sc !== 'following') return;
     feedScope = sc;
     localStorage.setItem(LS.feedScope, sc);
     paintFeedScopeUi();
@@ -4621,6 +4912,12 @@
       b.classList.toggle('text-white', on);
       b.classList.toggle('text-slate-400', !on);
     });
+    const n = Object.keys(followsMap()).length;
+    const tag = $('#fscope-follow-tag');
+    if (tag) {
+      if (n > 0) { tag.textContent = n; tag.classList.remove('hidden'); }
+      else tag.classList.add('hidden');
+    }
   }
   function bindFeed() {
     if (!db || !state.sel || !state.sel.cid) return;
@@ -4636,36 +4933,354 @@
       paintFeed();
       updateFeedUnread();
     }, (err) => console.warn('[feed] не прочитать ленту:', err && err.code));
+    ensureFollowsWatch();
+  }
+  function ensureFollowsWatch() {
+    const path = followsPath();
+    if (!db || !path) return;
+    if (followRef && followPathNow === path) return;
+    if (followRef) { try { db.ref(followPathNow).off('value'); } catch (e) {} followRef = null; }
+    followPathNow = path;
+    followRef = db.ref(path).on('value', (snap) => {
+      followCache = snap.val() || {};
+      paintFeedScopeUi();
+      if (feedScope === 'following') paintFeed();
+    }, () => { followCache = null; });
+  }
+  function iFollow(uid) {
+    if (!uid || uid === (window.HubAuth && HubAuth.uid)) return false;
+    return !!followsMap()[uid];
+  }
+  function toggleFollow(uid) {
+    if (!db || !uid || !HubAuth.uid) { showToast('Авторизация ещё не готова'); return false; }
+    if (uid === HubAuth.uid) return false;
+    const path = followsPath();
+    if (!path) { showToast('Сначала выбери школу'); return false; }
+    const ref = db.ref(`${path}/${HubAuth.uid}/${uid}`);
+    if (iFollow(uid)) {
+      ref.remove().catch((e) => showToast('Не получилось: ' + ((e && e.message) ? e.message : e)));
+    } else {
+      ref.set(true).catch((e) => showToast('Не получилось: ' + ((e && e.message) ? e.message : e)));
+    }
+    return !iFollow(uid);
+  }
+  function bindFollowBtn(scope) {
+    const b = scope.querySelector('#pu-follow');
+    if (!b) return;
+    b.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const on = toggleFollow(b.dataset.uid);
+      if (on) { b.textContent = '✓ Вы подписаны'; b.className = 'flex-1 rounded-xl bg-slate-700 text-slate-300 py-2.5 text-sm font-bold'; }
+      else { b.textContent = '+ Подписаться'; b.className = 'flex-1 rounded-xl accent-bg text-white py-2.5 text-sm font-bold'; }
+    });
   }
   function feedKeysShown() {
-    if (feedScope !== 'mine') return feedKeys;
     const me = (window.HubAuth && HubAuth.uid) || '';
-    return feedKeys.filter((k) => (feedCache[k] || {}).uid === me);
+    if (feedScope === 'mine') return feedKeys.filter((k) => (feedCache[k] || {}).uid === me);
+    if (feedScope === 'following') {
+      const fol = followsMap();
+      return feedKeys.filter((k) => {
+        const u = (feedCache[k] || {}).uid;
+        return u && u !== me && fol[u];
+      });
+    }
+    return feedKeys;
   }
+
+  /* ---- Вложения: фото и короткое видео ---- */
+  let feedAttach = null;   // { kind, url, mime, w, h, kb, dur }
+  function kbOf(str) { return Math.round((String(str).length * 3) / 4 / 1024); }
+  // Ужимаем картинку через canvas: в базу кладём не оригинал с телефона,
+  // а ровно столько, сколько нужно для просмотра.
+  function shrinkImage(file, maxPx, maxKb) {
+    return new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onerror = () => reject(new Error('Не прочитать файл'));
+      fr.onload = () => {
+        const img = new Image();
+        img.onerror = () => reject(new Error('Это не картинка'));
+        img.onload = () => {
+          let w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+          if (!w || !h) { reject(new Error('Пустая картинка')); return; }
+          const k = Math.min(1, maxPx / Math.max(w, h));
+          w = Math.max(1, Math.round(w * k));
+          h = Math.max(1, Math.round(h * k));
+          const cv = document.createElement('canvas');
+          cv.width = w; cv.height = h;
+          cv.getContext('2d').drawImage(img, 0, 0, w, h);
+          let q = 0.82, url = cv.toDataURL('image/jpeg', q);
+          while (kbOf(url) > maxKb && q > 0.35) { q -= 0.1; url = cv.toDataURL('image/jpeg', q); }
+          if (kbOf(url) > maxKb) { reject(new Error('Даже после сжатия слишком тяжело')); return; }
+          resolve({ kind: 'photo', url: url, mime: 'image/jpeg', w: w, h: h, kb: kbOf(url) });
+        };
+        img.src = fr.result;
+      };
+      fr.readAsDataURL(file);
+    });
+  }
+  function readVideo(file) {
+    return new Promise((resolve, reject) => {
+      if (file.size > FEED_VIDEO_MAX_KB * 1024) {
+        reject(new Error(`Ролик больше ${FEED_VIDEO_MAX_KB / 1000} МБ — сократи или выбери фото`));
+        return;
+      }
+      const fr = new FileReader();
+      fr.onerror = () => reject(new Error('Не прочитать файл'));
+      fr.onload = () => {
+        const url = String(fr.result || '');
+        const probe = document.createElement('video');
+        probe.preload = 'metadata';
+        const done = (dur) => {
+          if (dur > FEED_VIDEO_MAX_SEC) {
+            reject(new Error(`Ролик длиннее ${FEED_VIDEO_MAX_SEC} сек — возьми короткий отрывок`));
+            return;
+          }
+          const kb = kbOf(url);
+          if (kb > FEED_VIDEO_MAX_KB || url.length > FEED_VIDEO_MAX_CHARS) { reject(new Error('Ролик слишком тяжёлый')); return; }
+          resolve({ kind: 'video', url: url, mime: file.type || 'video/mp4', kb: kb, dur: Math.round(dur || 0) });
+        };
+        probe.onloadedmetadata = () => done(probe.duration);
+        probe.onerror = () => reject(new Error('Браузер не смог прочитать ролик'));
+        probe.src = url;
+      };
+      fr.readAsDataURL(file);
+    });
+  }
+  function onFeedFile(file) {
+    if (!file) return;
+    if (!/^image\//.test(file.type) && !/^video\//.test(file.type)) {
+      showToast('Можно прикрепить только фото или видео');
+      return;
+    }
+    const p = /^image\//.test(file.type)
+      ? shrinkImage(file, FEED_PHOTO_MAX_PX, FEED_PHOTO_MAX_KB)
+      : readVideo(file);
+    p.then((m) => {
+      feedAttach = m;
+      paintFeedAttach();
+      showToast(m.kind === 'photo' ? `Фото готово, ${m.kb} КБ` : `Ролик готов, ${m.kb} КБ`);
+    }).catch((e) => showToast((e && e.message) ? e.message : 'Файл не подошёл'));
+  }
+  function clearFeedAttach() { feedAttach = null; paintFeedAttach(); }
+  function paintFeedAttach() {
+    const box = $('#feed-attach');
+    if (!box) return;
+    if (!feedAttach) { box.innerHTML = ''; box.classList.add('hidden'); return; }
+    box.classList.remove('hidden');
+    const m = feedAttach;
+    const inner = m.kind === 'photo'
+      ? `<img src="${esc(m.url)}" alt="">`
+      : `<video src="${esc(m.url)}" muted playsinline></video>`;
+    const what = m.kind === 'photo'
+      ? `Фото ${m.w}×${m.h} · ${m.kb} КБ`
+      : `Видео ${m.dur} сек · ${m.kb} КБ`;
+    box.innerHTML = `
+      <div class="attach-thumb">${inner}</div>
+      <div class="attach-info min-w-0">
+        <div class="font-bold text-slate-200 truncate">${esc(what)}</div>
+        <div class="text-[10px] text-slate-500">${m.kind === 'photo'
+          ? `сжато до ${m.w}px, чтобы база не распухала`
+          : `потолок ленты — ${FEED_VIDEO_MAX_KB / 1000} МБ и ${FEED_VIDEO_MAX_SEC} сек`}</div>
+      </div>
+      <button type="button" class="attach-x" id="feed-attach-x" title="Убрать">✕</button>`;
+    const x = $('#feed-attach-x');
+    if (x) x.addEventListener('click', clearFeedAttach);
+  }
+  function feedMediaHtml(m) {
+    if (!m || !m.url) return '';
+    if (m.kind === 'video') {
+      return `<video class="feed-media" src="${esc(m.url)}" controls playsinline preload="metadata"></video>
+        <div class="feed-media-cap">Видео · ${m.kb || 0} КБ${m.dur ? ' · ' + m.dur + ' сек' : ''}</div>`;
+    }
+    return `<img class="feed-media" src="${esc(m.url)}" alt="фото" loading="lazy">
+      <div class="feed-media-cap">Фото · ${m.kb || 0} КБ</div>`;
+  }
+
+  /* ---- Лайки, реакции, комментарии, опросы ---- */
+  function likeCount(m) { return Object.keys((m && m.likes) || {}).length; }
+  function iLike(k) { return !!(feedCache[k] && feedCache[k].likes && feedCache[k].likes[HubAuth.uid]); }
+  function toggleLike(k) {
+    const me = HubAuth.uid;
+    if (!me) { showToast('Авторизация ещё не готова'); return; }
+    const ref = db.ref(`${feedPath()}/${k}/likes/${me}`);
+    if (iLike(k)) ref.remove().catch(() => {});
+    else ref.set(true).catch(() => showToast('Не получилось поставить лайк'));
+  }
+  function rxGroups(m) {
+    const by = {};
+    Object.keys((m && m.rx) || {}).forEach((uid) => {
+      const e = m.rx[uid];
+      if (!FEED_RX.indexOf(e) && e) return;
+      if (!by[e]) by[e] = [];
+      by[e].push(uid);
+    });
+    return by;
+  }
+  function setRx(k, emoji) {
+    const me = HubAuth.uid;
+    if (!me) { showToast('Авторизация ещё не готова'); return; }
+    const ref = db.ref(`${feedPath()}/${k}/rx/${me}`);
+    const cur = (feedCache[k] && feedCache[k].rx && feedCache[k].rx[me]) || '';
+    const next = (cur === emoji) ? null : emoji;
+    const go = next ? ref.set(next) : ref.remove();
+    go.catch(() => showToast('Не получилось поставить реакцию'));
+  }
+  function feedRxListHtml(m) {
+    const by = rxGroups(m);
+    const keys = Object.keys(by);
+    if (!keys.length) return '';
+    const me = HubAuth.uid;
+    return `<div class="rx-list">${keys.map((e) => {
+      const us = by[e];
+      const mine = me && us.indexOf(me) >= 0;
+      return `<button class="rx-pill ${mine ? 'mine' : ''}" data-rx="${esc(e)}" data-key="${esc(m.__key)}" title="${esc(us.length + ' ' + pluralMood(us.length))}">${esc(e)} <span class="n">${us.length}</span></button>`;
+    }).join('')}</div>`;
+  }
+  function feedPollHtml(m, k) {
+    const p = m.poll;
+    if (!p || !p.opts || p.opts.length < 2) return '';
+    const votes = p.votes || {};
+    const total = Object.keys(votes).length;
+    const counts = p.opts.map((_, i) => Object.keys(votes).filter((u) => Number(votes[u]) === i).length);
+    const mine = votes[HubAuth.uid];
+    const canDel = canDeleteFeedPost(m.uid);
+    const rows = p.opts.map((o, i) => {
+      const pct = total ? Math.round((counts[i] / total) * 100) : 0;
+      const sel = mine !== undefined && Number(mine) === i;
+      return `<button class="poll-opt w-full text-left rounded-lg px-2.5 py-1.5 border ${sel ? 'accent-border bg-slate-800/70' : 'border-slate-700 bg-slate-800/40'}" data-fvote="${esc(k)}" data-opt="${i}">
+        <div class="flex items-center justify-between gap-2 mb-1">
+          <span class="text-xs text-slate-200">${esc(o)}${sel ? ' <span class="text-[10px] accent-text font-bold">✓ мой выбор</span>' : ''}</span>
+          <span class="text-[10px] text-slate-500 shrink-0">${counts[i]} · ${pct}%</span>
+        </div>
+        <div class="h-1.5 rounded-full bg-slate-700 overflow-hidden"><div class="h-full ${sel ? 'accent-bg' : 'bg-slate-500'}" style="width:${pct}%"></div></div>
+      </button>`;
+    }).join('');
+    return `<div class="rounded-xl border border-slate-700 bg-slate-900/70 p-2 mt-2 space-y-1.5">
+      <div class="text-xs font-bold text-slate-200">📊 ${esc(p.q || 'Голосование')}</div>
+      ${rows}
+      <div class="flex items-center gap-2 text-[10px] text-slate-500">
+        <span>Голосов: ${total}</span>
+        ${canDel ? `<button class="act-del" style="margin-left:auto" data-fdel-poll="${esc(k)}">Убрать опрос</button>` : ''}
+      </div>
+    </div>`;
+  }
+  function voteFeedPoll(k, idx) {
+    if (!HubAuth.uid) { showToast('Авторизация ещё не готова'); return; }
+    db.ref(`${feedPath()}/${k}/poll/votes/${HubAuth.uid}`).set(idx)
+      .catch((e) => showToast('Ошибка голосования: ' + ((e && e.message) ? e.message : e)));
+  }
+  function deleteFeedPoll(k) {
+    if (!k) return;
+    db.ref(`${feedPath()}/${k}/poll`).remove().then(() => showToast('Опрос убран'))
+      .catch(() => showToast('Не получилось убрать опрос'));
+  }
+  // ---- комментарии: грузим по требованию, иначе лента встаёт колом ----
+  const cmtState = {};   // key -> { ref, items, keys, open }
+  function closeComments(k) {
+    const st = cmtState[k];
+    if (st && st.ref) { try { st.ref.off('value'); } catch (e) {} }
+    delete cmtState[k];
+    cmtStateOpen.delete(k);
+  }
+  const cmtStateOpen = new Set();
+  function toggleComments(k) {
+    if (cmtStateOpen.has(k)) { closeComments(k); paintFeed(); return; }
+    if (!HubAuth.uid) { showToast('Авторизация ещё не готова'); return; }
+    cmtStateOpen.add(k);
+    cmtState[k] = { ref: null, items: {}, keys: [] };
+    cmtState[k].ref = db.ref(`${feedPath()}/${k}/cmts`).on('value', (snap) => {
+      const st = cmtState[k];
+      if (!st) return;
+      st.items = snap.val() || {};
+      st.keys = Object.keys(st.items).sort((a, b) =>
+        ((st.items[b] && st.items[b].time) || 0) - ((st.items[a] && st.items[a].time) || 0));
+      paintFeed();
+    }, () => showToast('Комментарии недоступны'));
+    paintFeed();
+  }
+  function cmtItems(k) {
+    const st = cmtState[k];
+    if (!st) return [];
+    return st.keys.map((ck) => Object.assign({ __key: ck }, st.items[ck] || {}));
+  }
+  function sendComment(k) {
+    const inp = document.querySelector(`.cmt-inp[data-ckey="${k}"]`);
+    if (!inp) return;
+    const text = (inp.value || '').trim();
+    if (!text) return;
+    if (text.length > 300) { showToast('Комментарий длиннее 300 символов'); return; }
+    const path = `${feedPath()}/${k}/cmts`;
+    const rec = { uid: HubAuth.uid, nick: nick() || 'Ученик', text: text, time: Date.now() };
+    const ck = db.ref(path).push().key;
+    db.ref(`${path}/${ck}`).set(rec).then(() => {
+      inp.value = '';
+      flagAfterModeration(text, `${feedPath()}/${k}`, ck, 'feed_cmt');
+    }).catch((e) => showToast('Комментарий не отправлен: ' + ((e && e.message) ? e.message : e)));
+  }
+  function deleteComment(k, ck) {
+    db.ref(`${feedPath()}/${k}/cmts/${ck}`).remove().catch(() => {});
+  }
+  function cmtHtml(k) {
+    const items = cmtItems(k);
+    const me = HubAuth.uid;
+    const list = items.length
+      ? items.map((c) => {
+        const isMine = c.uid === me;
+        const canDel = isMine || isAdmin();
+        return `<div class="cmt-item">
+          ${avatarHtml(c.nick || 'Ученик', 'sm', userAvatarOf(c.uid), avatarImgOf(c.uid))}
+          <div class="cmt-body">
+            <div class="cmt-head">${esc(c.nick || 'Ученик')}${verifyBadge(c.uid)}</div>
+            <div class="cmt-txt">${esc(c.text || '')}</div>
+            <div class="cmt-time">${fmtDate(c.time)}</div>
+          </div>
+          ${canDel ? `<button class="cmt-del" data-cmt-del="${esc(k)}" data-ckey2="${esc(c.__key)}">Удалить</button>` : ''}
+        </div>`;
+      }).join('')
+      : '<div class="text-[11px] text-slate-500 mb-2">Комментариев пока нет — напиши первый</div>';
+    return `<div class="cmt-box">
+      ${list}
+      <form class="cmt-form" data-cmt-form="${esc(k)}">
+        <input class="cmt-inp" data-ckey="${esc(k)}" maxlength="300" autocomplete="off" placeholder="Комментарий…">
+        <button type="submit" class="cmt-send accent-bg">→</button>
+      </form>
+    </div>`;
+  }
+
   function paintFeed() {
     const box = $('#feed-messages');
     if (!box) return;
     paintFeedScopeUi();
     const me = (window.HubAuth && HubAuth.uid) || '';
     const keys = feedKeysShown();
+    paintFeedAttach();
     if (!keys.length) {
-      box.innerHTML = emptyNote(feedScope === 'mine'
-        ? 'Твой канал пока пуст — напиши первый пост'
-        : 'В ленте школы пока нет постов');
+      const hint = feedScope === 'mine' ? 'Твой канал пока пуст — напиши первый пост'
+        : feedScope === 'following' ? 'Ты ни на кого не подписан — открой профиль classmate\'а и нажми «Подписаться»'
+        : 'В ленте школы пока нет постов';
+      box.innerHTML = emptyNote(hint);
       return;
     }
+    const cmtN = (k) => {
+      const st = cmtState[k];
+      return st ? st.keys.length : ((feedCache[k] || {}).cmtCount || 0);
+    };
     box.innerHTML = keys.map((k) => {
-      const m = feedCache[k] || {};
+      const m = Object.assign({}, feedCache[k] || {});
+      m.__key = k;
       const uid = m.uid || '';
       const who = userMeta(uid);
       const nm = (who && who.nick) || m.nick || 'Ученик';
       const av = (who && who.avatar) || 'letter';
       const mine = !!uid && uid === me;
-      const mv = moodValue((who && who.mood) || (moodsCache && moodsCache[uid]));
+      const mv = moodValue((moodsCache && moodsCache[uid]) || (who && who.mood));
+      const liked = iLike(k);
+      const nc = cmtN(k);
+      const open = cmtStateOpen.has(k);
       return `
       <article class="feed-card ${mine ? 'mine' : ''} ${m.flagged ? 'flagged' : ''}" data-key="${esc(k)}" data-uid="${esc(uid)}">
         <div class="feed-top">
-          <span data-open="${esc(uid)}" style="cursor:pointer;display:flex">${avatarHtml(nm, 'sm', av)}</span>
+          <span data-open="${esc(uid)}" style="cursor:pointer;display:flex">${avatarHtml(nm, 'sm', av, avatarImgOf(uid))}</span>
           <div class="feed-top-txt">
             <div class="feed-nick" data-open="${esc(uid)}" style="cursor:pointer">${esc(nm)}${verifyBadge(uid)}</div>
             <div class="feed-sub">${esc(m.cls || '')}${m.cls ? ' · ' : ''}${fmtDate(m.time)}</div>
@@ -4673,12 +5288,30 @@
           ${mv ? `<span class="mood-hist-i" title="Настроение: ${moodLabel(mv)}">${moodFace(mv)}</span>` : ''}
         </div>
         <div class="feed-txt">${esc(m.text || '')}</div>
-        <div class="feed-foot">
-          ${m.flagged ? '<span class="feed-foot-time" style="color:#fbbf24">⚠ помечено фильтром</span>' : ''}
-          ${canDeleteFeedPost(uid) ? `<button class="feed-del" data-del="${esc(k)}">Удалить</button>` : ''}
+        ${feedMediaHtml(m.media)}
+        ${feedPollHtml(m, k)}
+        ${feedRxListHtml(m)}
+        <div class="act-row">
+          <button class="act-btn ${liked ? 'on' : ''}" data-like="${esc(k)}" title="Нравится">❤️ <span class="n">${likeCount(m)}</span></button>
+          <button class="act-btn ${open ? 'cmt-on' : ''}" data-cmt="${esc(k)}" title="Комментарии">💬 <span class="n">${nc}</span></button>
+          <button class="act-btn" data-rx-open="${esc(k)}" title="Реакции">🔥 Реакция</button>
+          ${!mine ? `<button class="act-btn ${iFollow(uid) ? 'cmt-on' : ''}" data-follow="${esc(uid)}">${iFollow(uid) ? '✓ Подписан' : '+ Подписаться'}</button>` : ''}
+          ${canDeleteFeedPost(uid) ? `<button class="act-del" data-del="${esc(k)}">Удалить</button>` : ''}
         </div>
+        <div data-rx-slot="${esc(k)}"></div>
+        ${open ? cmtHtml(k) : ''}
       </article>`;
     }).join('');
+  }
+  function toggleRxPicker(k) {
+    const slot = document.querySelector(`[data-rx-slot="${k}"]`);
+    if (!slot) return;
+    if (slot.firstChild) { slot.innerHTML = ''; return; }
+    const m = feedCache[k] || {};
+    const me = HubAuth.uid;
+    const cur = (m.rx && m.rx[me]) || '';
+    slot.innerHTML = `<div class="rx-picker">${FEED_RX.map((e) =>
+      `<button class="rx-pick ${cur === e ? 'on' : ''}" data-rx="${esc(e)}" title="${esc(e)}">${e}</button>`).join('')}</div>`;
   }
   function updateFeedUnread() {
     const badge = $('#feed-unread');
@@ -4698,7 +5331,8 @@
     e.preventDefault();
     const input = $('#feed-input');
     const text = (input.value || '').trim();
-    if (!text) return;
+    const media = feedAttach;
+    if (!text && !media) return;
     if (!canPostFeed()) {
       showToast('Лента доступна только ученикам этой школы');
       return;
@@ -4707,6 +5341,7 @@
     if (!nick()) { showToast('Сначала задайте ник'); askNickIfNeeded(); return; }
     if (!HubAuth.uid || !HubAuth.ready) { showToast('Авторизация ещё не готова'); return; }
     input.value = '';
+    clearFeedAttach();
     const payload = {
       uid: HubAuth.uid,
       nick: nick(),
@@ -4714,18 +5349,25 @@
       time: Date.now(),
       cls: homeNameShort(),
     };
+    if (media) payload.media = media;
+    const opts = feedPollDraft.map((s) => (s || '').trim()).filter(Boolean).slice(0, 4);
+    if (opts.length >= 2) payload.poll = { q: feedPollDraftQ.trim() || 'Голосование', opts: opts, votes: {} };
     const key = db.ref(feedPath()).push().key;
     db.ref(feedPath() + '/' + key).set(payload).then(() => {
-      flagAfterModeration(text, feedPath(), key, 'feed');
+      feedPollDraft = []; feedPollDraftQ = ''; paintFeedPollDraft();
+      if (text) flagAfterModeration(text, feedPath(), key, 'feed');
       trimFeed();
     }).catch((err) => {
       input.value = text;
+      feedAttach = media; paintFeedAttach();
       showToast('Не отправилось: ' + ((err && err.message) ? err.message : err));
     });
   }
   function deleteFeedPost(key) {
     if (!key) return;
-    db.ref(feedPath() + '/' + key).remove().catch(() => {});
+    closeComments(key);
+    db.ref(feedPath() + '/' + key).remove().then(() => showToast('Пост удалён'))
+      .catch(() => showToast('Не получилось удалить'));
   }
   // Права на запись + тихий час в ленте (баннер, плейсхолдер, блокировка поля).
   function paintFeedPermissions() {
@@ -4744,17 +5386,21 @@
     if (ro) ro.classList.toggle('hidden', ok);
     const home = $('#feed-readonly-home');
     if (home && !ok) home.textContent = homeNameFull();
+    const blocked = !ok || (quiet && QUIET_BLOCKS_FEED);
     const inp = $('#feed-input');
     if (inp) {
-      const blocked = !ok || (quiet && QUIET_BLOCKS_FEED);
       inp.classList.toggle('quiet', quiet && QUIET_BLOCKS_FEED);
       inp.disabled = !ok;
       inp.placeholder = !ok ? 'Лента только для учеников этой школы'
         : (quiet && QUIET_BLOCKS_FEED) ? 'Тихий час — постить нельзя'
         : 'Твоя история в ленте школы…';
-      const sb = $('#feed-send-btn');
-      if (sb) sb.disabled = blocked;
     }
+    const sb = $('#feed-send-btn');
+    if (sb) sb.disabled = blocked;
+    const ab = $('#feed-attach-btn');
+    if (ab) ab.disabled = blocked;
+    const pb = $('#feed-poll-toggle');
+    if (pb) pb.disabled = blocked;
   }
   // Не даём ленте расти бесконечно: режем хвост, как только порог пройден.
   function trimFeed(keep) {
@@ -4762,8 +5408,57 @@
     if (feedKeys.length <= limit) return Promise.resolve();
     const drop = feedKeys.slice(limit);
     const patch = {};
-    drop.forEach((k) => { patch[k] = null; });
+    drop.forEach((k) => { closeComments(k); patch[k] = null; });
     return db.ref(feedPath()).update(patch).catch(() => {});
+  }
+  // Обработчики ленты: один делегированный слушатель на всю ленту.
+  function bindFeedActions() {
+    const box = $('#feed-messages');
+    if (!box || box.dataset.bound === '1') return;
+    box.dataset.bound = '1';
+    box.addEventListener('click', (e) => {
+      const t = e.target;
+      const like = t.closest('[data-like]');
+      if (like) { toggleLike(like.dataset.like); return; }
+      const cmt = t.closest('[data-cmt]');
+      if (cmt) { toggleComments(cmt.dataset.cmt); return; }
+      const rxo = t.closest('[data-rx-open]');
+      if (rxo) { toggleRxPicker(rxo.dataset.rxOpen); return; }
+      const rxp = t.closest('[data-rx]');
+      if (rxp) {
+        const k = rxp.dataset.key || (rxp.closest('[data-key]') || {}).dataset.key;
+        if (k) setRx(k, rxp.dataset.rx);
+        return;
+      }
+      const cdel = t.closest('[data-cmt-del]');
+      if (cdel) { deleteComment(cdel.dataset.cmtDel, cdel.dataset.ckey2); return; }
+      const fdel = t.closest('[data-fdel-poll]');
+      if (fdel) { deleteFeedPoll(fdel.dataset.fdelPoll); return; }
+      const vote = t.closest('[data-fvote]');
+      if (vote) { voteFeedPoll(vote.dataset.fvote, parseInt(vote.dataset.opt, 10)); return; }
+      const fol = t.closest('[data-follow]');
+      if (fol) {
+        const on = toggleFollow(fol.dataset.follow);
+        fol.textContent = on ? '✓ Подписан' : '+ Подписаться';
+        fol.classList.toggle('cmt-on', on);
+        return;
+      }
+      const del = t.closest('[data-del]');
+      if (del) {
+        const key = del.dataset.del;
+        if (!key) return;
+        askConfirm('Удалить пост? Лайки, реакции и комментарии тоже исчезнут.', () => deleteFeedPost(key), 'Удалить');
+        return;
+      }
+      const open = t.closest('[data-open]');
+      if (open) { openUserPopup(open.dataset.open, (t.textContent || '').trim()); return; }
+    });
+    box.addEventListener('submit', (e) => {
+      const f = e.target.closest ? e.target.closest('[data-cmt-form]') : null;
+      if (!f) return;
+      e.preventDefault();
+      sendComment(f.dataset.cmtForm);
+    });
   }
 
   /* ============================================================
@@ -4907,79 +5602,19 @@
   }
 
   /* ============================================================
-     ТЕМА coder20: СИЛУЭТЫ И МУЗЫКА
+     ТЕМА coder20: ТИХИЙ ЭМБИЕНТ, КОТОРЫЙ ИГРАЕТ САМ
      ============================================================ */
-  /* Свою запись в приложение положить нельзя (это чужая авторская
-     работа), поэтому плеер умеет три источника, по очереди:
-       1) файл рядом с index.html  — положите свой mp3/ogg/m4a
-       2) ссылка из настроек     — вставьте свою URL
-       3) встроенный синтез       — тёмный эмбиент через Web Audio,
-                                    чтобы фича работала сразу,
-                                    даже если файла нет
-     Автозапуск запрещён браузером, поэтому старт — только по кнопке. */
-  const C20_MUSIC_FILE = 'coder20.mp3';
-  const C20_MUSIC_NAME = 'Solar Fields — Landing Party';
-  const C20_FIGURES = [
-    { id: 'stand',   lbl: 'дежурный' },
-    { id: 'walk',    lbl: 'переуспокой' },
-    { id: 'sit',     lbl: 'на паузе' },
-    { id: 'think',   lbl: 'думает' },
-    { id: 'lean',    lbl: 'у стены' },
-  ];
-  let c20Audio = null, c20Synth = null, c20MusicMode = 'none', c20FigIdx = 0;
-  let c20FigTimer = null;
+  /* Видимой панели звука нет и выключить его нельзя — так заказано.
+     Но браузеры запрещают запускать звук без действия пользователя,
+     поэтому: как только тема coder20 активна, первое же касание
+     страницы (это всегда вход в приложение) запускает эмбиент.
+     Своего файла здесь быть не может — чужая музыка защищена
+     авторским правом, поэтому звук синтезируется в Web Audio. */
+  const C20_MUSIC_VOL = 0.26;   // тихо: это фон, а не контент
+  let c20GestureBound = false;
 
-  function c20SilhouetteHtml(id) {
-    const P = 'fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"';
-    const bodies = {
-      stand: `<circle cx="60" cy="26" r="11" ${P}/>
-        <path d="M60 37v40" ${P}/><path d="M60 47l-16 10M60 47l16 10" ${P}/>
-        <path d="M60 77l-11 33M60 77l11 33" ${P}/>`,
-      walk: `<circle cx="60" cy="26" r="11" ${P}/>
-        <path d="M60 37l-4 40" ${P}/><path d="M56 48l-18 8M58 50l17 9" ${P}/>
-        <path d="M56 77l-16 30M58 77l14 31" ${P}/>`,
-      sit: `<circle cx="60" cy="30" r="11" ${P}/>
-        <path d="M60 41v26" ${P}/><path d="M60 48h-15M60 48h15" ${P}/>
-        <path d="M60 67h20l4 6" ${P}/><path d="M60 67l-6 10" ${P}/>
-        <path d="M84 73h10" ${P}/>`,
-      think: `<circle cx="60" cy="26" r="11" ${P}/>
-        <path d="M60 37v40" ${P}/><path d="M60 48l-14 6M60 48l15 3" ${P}/>
-        <path d="M60 77l-10 33M60 77l10 33" ${P}/><circle cx="78" cy="52" r="7" ${P}/>`,
-      lean: `<circle cx="66" cy="27" r="11" ${P}/>
-        <path d="M60 38v39" ${P}/><path d="M60 48l18 8" ${P}/>
-        <path d="M60 77l-8 32M60 77l9 32" ${P}/><path d="M34 20v98" ${P}/>`,
-    };
-    return `<svg class="c20-fig-svg" viewBox="0 0 120 120" aria-label="силуэт">${bodies[id] || bodies.stand}</svg>`;
-  }
-  // Образец coder20 смонтирован дважды (экран входа и основной),
-  // поэтому рисуем во все копии, а не только в первую.
-  function paintC20Figure() {
-    const hosts = $$('.c20-figure');
-    if (!hosts.length) return;
-    const f = C20_FIGURES[c20FigIdx % C20_FIGURES.length];
-    const html = c20SilhouetteHtml(f.id) + `<span class="c20-fig-lbl">${f.lbl}</span>`;
-    hosts.forEach((h) => { h.innerHTML = html; });
-    localStorage.setItem(LS.c20Fig, String(c20FigIdx));
-  }
-  function nextC20Figure() {
-    c20FigIdx = (c20FigIdx + 1) % C20_FIGURES.length;
-    paintC20Figure();
-  }
-  function startC20FigureCycle() {
-    if (c20FigTimer) return;
-    const saved = Number(localStorage.getItem(LS.c20Fig) || 0);
-    if (saved >= 0 && saved < C20_FIGURES.length) c20FigIdx = saved;
-    paintC20Figure();
-    // смена позы раз в минуту — заметно, но не мешает
-    c20FigTimer = setInterval(nextC20Figure, 60 * 1000);
-  }
-  function stopC20FigureCycle() {
-    if (c20FigTimer) { clearInterval(c20FigTimer); c20FigTimer = null; }
-  }
-
-  /* --- Встроенный тёмный эмбиент (не классика): дрон + шум + LFO --- */
   const C20Synth = {
-    ctx: null, master: null, nodes: [], on: false, vol: 0.3,
+    ctx: null, master: null, nodes: [], on: false, vol: C20_MUSIC_VOL,
     ensure() {
       if (this.ctx) return true;
       const AC = window.AudioContext || window.webkitAudioContext;
@@ -4990,13 +5625,20 @@
       this.master.connect(this.ctx.destination);
       return true;
     },
+    // Возвращает true, если звук реально идёт, а не просто собран.
+    live() { return !!(this.ctx && this.ctx.state === 'running'); },
     start() {
       if (!this.ensure()) return false;
       const ctx = this.ctx;
+      // Уже играет — только добьём громкость и снимем возможную паузу.
+      if (this.on) {
+        if (ctx.state === 'suspended') ctx.resume();
+        return this.live();
+      }
       const filt = ctx.createBiquadFilter();
       filt.type = 'lowpass'; filt.frequency.value = 620; filt.Q.value = 3.2;
       filt.connect(this.master);
-      // три расстроенных «пилы» — базовое темное синт-подложие
+      // три расстроенные «пилы» — базовое тёмное синт-подложие
       [55, 55.4, 82.5].forEach((f, i) => {
         const o = ctx.createOscillator();
         o.type = i === 2 ? 'triangle' : 'sawtooth';
@@ -5027,7 +5669,7 @@
       this.master.gain.setValueAtTime(0, ctx.currentTime);
       this.master.gain.linearRampToValueAtTime(this.vol, ctx.currentTime + 2.5);
       this.on = true;
-      return true;
+      return this.live();
     },
     stop() {
       if (!this.ctx || !this.on) { this.on = false; return; }
@@ -5040,82 +5682,31 @@
       setTimeout(() => { dead.forEach((n) => { try { n.stop && n.stop(); } catch (e) {} }); }, 800);
       this.on = false;
     },
-    setVol(v) {
-      this.vol = Math.max(0, Math.min(1, Number(v) || 0));
-      localStorage.setItem(LS.c20Vol, String(this.vol));
-      if (this.on && this.master) this.master.gain.value = this.vol;
-      if (c20Audio) c20Audio.volume = this.vol;
-    },
   };
-  function c20MusicSource() {
-    return (localStorage.getItem(LS.c20Music) || '').trim() || C20_MUSIC_FILE;
+
+  // Один раз вешаем слушатель первого действия пользователя.
+  // Он срабатывает и на кнопку входа, и на любой тап по вкладке —
+  // то есть практически сразу после открытия приложения.
+  function bindC20Gesture() {
+    if (c20GestureBound) return;
+    c20GestureBound = true;
+    const kick = () => {
+      document.removeEventListener('pointerdown', kick, true);
+      document.removeEventListener('keydown', kick, true);
+      document.removeEventListener('touchstart', kick, true);
+      if (isCoder20()) C20Synth.start();
+    };
+    document.addEventListener('pointerdown', kick, true);
+    document.addEventListener('keydown', kick, true);
+    document.addEventListener('touchstart', kick, true);
   }
-  // Есть ли рядом свой coder20.mp3? Проверяем один раз и молча:
-  // подпись под кнопкой ▶ не должна обещать трек, которого в комплекте нет.
-  let c20FileOk = null;   // null — ещё не проверили
-  function probeC20File() {
-    if (c20FileOk !== null) return;
-    if ((localStorage.getItem(LS.c20Music) || '').trim()) { c20FileOk = false; return; }
-    try {
-      fetch(C20_MUSIC_FILE, { method: 'HEAD', cache: 'no-store' })
-        .then((r) => { c20FileOk = !!r.ok; paintC20Music(); })
-        .catch(() => { c20FileOk = false; paintC20Music(); });
-    } catch (e) { c20FileOk = false; }
-  }
-  function c20MusicLabel() {
-    if (c20MusicMode === 'synth') return 'встроенный эмбиент';
-    if (c20MusicMode === 'file') return C20_MUSIC_NAME;
-    // выключено — показываем, что реально удастся услышать
-    if ((localStorage.getItem(LS.c20Music) || '').trim()) return 'своя запись';
-    if (c20FileOk === true) return C20_MUSIC_NAME;
-    return '▶ — эмбиент';
-  }
-  function paintC20Music() {
-    const vol = Number(localStorage.getItem(LS.c20Vol) || 0.3);
-    C20Synth.vol = vol;
-    const name = c20MusicLabel();
-    $$('#c20-music-btn').forEach((b) => { b.textContent = c20MusicMode === 'none' ? '▶' : '⏸'; });
-    $$('#c20-music-name').forEach((n) => {
-      n.textContent = name;
-      n.title = c20MusicMode === 'none'
-        ? 'Звук выключен. ' + (c20FileOk === true
-            ? 'Найден ' + C20_MUSIC_FILE + '.'
-            : 'Файл ' + C20_MUSIC_FILE + ' не найден — нажмите ▶, и заиграет встроенный эмбиент. Свою запись можно положить рядом с index.html или вписать ссылку в Настройках.')
-        : 'Сейчас играет: ' + name;
-    });
-    $$('#c20-music-vol').forEach((v) => { v.value = String(Math.round(vol * 100)); });
-    if (c20Audio) c20Audio.volume = vol;
-  }
-  function stopC20Music() {
-    if (c20Audio) { try { c20Audio.pause(); } catch (e) {} c20Audio = null; }
-    C20Synth.stop();
-    c20MusicMode = 'none';
-    localStorage.setItem(LS.c20MusicOn, '');
-    paintC20Music();
-  }
-  function startC20Music() {
-    if (c20Audio || C20Synth.on) { stopC20Music(); return; }
-    C20Synth.setVol(Number(localStorage.getItem(LS.c20Vol) || 0.3));
-    const src = c20MusicSource();
-    let a = null;
-    try { a = new Audio(src); } catch (e) { a = null; }
-    if (a) {
-      a.loop = true;
-      a.volume = C20Synth.vol;
-      a.play().then(() => {
-        c20Audio = a; c20MusicMode = 'file';
-        localStorage.setItem(LS.c20MusicOn, '1');
-        paintC20Music();
-      }).catch(() => {
-        // файла нет или браузер не дал играть — уходим на синтез
-        if (C20Synth.start()) { c20MusicMode = 'synth'; localStorage.setItem(LS.c20MusicOn, '1'); paintC20Music(); }
-        else { showToast('Не удалось включить звук'); paintC20Music(); }
-      });
-    } else if (C20Synth.start()) {
-      c20MusicMode = 'synth';
-      localStorage.setItem(LS.c20MusicOn, '1');
-      paintC20Music();
-    }
+  // Вызывается из startCoder20. Тему могли переключить кликом — это уже
+  // жест, тогда звук пойдёт сразу. А на загрузке страницы жеста ещё не
+  // было: контекст соберётся, но останется висящим — ждём первого касания.
+  function c20MusicBegin() {
+    if (!isCoder20()) return;
+    if (C20Synth.start()) return;
+    bindC20Gesture();
   }
 
   /* ============================================================
@@ -5333,23 +5924,6 @@
         <p class="text-[10px] text-slate-600 mt-1.5 leading-snug">В теме ZakveZ интерфейс становится чёрно-зелёным как в терминале, а справа идут кинематографические титры.</p>
       </div>
 
-      ${theme === 'coder20' ? `
-      <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
-        <div class="font-bold text-sm mb-1">🎵 Музыка в coder20</div>
-        <p class="text-[11px] text-slate-500 mb-3 leading-snug">
-          Свою запись в приложение положить нельзя — это чужая авторская работа. Плеер умеет три источника по очереди:
-          файл <span class="font-mono">${esc(C20_MUSIC_FILE)}</span> рядом с index.html, ваша ссылка ниже, а если файла нет —
-          встроенный тёмный эмбиент (Web Audio, не классика). Кнопка ▶ на панели справа, автозапуск запрещён браузером.
-        </p>
-        <label class="text-[10px] text-slate-500 block mb-1">Ссылка на свой файл (необязательно)</label>
-        <div class="flex gap-2">
-          <input id="c20-music-url" type="url" inputmode="url" placeholder="https://…/track.mp3"
-                 value="${esc(localStorage.getItem(LS.c20Music) || '')}"
-                 class="flex-1 min-w-0 rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-[11px] outline-none focus:border-indigo-500">
-          <button id="c20-music-save" class="shrink-0 rounded-lg accent-bg text-white px-3 py-2 text-[11px] font-bold">ОК</button>
-        </div>
-      </div>` : ''}
-
       ${theme === 'light' || theme === 'dark' ? `
       <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
         <div class="font-bold text-sm mb-3">Цвет акцента</div>
@@ -5447,6 +6021,9 @@
 
     $('#profile-edit-nick').addEventListener('click', changeNick);
     $('#profile-avatar').addEventListener('click', openAvatarModal);
+    // Аватарка рисуется сразу: к этому моменту фото из schools/{sid}/avatars
+    // могло уже приехать, а может и нет — тогда просто будет буква ника.
+    paintMyAvatar();
     const bioInp = $('#bio-input');
     const bioCnt = $('#bio-count');
     const updBioCount = () => { if (bioInp && bioCnt) bioCnt.textContent = bioInp.value.length + '/150'; };
@@ -5458,7 +6035,9 @@
         const u = sn.val() || {};
         if (bioInp && document.activeElement !== bioInp) { bioInp.value = u.bio || ''; updBioCount(); }
         const pa = $('#profile-avatar');
-        if (pa) pa.innerHTML = avatarHtml(nick() || 'Ученик', 'lg', (u.avatar) || 'letter');
+        if (pa) pa.innerHTML = avatarHtml(nick() || 'Ученик', 'lg', (u.avatar) || 'letter', myAvatarImg);
+        const clr = $('#avatar-modal-clearimg');
+        if (clr) clr.classList.toggle('hidden', !myAvatarImg);
       }).catch(() => updBioCount());
       const bioBtn = $('#bio-save');
       if (bioBtn) bioBtn.addEventListener('click', () => {
@@ -5473,22 +6052,6 @@
     $('#theme-dark').addEventListener('click', () => { applyTheme('dark'); renderSettingsTab(); showToast('Тема: ' + THEME_LABELS.dark); });
     $('#theme-coder').addEventListener('click', () => { applyTheme('coder20'); renderSettingsTab(); showToast('Тема: ' + THEME_LABELS.coder20); });
     $('#theme-zakvez').addEventListener('click', () => { applyTheme('zakvez'); renderSettingsTab(); showToast('Тема: ' + THEME_LABELS.zakvez); });
-    // Ссылка на свою запись в coder20 (пусто = файл coder20.mp3 рядом с index.html)
-    const c20UrlIn = $('#c20-music-url');
-    const c20UrlSave = $('#c20-music-save');
-    if (c20UrlIn && c20UrlSave) {
-      c20UrlSave.addEventListener('click', () => {
-        const raw = (c20UrlIn.value || '').trim();
-        if (raw && !/^https?:\/\//i.test(raw)) {
-          showToast('Ссылка должна начинаться с http:// или https://');
-          return;
-        }
-        localStorage.setItem(LS.c20Music, raw);
-        if (raw) showToast('Ссылка сохранена — нажми ▶ на панели справа');
-        else showToast('Вернётся файл ' + C20_MUSIC_FILE);
-        paintC20Music();
-      });
-    }
     $$('.accent-dot').forEach((d) => d.addEventListener('click', () => {
       const key = d.dataset.accent;
       localStorage.setItem(LS.accent, key);
@@ -5575,6 +6138,26 @@
     });
     const lb = $('#avatar-modal-letter');
     if (lb) { lb.classList.remove('accent-border'); lb.classList.toggle('accent-border', cur === 'letter'); }
+    // Загрузка фото. Н числа потолков, а из JS-констант — разметка модалки в HTML
+    // и не проходит через шаблонную строку.
+    const hint = $('#avatar-modal-hint');
+    if (hint) hint.textContent = 'Фото ужимается до ' + AVATAR_IMG_MAX_PX + ' px и до ' + AVATAR_IMG_MAX_KB + ' КБ. Пока фото есть, оно важнее эмодзи.';
+    const clr = $('#avatar-modal-clearimg');
+    if (clr) clr.classList.toggle('hidden', !myAvatarImg);
+    if (!$('#avatar-modal-file').dataset.bound) {
+      const fi = $('#avatar-modal-file');
+      fi.dataset.bound = '1';
+      $('#avatar-modal-upload').addEventListener('click', () => fi.click());
+      fi.addEventListener('change', () => {
+        const f = fi.files && fi.files[0];
+        if (!f) return;
+        fi.value = '';
+        shrinkImage(f, AVATAR_IMG_MAX_PX, AVATAR_IMG_MAX_KB)
+          .then((m) => saveAvatarImage(m.url))
+          .catch((err) => showToast((err && err.message) ? err.message : 'Файл не подошёл'));
+      });
+      clr.addEventListener('click', () => clearAvatarImage());
+    }
     m.classList.remove('hidden');
     m.classList.add('flex');
   }
@@ -5588,8 +6171,7 @@
     const val = av || 'letter';
     const applyAv = (v) => {
       if (usersMeta && meu) { usersMeta[meu] = usersMeta[meu] || {}; usersMeta[meu].avatar = v; }
-      const pa = $('#profile-avatar');
-      if (pa) pa.innerHTML = avatarHtml(nick() || 'Ученик', 'lg', v);
+      paintMyAvatar();
       paintChatAvatars();
       paintDmList();
       closeAvatarModal();
@@ -6754,22 +7336,27 @@
   }));
   const feedForm = $('#feed-form');
   if (feedForm) feedForm.addEventListener('submit', sendFeedPost);
-  const feedBox = $('#feed-messages');
-  if (feedBox) {
-    feedBox.addEventListener('click', (ev) => {
-      const del = ev.target.closest('[data-del]');
-      if (del) {
-        const card = del.closest('[data-key]');
-        const key = del.dataset.del;
-        if (!key) return;
-        const m = (feedCache[key] || {});
-        askConfirm('Удалить пост?', () => deleteFeedPost(key), 'Удалить');
-        return;
-      }
-      const open = ev.target.closest('[data-open]');
-      if (open) openUserPopup(open.dataset.open);
+  // Вложение: фото сжимается, видео упирается в жёсткий потолок.
+  const feedAttachBtn = $('#feed-attach-btn');
+  const feedFile = $('#feed-file');
+  if (feedAttachBtn && feedFile) {
+    feedAttachBtn.addEventListener('click', () => feedFile.click());
+    feedFile.addEventListener('change', () => {
+      const f = feedFile.files && feedFile.files[0];
+      feedFile.value = '';
+      onFeedFile(f);
     });
   }
+  const feedPollToggle = $('#feed-poll-toggle');
+  if (feedPollToggle) feedPollToggle.addEventListener('click', () => {
+    feedPollOpen = !feedPollOpen;
+    if (!feedPollOpen) { feedPollDraft = []; feedPollDraftQ = ''; }
+    paintFeedPollDraft();
+  });
+  // Клики по постам (лайк, комментарии, реакции, подписка, удаление) и
+  // отправка комментариев — один делегированный слушатель, чтобы новые
+  // посты не требовали переподписки.
+  bindFeedActions();
 
   // Ввод в чате: статус "печатает..."
   $('#chat-input').addEventListener('input', () => {
@@ -6968,6 +7555,8 @@
       loadUsersMeta();
       // Настроения (живое зеркало) + среднее по классу.
       ensureMoodsWatch();
+      // Загруженные аватарки школы.
+      ensureAvatarsWatch();
       // Регистрация/вход ждал авторизации: продолжаем, когда uid известен.
       accountAuthReady();
     });

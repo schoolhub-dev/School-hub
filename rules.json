@@ -31,39 +31,139 @@
     },
     "cities": {
       ".read": true,
-      ".write": "auth != null && (!root.child('bannedUsers').child(auth.uid).exists() || (root.child('bannedUsers').child(auth.uid).hasChild('until') && root.child('bannedUsers').child(auth.uid).child('until').val() > 0 && root.child('bannedUsers').child(auth.uid).child('until').val() < now) || root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true)",
+      ".write": "auth != null && (root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true)",
       "$city": {
         ".read": true,
-        "$school": {
+        "schools": {
           ".read": true,
-          "bells": {
-            ".write": "auth != null && (root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true)"
-          },
-          "holidays": {
-            ".write": "auth != null && (root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true)"
-          },
-          "feed": {
-            "$key": {
-              ".write": "auth != null && (!root.child('bannedUsers').child(auth.uid).exists() || (root.child('bannedUsers').child(auth.uid).hasChild('until') && root.child('bannedUsers').child(auth.uid).child('until').val() > 0 && root.child('bannedUsers').child(auth.uid).child('until').val() < now) || root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true) && (root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true || (!data.exists() ? (newData.child('uid').val() === auth.uid && newData.child('text').isString() && newData.child('text').val().length() > 0 && newData.child('text').val().length() <= 500) : (data.child('uid').val() === auth.uid && (!newData.exists() || (newData.child('uid').val() === auth.uid && newData.child('text').isString() && newData.child('text').val().length() > 0 && newData.child('text').val().length() <= 500)))))"
-            }
-          },
-          "$class": {
+          ".write": "auth != null && (root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true)",
+          "$school": {
             ".read": true,
-            "schedule": {
-              ".write": "auth != null && (!root.child('bannedUsers').child(auth.uid).exists() || (root.child('bannedUsers').child(auth.uid).hasChild('until') && root.child('bannedUsers').child(auth.uid).child('until').val() > 0 && root.child('bannedUsers').child(auth.uid).child('until').val() < now) || root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true)"
-            },
-            "homework": {
-              ".write": "auth != null && (!root.child('bannedUsers').child(auth.uid).exists() || (root.child('bannedUsers').child(auth.uid).hasChild('until') && root.child('bannedUsers').child(auth.uid).child('until').val() > 0 && root.child('bannedUsers').child(auth.uid).child('until').val() < now) || root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true)"
-            },
-            "announcements": {
-              ".write": "auth != null && (!root.child('bannedUsers').child(auth.uid).exists() || (root.child('bannedUsers').child(auth.uid).hasChild('until') && root.child('bannedUsers').child(auth.uid).child('until').val() > 0 && root.child('bannedUsers').child(auth.uid).child('until').val() < now) || root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true)"
-            },
-            "ban": {
-              ".write": "auth != null && (root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true)"
+            "classes": {
+              ".read": true,
+              "$class": {
+                ".read": true,
+                ".write": "auth != null && (root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true) && ((!data.exists() && newData.hasOnlyChildren(['name']) && newData.child('name').isString()) || data.exists())",
+                "name": {
+                  ".write": "auth != null && (!data.exists() || root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true)",
+                  ".validate": "newData.val() == null || (newData.isString() && newData.val().length() > 0 && newData.val().length() <= 20)"
+                },
+                "schedule": {
+                  ".write": "auth != null && (!root.child('bannedUsers').child(auth.uid).exists() || (root.child('bannedUsers').child(auth.uid).hasChild('until') && root.child('bannedUsers').child(auth.uid).child('until').val() > 0 && root.child('bannedUsers').child(auth.uid).child('until').val() < now) || root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true)"
+                },
+                "homework": {
+                  ".write": "auth != null && (!root.child('bannedUsers').child(auth.uid).exists() || (root.child('bannedUsers').child(auth.uid).hasChild('until') && root.child('bannedUsers').child(auth.uid).child('until').val() > 0 && root.child('bannedUsers').child(auth.uid).child('until').val() < now) || root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true)"
+                },
+                "announcements": {
+                  ".write": "auth != null && (!root.child('bannedUsers').child(auth.uid).exists() || (root.child('bannedUsers').child(auth.uid).hasChild('until') && root.child('bannedUsers').child(auth.uid).child('until').val() > 0 && root.child('bannedUsers').child(auth.uid).child('until').val() < now) || root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true)",
+                  "$key": {
+                    ".validate": "newData.val() == null || (newData.hasChild('text') && newData.child('text').isString() && newData.child('text').val().length() <= 500)",
+                    "poll": {
+                      ".validate": "newData.val() == null || newData.hasChild('options')",
+                      "votes": {
+                        "$uid": {
+                          ".write": "auth != null && $uid === auth.uid",
+                          ".validate": "newData.val() == null || (newData.isNumber() && newData.val() >= 0 && newData.val() <= 9)"
+                        }
+                      }
+                    }
+                  }
+                },
+                "chat": {
+                  ".read": true,
+                  ".write": "auth != null && (!root.child('bannedUsers').child(auth.uid).exists() || (root.child('bannedUsers').child(auth.uid).hasChild('until') && root.child('bannedUsers').child(auth.uid).child('until').val() > 0 && root.child('bannedUsers').child(auth.uid).child('until').val() < now) || root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true)",
+                  "$key": {
+                    ".validate": "newData.val() == null || (newData.hasChild('text') && newData.child('text').isString() && newData.child('text').val().length() <= 1000)"
+                  }
+                },
+                "typing": {
+                  ".read": "auth != null",
+                  "$uid": {
+                    ".write": "auth != null && $uid === auth.uid"
+                  }
+                },
+                "ban": {
+                  ".write": "auth != null && (root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true)"
+                },
+                "_flags": {
+                  ".write": "auth != null && (root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true)"
+                }
+              }
             },
             "chat": {
               ".read": true,
-              ".write": "auth != null && (!root.child('bannedUsers').child(auth.uid).exists() || (root.child('bannedUsers').child(auth.uid).hasChild('until') && root.child('bannedUsers').child(auth.uid).child('until').val() > 0 && root.child('bannedUsers').child(auth.uid).child('until').val() < now) || root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true)"
+              ".write": "auth != null && (!root.child('bannedUsers').child(auth.uid).exists() || (root.child('bannedUsers').child(auth.uid).hasChild('until') && root.child('bannedUsers').child(auth.uid).child('until').val() > 0 && root.child('bannedUsers').child(auth.uid).child('until').val() < now) || root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true)",
+              "$key": {
+                ".validate": "newData.val() == null || (newData.hasChild('text') && newData.child('text').isString() && newData.child('text').val().length() <= 1000)"
+              }
+            },
+            "typing": {
+              ".read": "auth != null",
+              "$uid": {
+                ".write": "auth != null && $uid === auth.uid"
+              }
+            },
+            "bells": {
+              ".write": "auth != null && (root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true)",
+              ".validate": "newData.val() == null || newData.hasChild('times')"
+            },
+            "holidays": {
+              ".write": "auth != null && (root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true)",
+              ".validate": "newData.val() == null || newData.hasChild('ranges')"
+            },
+            "moods": {
+              ".validate": "newData.val() == null || newData.hasChildren()",
+              "$uid": {
+                ".write": "auth != null && $uid === auth.uid",
+                ".validate": "newData.val() == null || (newData.hasChildren(['v','at']) && newData.child('v').isNumber() && newData.child('v').val() >= 1 && newData.child('v').val() <= 5 && newData.child('at').isNumber())"
+              }
+            },
+            "avatars": {
+              ".validate": "newData.val() == null || newData.hasChildren()",
+              "$uid": {
+                ".write": "auth != null && $uid === auth.uid",
+                ".validate": "newData.val() == null || (newData.isString() && newData.val().length() <= 60000 && newData.val().beginsWith('data:image/'))"
+              }
+            },
+            "follows": {
+              ".validate": "newData.val() == null || newData.hasChildren()",
+              "$uid": {
+                ".write": "auth != null && $uid === auth.uid",
+                ".validate": "newData.val() == null || newData.val() === true || newData.hasChildren()"
+              }
+            },
+            "feed": {
+              ".validate": "newData.val() == null || newData.hasChildren()",
+              "$key": {
+                ".write": "auth != null && (root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true || (newData.child('uid').val() === auth.uid && (!data.exists() || data.child('uid').val() === auth.uid)))",
+                ".validate": "newData.val() == null || (newData.hasChild('uid') && newData.hasChild('time') && (!newData.hasChild('text') || (newData.child('text').isString() && newData.child('text').val().length() <= 500)) && (!newData.hasChild('media') || (newData.child('media').hasChild('url') && newData.child('media').child('url').isString() && newData.child('media').child('url').val().length() <= 2800000)) && (!newData.hasChild('poll') || (newData.child('poll').hasChild('opts') && newData.child('poll').child('opts').hasChildren())))",
+                "likes": {
+                  "$uid": {
+                    ".write": "auth != null && $uid === auth.uid"
+                  }
+                },
+                "rx": {
+                  "$uid": {
+                    ".write": "auth != null && $uid === auth.uid",
+                    ".validate": "newData.val() == null || (newData.isString() && newData.val().length() <= 4)"
+                  }
+                },
+                "poll": {
+                  ".write": "auth != null && (root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true || (data.exists() && data.parent().child('uid').val() === auth.uid))",
+                  "votes": {
+                    "$uid": {
+                      ".write": "auth != null && $uid === auth.uid",
+                      ".validate": "newData.val() == null || (newData.isNumber() && newData.val() >= 0 && newData.val() <= 9)"
+                    }
+                  }
+                },
+                "cmts": {
+                  "$ckey": {
+                    ".write": "auth != null && (root.child('roles').child(auth.uid).val() === 'admin' || auth.uid === 'LEOnIfZks4hFIVJe1o2YMqcCdeZ2' || root.child('admins').child(auth.uid).val() === true || (data.exists() ? data.child('uid').val() === auth.uid : newData.child('uid').val() === auth.uid))",
+                    ".validate": "newData.val() == null || (newData.hasChildren(['uid','text','time']) && newData.child('text').isString() && newData.child('text').val().length() > 0 && newData.child('text').val().length() <= 300)"
+                  }
+                }
+              }
             }
           }
         }
@@ -73,7 +173,7 @@
       ".read": true,
       "$uid": {
         ".read": true,
-        ".write": "false",
+        ".write": false,
         "nick": {
           ".write": "auth != null && $uid === auth.uid"
         },
@@ -119,15 +219,18 @@
         "avatar": {
           ".write": "auth != null && $uid === auth.uid && (newData.val() === null || (newData.isString() && newData.val().length() <= 8))"
         },
+        "avatarImg": {
+          ".write": "auth != null && $uid === auth.uid && (newData.val() === null || (newData.isString() && newData.val().length() <= 60000 && newData.val().beginsWith('data:image/')))"
+        },
         "mood": {
-          ".write": "auth != null && $uid === auth.uid && (newData.val() === null || (newData.hasChild('v') && newData.child('v').isNumber() && newData.child('v').val() >= 1 && newData.child('v').val() <= 5))"
+          ".write": "auth != null && $uid === auth.uid && (newData.val() == null || (newData.hasChildren(['v','at']) && newData.child('v').isNumber() && newData.child('v').val() >= 1 && newData.child('v').val() <= 5))"
         }
       }
     },
     "moods": {
       ".read": "auth != null",
       "$uid": {
-        ".write": "auth != null && $uid === auth.uid && (newData.val() === null || (newData.hasChild('v') && newData.child('v').isNumber() && newData.child('v').val() >= 1 && newData.child('v').val() <= 5))"
+        ".write": "auth != null && $uid === auth.uid && (newData.val() == null || (newData.hasChildren(['v','at']) && newData.child('v').isNumber() && newData.child('v').val() >= 1 && newData.child('v').val() <= 5))"
       }
     },
     "admins": {
