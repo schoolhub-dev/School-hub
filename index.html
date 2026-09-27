@@ -1496,6 +1496,9 @@
   const FEED_VIDEO_MAX_CHARS = 2600000;
   let avatarImgCache = {}, avatarImgRef = null, avatarImgPath = '';
   let myAvatarImg = '';
+  // Повторный вызов ensureAvatarsWatch, если при boot школа ещё не известна
+  // (auth-ready раньше homeClass/выбора): без этого watcher терялся навсегда.
+  let avatarImgWatchTimer = null;
   // Путь внутри школы: сначала «свой класс», иначе выбранный в шапке.
   function schoolBranch(name) {
     const h = homeClassData;
@@ -1509,9 +1512,26 @@
     if (uid === (window.HubAuth && HubAuth.uid) && myAvatarImg) return myAvatarImg;
     return (avatarImgCache && avatarImgCache[uid]) || '';
   }
+  // Лог диагноза аватарок: один раз на состояние (есть фото / нет фото),
+  // чтобы консоль не тонула в повторах при каждом перерисовке списков.
+  const avatarLogSeen = {};
+  function avatarRenderLog(uid, av, img) {
+    if (!uid) return;
+    const key = uid + '|' + (img ? 1 : 0);
+    if (avatarLogSeen[key]) return;
+    avatarLogSeen[key] = true;
+    console.log('avatar render:', uid, { avatar: av || '', avatarImg: !!img });
+  }
   function ensureAvatarsWatch() {
     const path = schoolBranch('avatars');
-    if (!db || !path) return;
+    if (!db) return;
+    if (!path) {
+      // Школа ещё не выбрана/не загружена (auth-ready приходит раньше данных
+      // homeClass) — не теряем подписку навсегда, повторим чуть позже.
+      if (!avatarImgWatchTimer) avatarImgWatchTimer = setTimeout(ensureAvatarsWatch, 1200);
+      return;
+    }
+    if (avatarImgWatchTimer) { clearTimeout(avatarImgWatchTimer); avatarImgWatchTimer = null; }
     if (avatarImgRef && avatarImgPath === path) return;
     if (avatarImgRef) { try { db.ref(avatarImgPath).off('value'); } catch (e) {} avatarImgRef = null; }
     avatarImgPath = path;
@@ -1612,13 +1632,31 @@
   // Кэш внешних профилей (users/{uid}): nick / avatar / bio / homeClass / mood
   // — для чата, ЛС, ленты, среднего настроения и просмотра профиля.
   let usersMeta = null;
+  // Живая подписка на /users вместо разового чтения: аватарки/ники больше
+  // не «замерзают» на старте, а fresh-состояние приходит само.
+  let usersMetaWatch = null;
+  // Дебаунс перерисовки: не дёргаем списки чаще раза в 200 мс при большом числе.
+  let usersMetaPaintTimer = null;
+  function usersSafePaint() {
+    if (usersMetaPaintTimer) return;
+    usersMetaPaintTimer = setTimeout(() => {
+      usersMetaPaintTimer = null;
+      paintChatAvatars();
+      paintDmList();
+      paintFeed();
+      paintMoodClass();
+    }, 200);
+  }
   function loadUsersMeta() {
     if (!window.HubAuth || !HubAuth.uid) return;
-    db.ref('/users').once('value').then((s) => {
+    if (usersMetaWatch) return;   // подписка уже живёт, дубликаты не нужны
+    usersMetaWatch = db.ref('/users').on('value', (s) => {
       const v = s.val() || {};
       const m = {};
+      const raw = {};
       Object.keys(v).forEach((uid) => {
         const u = v[uid] || {};
+        raw[uid] = u;
         m[uid] = {
           nick: u.nick || '',
           avatar: u.avatar || '',
@@ -1627,14 +1665,15 @@
           mood: u.mood || null,
         };
       });
-      usersMeta = m;
+      usersMeta = m;             // кэш инвалидируется каждым событием: старое не виснет
+      dmUsers = raw;             // списку ЛС и попапам достаётся то же свежее
       const meu = HubAuth.uid;
       if (meu && m[meu] && moodValue(m[meu].mood)) myMood = moodValue(m[meu].mood);
-      paintChatAvatars();
-      paintDmList();
-      paintFeed();
-      paintMoodClass();
-    }).catch(() => {});
+      usersSafePaint();
+    }, (err) => {
+      console.warn('users-подписка оборвалась:', err && err.message ? err.message : err);
+      usersMetaWatch = null;   // позволит восстановиться при следующем вызове
+    });
   }
   function userMeta(uid) { return (usersMeta && usersMeta[uid]) ? usersMeta[uid] : null; }
   function userAvatarOf(uid) { const m = userMeta(uid); return (m && m.avatar) ? m.avatar : 'letter'; }
@@ -1643,6 +1682,7 @@
     let av = 'letter';
     if (dmUsers && dmUsers[uid] && dmUsers[uid].avatar) av = dmUsers[uid].avatar;
     else if (userMeta(uid) && userMeta(uid).avatar) av = userMeta(uid).avatar;
+    avatarRenderLog(uid, av, avatarImgOf(uid));
     return avatarHtml(name, size, av, avatarImgOf(uid));
   }
   function peerBioOf(uid) {
@@ -1657,6 +1697,7 @@
       const avEl = el.querySelector('.chat-bubble-row .avatar');
       if (!avEl || !uid) return;
       const nm = el.getAttribute('data-nick') || 'Ученик';
+      avatarRenderLog(uid, userAvatarOf(uid), avatarImgOf(uid));
       avEl.outerHTML = avatarHtml(nm, 'sm', userAvatarOf(uid), avatarImgOf(uid));
     });
   }
@@ -1849,6 +1890,9 @@
         paintChatPermissions();
         paintAdminBadge();
         ensureMoodsWatch();
+        // Свой класс стал известен — аватарки школы могли прийти позже
+        // auth-ready: убедимся, что подписка смотрит на нужную школу.
+        ensureAvatarsWatch();
         return;
       }
       homeClassData = null;
@@ -2645,6 +2689,9 @@
     ensureProfile();
     startClock();
     paintChatPermissions();
+    // Выбор известен — точно поднимаем подписку на аватарки школы
+    // (наверняка после первого захода ещё не было пути для watcher'а).
+    ensureAvatarsWatch();
     paintFeedPermissions();
     paintMoodClass();
     // Лента — своя подписка, не часть контента класса.
@@ -3619,7 +3666,7 @@
 
     div.innerHTML = `
       <div class="chat-bubble-row flex items-start gap-2 max-w-[85%] ${mine ? 'flex-row-reverse' : ''}">
-        ${avatarHtml(mname, 'sm', m.uid ? userAvatarOf(m.uid) : 'letter')}
+        ${avatarHtml(mname, 'sm', m.uid ? userAvatarOf(m.uid) : 'letter', avatarImgOf(m.uid))}
         <div class="${mine ? 'accent-bg text-white' : 'bg-slate-800'} rounded-2xl px-3.5 py-2 min-w-0 flex-1">
           <div class="flex items-center gap-1 mb-0.5 flex-wrap">
             <span class="msg-author text-[11px] font-bold" style="color:${mine ? '#e0e7ff' : nickColor(mname)}" data-uid="${esc(m.uid || '')}">${esc(mname)}</span>
@@ -3688,6 +3735,9 @@
       const div = renderMessageEl(m.key, m);
       box.appendChild(div);
     });
+    // Фото аватарок могло дойти позже, чем сообщения (первый рендер чата идёт
+    // раньше события подписки) — перерисовываем аватарки из живого кэша.
+    paintChatAvatars();
     if (!$('#tab-chat').classList.contains('hidden')) scrollChat();
     return true;
   }
@@ -6523,7 +6573,7 @@
             else actions = `<button data-act="revokeAdmin" data-uid="${esc(uid)}" class="rounded-lg bg-rose-600/80 hover:bg-rose-600 px-2.5 py-1.5 text-[11px] font-semibold">Снять права</button>`;
             return `
             <div class="row rounded-xl bg-slate-900 border border-slate-800 p-3 flex items-center gap-2 flex-wrap fade-up">
-              ${avatarHtml(nickOf(uid) || '?', 'sm', (users[uid] && users[uid].avatar) || 'letter')}
+              ${avatarHtml(nickOf(uid) || '?', 'sm', (users[uid] && users[uid].avatar) || 'letter', avatarImgOf(uid))}
               <span class="text-xs font-bold">${esc(nickOf(uid) || '—')}</span>
               ${verifyBadge(uid)}
               ${(users[uid] && users[uid].bio) ? `<span class="text-[10px] text-slate-500 truncate max-w-[160px]">${esc(users[uid].bio)}</span>` : ''}
@@ -6552,7 +6602,7 @@
           else actions = `<button data-act="grantAdmin" data-uid="${esc(u.uid)}" data-nick="${esc(u.nick)}" class="rounded-lg bg-emerald-600/80 hover:bg-emerald-600 px-2.5 py-1.5 text-[11px] font-semibold">Выдать админа</button>`;
           return `
           <div class="row rounded-xl bg-slate-900 border border-slate-800 p-3 flex items-center gap-2 flex-wrap fade-up">
-            ${avatarHtml(u.nick || '?', 'sm', (u.avatar || 'letter'))}
+            ${avatarHtml(u.nick || '?', 'sm', (u.avatar || 'letter'), avatarImgOf(u.uid))}
             <span class="text-xs font-bold">${esc(u.nick)}</span>
             ${verifyBadge(u.uid)}
             ${u.bio ? `<span class="text-[10px] text-slate-500 truncate max-w-[160px]">${esc(u.bio)}</span>` : ''}
