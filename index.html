@@ -614,48 +614,6 @@
     }
 
     /* ============================================================
-       ПОЛОСА БЫСТРЫХ ДЕЙСТВИЙ: ГДЗ + обратные отсчёты
-       Живёт под основной навигацией одной «плашкой», чтобы не
-       сжимать основные вкладки.
-       ============================================================ */
-    .qstrip {
-      display: flex; align-items: center; gap: 6px;
-      margin: 0 12px 8px; padding: 5px;
-      border-radius: 12px;
-      background: rgba(15,23,42,.55);
-      border: 1px solid #1e293b;
-    }
-    .qstrip-btn {
-      display: inline-flex; align-items: center; justify-content: center; gap: 5px;
-      flex: 0 0 auto; min-height: 30px; padding: 4px 9px;
-      border-radius: 9px; font-size: 12px; font-weight: 800; line-height: 1;
-      color: #cbd5e1; background: rgba(148,163,184,.14); white-space: nowrap;
-      transition: background .15s, transform .1s;
-    }
-    .qstrip-btn:active { transform: scale(.96); }
-    .qstrip-chip {
-      display: inline-flex; align-items: center; gap: 5px;
-      flex: 1 1 0; min-width: 0; min-height: 30px; padding: 4px 7px;
-      border-radius: 9px; font-size: 11px; font-weight: 700; line-height: 1;
-      color: #94a3b8; white-space: nowrap; overflow: hidden;
-    }
-    .qstrip-ico { font-size: 12px; flex-shrink: 0; }
-    .qstrip-txt { overflow: hidden; text-overflow: ellipsis; }
-    .qstrip-sep { width: 1px; align-self: stretch; margin: 3px 0; background: #1e293b; flex-shrink: 0; }
-    /* Живой отсчёт подсвечиваем, тишину — гасим */
-    .qstrip-chip.live { color: #e2e8f0; }
-    .qstrip-chip.live b { color: #a5b4fc; font-variant-numeric: tabular-nums; }
-    .qstrip-chip.none { color: #475569; }
-    .qstrip-chip.soon b { color: #fbbf24; }
-    html:not(.dark) .qstrip { background: rgba(255,255,255,.7); border-color: #e2e8f0; }
-    html:not(.dark) .qstrip-btn { background: rgba(100,116,139,.12); color: #475569; }
-    html:not(.dark) .qstrip-chip { color: #64748b; }
-    html:not(.dark) .qstrip-chip.live { color: #1e293b; }
-    html:not(.dark) .qstrip-chip.live b { color: #4f46e5; }
-    html:not(.dark) .qstrip-chip.none { color: #94a3b8; }
-    html:not(.dark) .qstrip-sep { background: #e2e8f0; }
-
-    /* ============================================================
        ШКАЛА НАСТРОЕНИЯ
        ============================================================ */
     .mood-row { display: flex; gap: 6px; justify-content: space-between; }
@@ -942,24 +900,7 @@
           </button>
         </nav>
 
-        <!-- ============================================================
-             ПОЛОСА БЫСТРЫХ ДЕЙСТВИЙ: ссылка на ГДЗ + обратные отсчёты
-             (до ближайшего звонка и до каникул). Данные звонков и каникул
-             задаёт администратор в админ-панели, ученики только видят.
-             ============================================================ -->
-        <div class="qstrip">
-          <a id="gdz-link" class="qstrip-btn" href="https://gdz.ru/" target="_blank" rel="noopener noreferrer" title="Готовые домашние задания — gdz.ru">
-            <span class="qstrip-ico">📘</span><span class="qstrip-lbl">ГДЗ</span>
-          </a>
-          <span class="qstrip-sep"></span>
-          <span id="bell-chip" class="qstrip-chip" title="До ближайшего звонка">
-            <span class="qstrip-ico">🔔</span><span class="qstrip-txt">звонок —</span>
-          </span>
-          <span class="qstrip-sep"></span>
-          <span id="holiday-chip" class="qstrip-chip" title="До каникул">
-            <span class="qstrip-ico">☀️</span><span class="qstrip-txt">каникулы —</span>
-          </span>
-        </div>
+        
       </div>
     </div>
 
@@ -2205,12 +2146,23 @@
       clearTimeout(to);
     }
     if (!res.ok) {
-      console.warn('[workerModerate] HTTP', res.status, '→ REVIEW, флаг не создаётся');
+      let detail = '';
+      try { detail = await res.text(); } catch (e) { /* тело недоступно */ }
+      console.error(
+        '[workerModerate] HTTP ' + res.status + ' → REVIEW, флаг не создаётся. Воркер: ' + url + '. ' +
+        'Обрыв скорее всего на стороне воркера: ' + (detail || '(пустое тело — проверьте XKIRO_API_KEY / дашборд Cloudflare)')
+      );
       return 'REVIEW';
     }
-    const j = await res.json();
+    let j;
+    try {
+      j = await res.json();
+    } catch (e) {
+      console.error('[workerModerate] воркер вернул не JSON:', 'Ошибка: ' + e + '. Тело:', await res.text().catch(() => '(не прочитать)'));
+      return 'REVIEW';
+    }
     if (typeof j.bad !== 'boolean') {
-      console.warn('[workerModerate] нет поля bad в ответе:', j);
+      console.error('[workerModerate] воркер не вернул поле bad (response_format не сработал):', j);
       return 'REVIEW';
     }
     const category = String(j.category || '').slice(0, 30);
@@ -2667,7 +2619,6 @@
     offRefs(mainRefs); mainRefs = [];
     offRefs(chatRefs); chatRefs = [];
     if (feedRef) { feedRef.off('value'); feedRef = null; }
-    if (schoolMetaRef) { schoolMetaRef.off('value'); schoolMetaRef = null; }
     clearChatPoll(); stopTypingBeacon();
   }
 
@@ -2685,9 +2636,8 @@
     paintChatPermissions();
     paintFeedPermissions();
     paintMoodClass();
-    // Лента, звонки и каникулы — свои подписки, они не часть контента класса.
+    // Лента — своя подписка, не часть контента класса.
     bindFeed();
-    bindSchoolMeta();
     // Счётчик непрочитанных ЛС нужен всегда, не только при открытой панели.
     watchMyDms();
   }
@@ -2750,9 +2700,6 @@
         const d = new Date();
         el.textContent = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')} · ${DAY_NAMES[d.getDay()]}`;
       }
-      // Обратные отсчёты до звонка и каникул — раз в пол-минуты,
-      // плюс сразу при появлении экрана.
-      paintCountdowns();
       // Тихий час наступает и заканчивается по часам — ловим смену
       // состояния, чтобы форма чата появлялась/пряталась сама.
       const q = quietNow();
@@ -2988,7 +2935,7 @@
       loadDmPeers();
     }
     if (name === 'settings') { renderSettingsTab(); paintAdminBadge(); }
-    if (name === 'feed') { paintFeedScopeUi(); paintFeed(); paintFeedPermissions(); paintCountdowns(); }
+    if (name === 'feed') { paintFeedScopeUi(); paintFeed(); paintFeedPermissions(); }
   }
 
   /* ---- Расписание ---- */
@@ -3018,11 +2965,26 @@
     const fmtD = (d) => `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
     const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
     const keyOf = (d) => DAY_KEYS[d.getDay()];
-    const mondayOf = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate() - ((d.getDay() + 6) % 7));
     const todayKey = keyOf(today);
     const tomorrowKey = keyOf(tomorrow);
-    // Завтра = понедельник следующей недели, только если сегодня воскресенье.
-    const tomorrowNextWeek = mondayOf(tomorrow).getTime() > mondayOf(today).getTime();
+    // Источник недели для даты: сверяем день с записанными датами расписания.
+    // Если даты не записаны — берём текущую неделю, а при пустой текущей и
+    // непустой следующей — следующую (расписание могло быть спарсено накануне,
+    // когда «текущая» неделя уже сменилась, как со спарсенным в воскресенье
+    // понедельником следующей недели).
+    const srcFor = (d) => {
+      const key = fmtD(d);
+      const inCur = scheduleDatesCache && scheduleDatesCache[key];
+      const inNext = scheduleDatesNextCache && scheduleDatesNextCache[key];
+      if (inNext) return { data: scheduleNextCache, dates: scheduleDatesNextCache };
+      if (inCur) return { data: scheduleCache, dates: scheduleDatesCache };
+      const curHas = !!(scheduleCache && Object.keys(scheduleCache).length);
+      const nextHas = !!(scheduleNextCache && Object.keys(scheduleNextCache).length);
+      if (!curHas && nextHas) return { data: scheduleNextCache, dates: scheduleDatesNextCache };
+      return { data: scheduleCache, dates: scheduleDatesCache };
+    };
+    const todaySrc = srcFor(today);
+    const tomorrowSrc = srcFor(tomorrow);
     const el = $('#tab-schedule');
     const head = `
       <div class="flex gap-1 bg-slate-900 border border-slate-800 rounded-xl p-1">
@@ -3053,16 +3015,12 @@
     };
     let body = '';
     if (scheduleView === 'today') {
-      body = dayBlock(scheduleCache, scheduleDatesCache, todayKey, 'Сегодня');
+      body = dayBlock(todaySrc.data, todaySrc.dates, todayKey, 'Сегодня');
     } else if (scheduleView === 'tomorrow') {
-      if (tomorrowNextWeek) {
-        body = dayBlock(scheduleNextCache, scheduleDatesNextCache, tomorrowKey, 'Завтра');
-      } else {
-        body = dayBlock(scheduleCache, scheduleDatesCache, tomorrowKey, 'Завтра');
-      }
+      body = dayBlock(tomorrowSrc.data, tomorrowSrc.dates, tomorrowKey, 'Завтра');
     } else {
       const order = ['mon','tue','wed','thu','fri','sat','sun'];
-      body = order.map((k) => dayBlock(scheduleCache, scheduleDatesCache, k, '')).join('');
+      body = order.map((k) => dayBlock(todaySrc.data, todaySrc.dates, k, '')).join('');
     }
     const copyBtn = `<button id="sch-copy" class="w-full rounded-xl bg-slate-800 hover:bg-slate-700 py-2.5 text-xs font-bold">📋 Скопировать расписание</button>`;
     el.innerHTML = (head + (refreshBtn ? '<div>' + refreshBtn + '</div>' : '')) + body + copyBtn;
@@ -4009,7 +3967,19 @@
       .then(function (verdict) {
         console.log('[flagAfter] moderateMessage ответ:', verdict, '| ', (details && details.category) || '', '| ', (details && details.reason) || '');
         if (verdict === 'BAN') return writeFlaggedCopy(text, chatPath, messageId, details, sc);
-        if (verdict === 'REVIEW') console.warn('[flagAfter] REVIEW → флаг не создан (нет ответа ИИ / ошибка сети). Проверьте worker.');
+        if (verdict === 'REVIEW') {
+          // ИИ не дал вердикт (воркер недоступен/500/таймаут) — подстраховка
+          // локальным фильтром, чтобы мат/оскорбления всё равно попали
+          // в «Интересное», а не потерялись вместе с обрывом воркера.
+          const hits = findBadWords(text);
+          if (hits.length) {
+            console.warn('[flagAfter] REVIEW, но локальный фильтр нашёл нарушение:', hits.join(', '), '→ флаг создаётся');
+            details.category = 'мат';
+            details.reason = 'локальный фильтр (' + hits.join(', ') + ')';
+            return writeFlaggedCopy(text, chatPath, messageId, details, sc);
+          }
+          console.warn('[flagAfter] REVIEW → флаг не создан (нет ответа ИИ / ошибка сети). Проверьте worker.');
+        }
       })
       .catch((err) => console.error('[flagAfter] ОШИБКА цепочки модерации:', err));
   }
@@ -5461,32 +5431,8 @@
     });
   }
 
-  /* ============================================================
-     ЗВОНКИ И КАНИКУЛЫ
-     Задаёт администратор (админ-панель → «Данные» → Звонки):
-       schools/{sid}/bells    = { times: ["08:00","08:45", ...] }
-       schools/{sid}/holidays = { ranges: [{ from:"2026-06-25", to:"2026-09-01" }] }
-     Ученики только читают. Если админ ничего не задал — чип
-     показывает прочерк, а не выдуманное время.
-     ============================================================ */
-  let bellsCache = null, holidaysCache = null;
-  let schoolMetaRef = null;
   const FEED_MAX_POSTS = 200;
 
-  function schoolMetaPath() {
-    const s = state.sel;
-    return `/cities/${s.cid}/schools/${s.sid}`;
-  }
-  function bindSchoolMeta() {
-    if (!db || !state.sel || !state.sel.cid) return;
-    if (schoolMetaRef) { schoolMetaRef.off('value'); schoolMetaRef = null; }
-    schoolMetaRef = db.ref(schoolMetaPath()).on('value', (snap) => {
-      const v = snap.val() || {};
-      bellsCache = v.bells || null;
-      holidaysCache = v.holidays || null;
-      paintCountdowns();
-    }, () => {});
-  }
   // "08:45" -> 525 минут от полуночи; мусор возвращает null.
   function parseHhmm(s) {
     const m = /^(\d{1,2}):(\d{2})$/.exec(String(s === undefined || s === null ? '' : s).trim());
@@ -5494,36 +5440,6 @@
     const h = Number(m[1]), mi = Number(m[2]);
     if (!(h >= 0 && h <= 23) || !(mi >= 0 && mi <= 59)) return null;
     return h * 60 + mi;
-  }
-  function bellList() {
-    const raw = (bellsCache && Array.isArray(bellsCache.times)) ? bellsCache.times : [];
-    return raw.map(parseHhmm).filter((x) => x !== null).sort((a, b) => a - b);
-  }
-  // Ближайший звонок: сегодняшние, иначе первый будний день впереди.
-  function nextBell(now) {
-    const list = bellList();
-    if (!list.length) return null;
-    const d = now || new Date();
-    const cur = d.getHours() * 60 + d.getMinutes() + d.getSeconds() / 60;
-    for (let off = 0; off <= 10; off++) {
-      const day = new Date(d.getFullYear(), d.getMonth(), d.getDate() + off);
-      const wd = day.getDay();
-      if (wd === 0 || wd === 6) continue;           // в выходные звонков нет
-      // Сегодня отсекаем всё, что уже прозвенело; в будущих днях
-      // подходит любой урок, поэтому порог — ноль.
-      const floor = (off === 0) ? cur : -1;
-      for (let i = 0; i < list.length; i++) {
-        if (list[i] > floor + 1e-6) {
-          return {
-            at: new Date(day.getFullYear(), day.getMonth(), day.getDate(),
-                         Math.floor(list[i] / 60), list[i] % 60),
-            lesson: i + 1,
-            dayOff: off,
-          };
-        }
-      }
-    }
-    return null;
   }
   function parseIsoDate(s) {
     const m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(String(s === undefined || s === null ? '' : s).trim());
@@ -5536,69 +5452,6 @@
     if (isNaN(d.getTime())) return null;
     if (d.getFullYear() !== y || d.getMonth() !== mo - 1 || d.getDate() !== day) return null;
     return d;
-  }
-  function holidayState(now) {
-    const list = (holidaysCache && Array.isArray(holidaysCache.ranges)) ? holidaysCache.ranges : [];
-    const d = now || new Date();
-    const today = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-    let inside = null, upcoming = null;
-    list.forEach((r) => {
-      const f = parseIsoDate(r && r.from), t = parseIsoDate(r && r.to);
-      if (!f || !t || t < f) return;
-      if (today >= f && today <= t) { if (!inside) inside = { from: f, to: t }; }
-      else if (f > today && (!upcoming || f < upcoming.from)) upcoming = { from: f, to: t };
-    });
-    return { inside, upcoming };
-  }
-  // "2 ч 14 мин" для ближнего, "3 д 4 ч" для дальнего.
-  function fmtGap(ms) {
-    let s = Math.max(0, Math.round(ms / 1000));
-    const d = Math.floor(s / 86400); s -= d * 86400;
-    const h = Math.floor(s / 3600); s -= h * 3600;
-    const m = Math.floor(s / 60);
-    if (d > 0) return d + ' д ' + h + ' ч';
-    if (h > 0) return h + ' ч ' + m + ' мин';
-    return m + ' мин ' + (s - m * 60) + ' с';
-  }
-  function setChip(el, ico, html, cls) {
-    if (!el) return;
-    el.className = 'qstrip-chip ' + (cls || '');
-    el.innerHTML = `<span class="qstrip-ico">${ico}</span><span class="qstrip-txt">${html}</span>`;
-  }
-  function paintCountdowns() {
-    const bellEl = $('#bell-chip'), holEl = $('#holiday-chip');
-    if (!bellEl && !holEl) return;
-    const now = new Date();
-
-    if (bellEl) {
-      const nb = nextBell(now);
-      if (!nb) {
-        setChip(bellEl, '🔔', 'звонки не заданы', 'none');
-        bellEl.title = 'Администратор не задал расписание звонков';
-      } else {
-        const gap = nb.at.getTime() - now.getTime();
-        const soon = gap < 15 * 60 * 1000;
-        const dayTxt = nb.dayOff === 0 ? '' : (nb.dayOff === 1 ? ' · завтра' : ' · ' + nb.dayOff + ' дн');
-        setChip(bellEl, '🔔', `${nb.lesson}-й урок · <b>${fmtGap(gap)}</b>${dayTxt}`, soon ? 'live soon' : 'live');
-        bellEl.title = 'Следующий звонок: ' + nb.at.toLocaleString('ru-RU');
-      }
-    }
-
-    if (holEl) {
-      const h = holidayState(now);
-      if (h.inside) {
-        const left = Math.round((h.inside.to.getTime() - now.getTime()) / 86400000);
-        setChip(holEl, '☀️', left > 0 ? `каникулы · <b>${left} дн</b> до конца` : 'каникулы!', 'live');
-        holEl.title = 'Каникулы до ' + h.inside.to.toLocaleDateString('ru-RU');
-      } else if (h.upcoming) {
-        const days = Math.round((h.upcoming.from.getTime() - now.getTime()) / 86400000);
-        setChip(holEl, '☀️', `каникулы через <b>${days} дн</b>`, 'live');
-        holEl.title = 'Каникулы с ' + h.upcoming.from.toLocaleDateString('ru-RU');
-      } else {
-        setChip(holEl, '☀️', 'каникулы не заданы', 'none');
-        holEl.title = 'Администратор не задал даты каникул';
-      }
-    }
   }
 
   /* ============================================================
@@ -5764,12 +5617,8 @@
     const theme = localStorage.getItem(LS.theme) || 'dark';
     const accent = localStorage.getItem(LS.accent) || 'indigo';
     const isAdminNow = isAdmin();
-    const dnd = localStorage.getItem(LS.dnd) === '1';
     const n = nick() || 'Ученик';
     const s = state.sel;
-    // Настроение для заголовка карточки: сначала живое зеркало, потом профиль.
-    const myUid = (window.HubAuth && HubAuth.uid) || '';
-    const myMoodNow = myMood || moodValue((usersMeta && usersMeta[myUid] && usersMeta[myUid].mood));
 
     // Список моих обращений и ответы администрации. Админ видит ВСЕ обращения (с ответом/удалением).
     function paintMsgList() {
@@ -5936,66 +5785,6 @@
       </div>
       ` : ''}
 
-      <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
-        <div class="flex items-center justify-between gap-3">
-          <div>
-            <div class="font-bold text-sm">🔕 Не беспокоить</div>
-            <p class="text-[11px] text-slate-500 mt-0.5">Скрывает всплывающие уведомления</p>
-          </div>
-          <label class="relative inline-flex items-center cursor-pointer shrink-0">
-            <input id="dnd-toggle" type="checkbox" class="sr-only" ${dnd ? 'checked' : ''}>
-            <span id="dnd-slider" class="w-11 h-6 rounded-full ${dnd ? 'accent-bg' : 'bg-slate-700'} relative transition">
-              <span id="dnd-knob" class="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition ${dnd ? 'translate-x-5' : ''}"></span>
-            </span>
-          </label>
-        </div>
-      </div>
-
-      <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
-        <div class="flex items-center justify-between gap-2 mb-2">
-          <div class="font-bold text-sm">🌙 Режим тишины</div>
-          <span class="shrink-0 text-[10px] font-bold rounded-full px-2 py-0.5 ${quietNow() ? 'bg-sky-500/20 text-sky-400' : 'bg-emerald-500/20 text-emerald-400'}">
-            ${quietNow() ? 'СЕЙЧАС ТИХО' : 'ДЕНЬ'}
-          </span>
-        </div>
-        <p class="text-[11px] text-slate-500 leading-snug">
-          С ${QUIET_FROM_H} до ${QUIET_TO_H} писать нельзя: ни в чат класса, ни в общий чат школы, ни в личные сообщения.
-          Читать и слушать можно. Сейчас тишина до <b class="text-slate-300">${quietNow() ? hhmm(quietUntilDate()) : QUIET_FROM_H}</b>.
-        </p>
-      </div>
-
-      <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
-        <div class="flex items-center justify-between gap-2 mb-2">
-          <div class="font-bold text-sm">💬 Общий чат школы</div>
-          <button id="settings-goto-school-chat" class="shrink-0 text-[11px] accent-text underline">Открыть</button>
-        </div>
-        <p class="text-[11px] text-slate-500 leading-snug">
-          Один чат на всю школу — видят все ученики ${esc(s.sname || 'этой школы')}, а не только твоего класса.
-          Переключается прямо в чате: «Мой класс» / «Вся школа».
-        </p>
-      </div>
-
-      <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
-        <div class="flex items-center justify-between gap-2 mb-2">
-          <div class="font-bold text-sm">📸 Лента школы</div>
-          <button id="settings-goto-feed" class="shrink-0 text-[11px] accent-text underline">Открыть</button>
-        </div>
-        <p class="text-[11px] text-slate-500 leading-snug">
-          Своя лента, где ты можешь выкладывать истории и посты. Читают все ученики школы.
-          Переключатель «Все посты» / «Мой канал» — прямо на вкладке.
-        </p>
-      </div>
-
-      <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
-        <div class="flex items-center justify-between gap-2 mb-2">
-          <div class="font-bold text-sm">${myMoodNow ? moodFace(myMoodNow) : '🙂'} Шкала настроения</div>
-          <button id="settings-goto-mood" class="shrink-0 text-[11px] accent-text underline">Оценить</button>
-        </div>
-        <p class="text-[11px] text-slate-500 leading-snug">
-          Выбери своё настроение от 1 до 5 — оно видно в профиле, в ленте и входит в среднее настроение класса.
-        </p>
-      </div>
-
       <button id="fav-open" class="w-full rounded-xl bg-slate-800 hover:bg-slate-700 py-3 text-sm font-bold fade-up">⭐ Избранные сообщения</button>
       <button id="export-chat" class="w-full rounded-xl bg-slate-800 hover:bg-slate-700 py-3 text-sm font-bold fade-up">📥 Скачать чат в TXT</button>
 
@@ -6059,24 +5848,8 @@
       renderSettingsTab();
       showToast('Цвет изменён');
     }));
-    $('#dnd-toggle').addEventListener('change', (e) => {
-      localStorage.setItem(LS.dnd, e.target.checked ? '1' : '0');
-      const sl = $('#dnd-slider'), kn = $('#dnd-knob');
-      if (sl) { sl.classList.toggle('accent-bg', e.target.checked); sl.classList.toggle('bg-slate-700', !e.target.checked); }
-      if (kn) kn.classList.toggle('translate-x-5', e.target.checked);
-      showToast(e.target.checked ? 'Уведомления скрыты' : 'Уведомления включены');
-    });
     $('#fav-open').addEventListener('click', openFavModal);
     $('#export-chat').addEventListener('click', exportChat);
-    const goSchool = $('#settings-goto-school-chat');
-    if (goSchool) goSchool.addEventListener('click', () => {
-      setChatScope('school');
-      switchTab('chat');
-    });
-    const goFeed = $('#settings-goto-feed');
-    if (goFeed) goFeed.addEventListener('click', () => switchTab('feed'));
-    const goMood = $('#settings-goto-mood');
-    if (goMood) goMood.addEventListener('click', () => switchTab('feed'));
 
     const hcBtn = $('#home-change-btn');
     if (hcBtn) hcBtn.addEventListener('click', () => {
@@ -6940,7 +6713,7 @@
         const nick2 = (uid && usersById[uid] && usersById[uid].nick) || f.m.nick || f.m.name || 'Ученик';
         const st = uid ? HubModeration.statusOf(bans[uid] || null) : { label: 'не определён', cls: 'text-slate-500' };
         const mn = classNames[f.cid + '/' + f.sid + '/' + f.clid] || { cname: f.cid, sname: f.sid, clname: f.clid };
-        const fdata = JSON.stringify({ cid: f.cid, sid: f.sid, clid: f.clid, key: f.key, cname: mn.cname, sname: mn.sname, clname: mn.clname });
+        const fdata = JSON.stringify({ cid: f.cid, sid: f.sid, clid: f.clid, key: f.key, cname: mn.cname, sname: mn.sname, clname: mn.clname, chatPath: (f.m && f.m.chatPath) || '' });
         const dis = uid ? '' : ' opacity-40 pointer-events-none';
         const bt = (label, act, extra) => `<button data-act="${act}" ${extra} class="rounded-lg bg-slate-800 hover:bg-slate-700 px-2.5 py-1.5 text-[11px] font-semibold">${label}</button>`;
         return `
@@ -6970,7 +6743,7 @@
             </span>
           </div>
         </div>`;
-      }).join('') + (fv == null ? '<div class="pt-2 text-[10px] text-amber-400/80">Флаги собраны из самих чатов: чтение/запись /flagged_messages запрещены текущими правилами. Опубликуйте правила (README, раздел 5) — появятся копии и заработают кнопки модерации.</div>' : '');
+      }).join('') + (fv == null ? '<div class="pt-2 text-[10px] text-amber-400/80">Не удалось прочитать /flagged_messages (правила не опубликованы?) — показаны флаги из самих чатов. По правилам rules.json копии разрешены: опубликуйте их (README, раздел 5), и кнопки модерации заработают в полном виде.</div>' : '');
     })();
   }
 
@@ -7053,7 +6826,7 @@
             const nick2 = (uid && usersById[uid] && usersById[uid].nick) || f.m.nick || f.m.name || 'Ученик';
             const st = uid ? HubModeration.statusOf(bans[uid] || null) : { label: 'не определён', cls: 'text-slate-500' };
             const mn = classNames[f.cid + '/' + f.sid + '/' + f.clid] || { cname: f.cid, sname: f.sid, clname: f.clid };
-            const fdata = JSON.stringify({ cid: f.cid, sid: f.sid, clid: f.clid, key: f.key, cname: mn.cname, sname: mn.sname, clname: mn.clname });
+            const fdata = JSON.stringify({ cid: f.cid, sid: f.sid, clid: f.clid, key: f.key, cname: mn.cname, sname: mn.sname, clname: mn.clname, chatPath: (f.m && f.m.chatPath) || '' });
             const dis = uid ? '' : ' opacity-40 pointer-events-none';
             const scopeBadge = f.m.scope === 'school'
               ? ' <span class="text-[9px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-bold align-middle">ОБЩИЙ ЧАТ</span>'
@@ -7079,7 +6852,7 @@
                 </span>
               </div>
             </div>`;
-          }).join('') + (fv == null ? '<div class="pt-2 text-[10px] text-amber-400/80">Копии /flagged_messages недоступны с текущими правилами — показаны флаги из самих чатов.</div>' : '');
+          }).join('') + (fv == null ? '<div class="pt-2 text-[10px] text-amber-400/80">/flagged_messages не читается (правила не опубликованы?) — показаны флаги из самих чатов.</div>' : '');
         }
       }
 
@@ -7161,7 +6934,7 @@
                 </span>
               </div>
             </div>`;
-          }).join('') + (hfv == null ? '<div class="pt-2 text-[10px] text-amber-400/80">Копии /flagged_homework недоступны с текущими правилами — показаны флаги из самих классов.</div>' : '');
+          }).join('') + (hfv == null ? '<div class="pt-2 text-[10px] text-amber-400/80">/flagged_homework не читается (правила не опубликованы?) — показаны флаги из самих классов.</div>' : '');
         }
       }
     })().catch((err) => { body.innerHTML = emptyNote('Ошибка: ' + ((err && err.message) ? err.message : err)); });
@@ -7236,9 +7009,15 @@
       }
       if (act === 'flagIgnore' || act === 'flagDel') {
         const f = JSON.parse(t.dataset.f || '{}');
+        // Реальное сообщение удаляем по сохранённому chatPath (класс/school
+        // общий чат/лента), а не по жестко собранному пути класса — иначе для
+        // флагов школы и ленты удаление целится не туда.
+        const msgPath = (f.chatPath && f.key)
+          ? f.chatPath.replace(/\/+$/, '') + '/' + f.key
+          : P.classNode(f.cid, f.sid, f.clid) + '/chat/' + f.key;
         if (act === 'flagDel') {
           askConfirm('Удалить сообщение?', () => {
-            db.ref(P.classNode(f.cid, f.sid, f.clid) + '/chat/' + f.key).remove()
+            db.ref(msgPath).remove()
               .catch((e) => showToast('Не удалось удалить: ' + ((e && e.message) ? e.message : 'нет прав')));
             db.ref(P.classNode(f.cid, f.sid, f.clid) + '/_flags/' + f.key).remove().catch(() => {});
             db.ref('/flagged_messages/' + f.cid + '/' + f.sid + '/' + f.clid + '/' + f.key).remove().catch(() => {});
@@ -7316,7 +7095,13 @@
      ============================================================ */
   $('#toast-close').addEventListener('click', hideToast);
   $('#back-btn').addEventListener('click', onBack);
-  $('#change-btn').addEventListener('click', resetSelection);
+  $('#change-btn').addEventListener('click', () => {
+    askConfirm(
+      'Сменить класс? Текущее расписание и чат закроются — надо будет заново выбрать город, школу и класс.',
+      () => resetSelection(),
+      'Сменить'
+    );
+  });
   $$('.tab-btn').forEach((b) => b.addEventListener('click', () => switchTab(b.dataset.tab)));
   $('#chat-form').addEventListener('submit', sendMessage);
   $('#chat-nick').addEventListener('click', changeNick);
