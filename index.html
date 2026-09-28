@@ -19,14 +19,27 @@
     (function () {
       var saved = localStorage.getItem('sh_theme') || 'dark';
       // 'coder20' — серое оформление поверх тёмной палитры;
-      // 'zakvez' — зелёные титры справа (экранная заставка в стиле кино).
-      document.documentElement.classList.toggle('dark', saved !== 'light');
+      // 'zakvez' — зелёные титры справа (экранная заставка в стиле кино);
+      // 'sky'    — тёмно-синяя; 'crimson' — красно-белая; 'lavender' — светло-фиолетовая.
+      var LIGHT_THEMES = ['light', 'crimson', 'lavender'];
+      document.documentElement.classList.toggle('dark', LIGHT_THEMES.indexOf(saved) === -1);
       document.documentElement.classList.toggle('coder20', saved === 'coder20');
       document.documentElement.classList.toggle('zakvez', saved === 'zakvez');
-      var accent = localStorage.getItem('sh_accent') || 'indigo';
+      ['sky', 'crimson', 'lavender'].forEach(function (n) {
+        document.documentElement.classList.toggle('t-' + n, saved === n);
+      });
+      // У новых тем свой акцент по умолчанию: если в хранилище его ещё нет,
+      // подставляем нужный, иначе интерфейс остался бы индиго.
+      var DEF = { sky: 'sky', crimson: 'red', lavender: 'purple' };
+      var accent = localStorage.getItem('sh_accent');
+      if (!accent) {
+        accent = DEF[saved] || 'indigo';
+        try { localStorage.setItem('sh_accent', accent); } catch (e) {}
+      }
       document.documentElement.setAttribute('data-accent', accent);
+      var MC = { dark: '#0f172a', light: '#f8fafc', coder20: '#111827', zakvez: '#000000', sky: '#071a30', crimson: '#dc2626', lavender: '#7c3aed' };
       var mc = document.querySelector('meta[name="theme-color"]');
-      if (mc) mc.setAttribute('content', saved === 'zakvez' ? '#000000' : (saved === 'coder20' ? '#111827' : (saved === 'light' ? '#f8fafc' : '#0f172a')));
+      if (mc) mc.setAttribute('content', MC[saved] || MC.dark);
     })();
   </script>
 
@@ -164,6 +177,39 @@
 
     /* Редактирование сообщения */
     .msg-edited { font-size: 9px; opacity: .6; font-style: italic; }
+
+    /* Кнопки под сообщением в чате.
+       Раньше это были блёклые значки 10 px с opacity .7 — на телефоне в них
+       невозможно было попасть, из-за чего «Ответить» и реакция выглядели
+       нерабочими. Теперь это обычные кнопки в палец. */
+    .msg-mini {
+      min-width: 26px; height: 26px; padding: 0 5px;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 13px; line-height: 1; font-weight: 800;
+      border-radius: 8px; color: inherit; opacity: .55;
+      background: rgba(148,163,184,.14);
+      transition: background .12s, opacity .12s, transform .1s;
+    }
+    .msg-mini:hover, .msg-mini:active { opacity: 1; background: rgba(148,163,184,.3); }
+    .msg-mini:active { transform: scale(.92); }
+    .msg-del-x:hover, .msg-del-x:active { background: rgba(244,63,94,.28) !important; }
+    .msg-actrow { display: flex; justify-content: flex-end; margin-top: 5px; }
+    .msg-reply-big {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 11px; font-weight: 800; line-height: 1;
+      padding: 6px 11px; border-radius: 9999px;
+      background: rgba(148,163,184,.18); color: #cbd5e1;
+      transition: background .12s, color .12s, transform .1s;
+    }
+    .msg-reply-big:hover, .msg-reply-big:active { background: rgba(99,102,241,.28); color: #e0e7ff; }
+    .msg-reply-big:active { transform: scale(.95); }
+    html:not(.dark) .msg-reply-big { background: rgba(100,116,139,.14); color: #475569; }
+    html.t-sky .msg-mini { background: rgba(144,185,216,.16); color: #cfe6f8; }
+    html.t-sky .msg-reply-big { background: rgba(144,185,216,.16); color: #cfe6f8; }
+    html.t-crimson .msg-mini { background: rgba(154,91,96,.12); color: #7f1d1d; }
+    html.t-crimson .msg-reply-big { background: rgba(220,38,38,.1); color: #b91c1c; }
+    html.t-lavender .msg-mini { background: rgba(124,58,237,.1); color: #4c1d95; }
+    html.t-lavender .msg-reply-big { background: rgba(124,58,237,.1); color: #6d28d9; }
 
     /* Статус "печатает..." */
     #typing-indicator {
@@ -787,6 +833,306 @@
     }
     .av-pick.on { background: rgba(99,102,241,.28); box-shadow: 0 0 0 2px #6366f1; }
   </style>
+
+  <style>
+    /* ============================================================
+       РАСШИРЕННАЯ ПАЛИТРА АКЦЕНТА
+       Каждый акцент = тройка (фон / текст / рамка). Ключи совпадают
+       со значением data-accent на <html> и со списком в Настройках.
+       ============================================================ */
+    html[data-accent="sky"]     .accent-bg { background-color: #0ea5e9 !important; }
+    html[data-accent="cyan"]    .accent-bg { background-color: #06b6d4 !important; }
+    html[data-accent="teal"]    .accent-bg { background-color: #14b8a6 !important; }
+    html[data-accent="green"]   .accent-bg { background-color: #22c55e !important; }
+    html[data-accent="lime"]    .accent-bg { background-color: #84cc16 !important; }
+    html[data-accent="yellow"]  .accent-bg { background-color: #eab308 !important; }
+    html[data-accent="orange"]  .accent-bg { background-color: #f97316 !important; }
+    html[data-accent="red"]     .accent-bg { background-color: #ef4444 !important; }
+    html[data-accent="pink"]    .accent-bg { background-color: #ec4899 !important; }
+    html[data-accent="fuchsia"] .accent-bg { background-color: #d946ef !important; }
+    html[data-accent="purple"]  .accent-bg { background-color: #a855f7 !important; }
+    html[data-accent="slate"]   .accent-bg { background-color: #64748b !important; }
+
+    html[data-accent="sky"]     .accent-text { color: #38bdf8 !important; }
+    html[data-accent="cyan"]    .accent-text { color: #22d3ee !important; }
+    html[data-accent="teal"]    .accent-text { color: #2dd4bf !important; }
+    html[data-accent="green"]   .accent-text { color: #4ade80 !important; }
+    html[data-accent="lime"]    .accent-text { color: #a3e635 !important; }
+    html[data-accent="yellow"]  .accent-text { color: #fde047 !important; }
+    html[data-accent="orange"]  .accent-text { color: #fb923c !important; }
+    html[data-accent="red"]     .accent-text { color: #f87171 !important; }
+    html[data-accent="pink"]    .accent-text { color: #f472b6 !important; }
+    html[data-accent="fuchsia"] .accent-text { color: #e879f9 !important; }
+    html[data-accent="purple"]  .accent-text { color: #c084fc !important; }
+    html[data-accent="slate"]   .accent-text { color: #94a3b8 !important; }
+
+    html[data-accent="sky"]     .accent-border { border-color: #0ea5e9 !important; }
+    html[data-accent="cyan"]    .accent-border { border-color: #06b6d4 !important; }
+    html[data-accent="teal"]    .accent-border { border-color: #14b8a6 !important; }
+    html[data-accent="green"]   .accent-border { border-color: #22c55e !important; }
+    html[data-accent="lime"]    .accent-border { border-color: #84cc16 !important; }
+    html[data-accent="yellow"]  .accent-border { border-color: #eab308 !important; }
+    html[data-accent="orange"]  .accent-border { border-color: #f97316 !important; }
+    html[data-accent="red"]     .accent-border { border-color: #ef4444 !important; }
+    html[data-accent="pink"]    .accent-border { border-color: #ec4899 !important; }
+    html[data-accent="fuchsia"] .accent-border { border-color: #d946ef !important; }
+    html[data-accent="purple"]  .accent-border { border-color: #a855f7 !important; }
+    html[data-accent="slate"]   .accent-border { border-color: #64748b !important; }
+
+    /* Блик выбранного кружка в палитре повторяет текущий акцент */
+    html[data-accent="sky"]     .accent-dot.active,
+    html[data-accent="cyan"]    .accent-dot.active,
+    html[data-accent="teal"]    .accent-dot.active,
+    html[data-accent="green"]   .accent-dot.active,
+    html[data-accent="lime"]    .accent-dot.active,
+    html[data-accent="yellow"]  .accent-dot.active,
+    html[data-accent="orange"]  .accent-dot.active,
+    html[data-accent="red"]     .accent-dot.active,
+    html[data-accent="pink"]    .accent-dot.active,
+    html[data-accent="fuchsia"] .accent-dot.active,
+    html[data-accent="purple"]  .accent-dot.active,
+    html[data-accent="slate"]   .accent-dot.active { box-shadow: 0 0 0 2px currentColor; }
+
+    /* ============================================================
+       НОВЫЕ ТЕМЫ (палитры поверх тёмной/светлой базы Tailwind)
+       Класс t-<имя> ставит applyTheme() на <html> и снимает при выходе.
+       Правила ниже идут ПОСЛЕ блока светлой темы, поэтому при равной
+       специфичности (html.t-x .bg-slate-900 против html:not(.dark) …)
+       побеждают именно они.
+       ============================================================ */
+
+    /* ---------- Голубая: тёмно-синяя вода и ледяной текст ---------- */
+    html.t-sky { color-scheme: dark; }
+    html.t-sky body { background: #071a30 !important; color: #e6f4ff !important; }
+    html.t-sky .bg-slate-950 { background-color: #071a30 !important; }
+    html.t-sky .bg-slate-950\/90 { background-color: rgba(7, 26, 48, .94) !important; }
+    html.t-sky .bg-slate-950\/10 { background-color: rgba(7, 26, 48, .12) !important; }
+    html.t-sky .bg-slate-900, html.t-sky .bg-slate-900\/70 { background-color: #0b2947 !important; }
+    html.t-sky .bg-slate-800,
+    html.t-sky .bg-slate-800\/40, html.t-sky .bg-slate-800\/50,
+    html.t-sky .bg-slate-800\/60, html.t-sky .bg-slate-800\/70 { background-color: #12385c !important; }
+    html.t-sky .bg-slate-700 { background-color: #1b4a75 !important; }
+    html.t-sky .hover\:bg-slate-700:hover,
+    html.t-sky .hover\:bg-slate-800:hover,
+    html.t-sky .hover\:bg-slate-950:hover { background-color: #1b4a75 !important; }
+    html.t-sky .border-slate-800, html.t-sky .border-slate-800\/60,
+    html.t-sky .border-slate-700, html.t-sky .border-slate-600 { border-color: #1d4f7d !important; }
+    html.t-sky .text-slate-100, html.t-sky .text-slate-200,
+    html.t-sky .text-slate-300, html.t-sky .text-white { color: #e6f4ff !important; }
+    html.t-sky .text-slate-400, html.t-sky .text-slate-500,
+    html.t-sky .text-slate-600 { color: #90b9d8 !important; }
+    html.t-sky .placeholder-slate-500::placeholder { color: #7ba3c2 !important; }
+    html.t-sky input, html.t-sky textarea, html.t-sky select { color: #e6f4ff; }
+    html.t-sky .chat-search { background: rgba(7, 26, 48, .95) !important; }
+    html.t-sky .reactions-bar { background: #0b2947 !important; border-color: #1d4f7d !important; }
+    html.t-sky .reply-preview { background: rgba(0, 0, 0, .3) !important; border-left-color: #38bdf8 !important; }
+    html.t-sky .dm-bubble.theirs { background: #12385c !important; color: #e6f4ff !important; }
+    html.t-sky .dm-peer:hover, html.t-sky .dm-peer:active { background: rgba(56, 189, 248, .12) !important; }
+    html.t-sky .avatar-emoji { background: #12385c !important; }
+    html.t-sky .feed-card { background: rgba(11, 41, 71, .62) !important; border-color: #1d4f7d !important; }
+    html.t-sky .feed-card.mine { background: rgba(14, 116, 190, .18) !important; border-color: rgba(56, 189, 248, .45) !important; }
+    html.t-sky .feed-sub, html.t-sky .feed-foot-time, html.t-sky .feed-media-cap { color: #90b9d8 !important; }
+    html.t-sky .feed-media, html.t-sky .attach-thumb { border-color: #1d4f7d !important; background: #051525 !important; }
+    html.t-sky .attach-box { background: rgba(11, 41, 71, .5) !important; border-color: rgba(144, 185, 216, .4) !important; }
+    html.t-sky .mood-card { background: rgba(11, 41, 71, .55) !important; border-color: #1d4f7d !important; }
+    html.t-sky .mood-btn { background: rgba(18, 56, 92, .55) !important; border-color: #1d4f7d !important; }
+    html.t-sky .cmt-box { border-color: #1d4f7d !important; }
+    html.t-sky .cmt-head, html.t-sky .cmt-txt { color: #cfe6f8 !important; }
+    html.t-sky .cmt-inp { background: #12385c !important; }
+    html.t-sky .rx-picker { background: rgba(11, 41, 71, .65) !important; border-color: #1d4f7d !important; }
+    html.t-sky .rx-pill { background: rgba(144, 185, 216, .16) !important; color: #cfe6f8 !important; }
+    html.t-sky .cal-day.has-ann { background: rgba(56, 189, 248, .2) !important; color: #7dd3fc !important; }
+    html.t-sky .cal-day.today { background: #0ea5e9 !important; }
+    html.t-sky ::-webkit-scrollbar-thumb { background: #1d4f7d !important; }
+
+    /* ---------- Красно-белая: белый фон, красные акценты ---------- */
+    html.t-crimson { color-scheme: light; }
+    html.t-crimson body { background: #fff4f5 !important; color: #450a0a !important; }
+    html.t-crimson .bg-slate-950 { background-color: #fff4f5 !important; }
+    html.t-crimson .bg-slate-950\/90 { background-color: rgba(255, 244, 245, .94) !important; }
+    html.t-crimson .bg-slate-950\/10 { background-color: rgba(220, 38, 38, .07) !important; }
+    html.t-crimson .bg-slate-900, html.t-crimson .bg-slate-900\/70 { background-color: #ffffff !important; }
+    html.t-crimson .bg-slate-800,
+    html.t-crimson .bg-slate-800\/40, html.t-crimson .bg-slate-800\/50,
+    html.t-crimson .bg-slate-800\/60, html.t-crimson .bg-slate-800\/70 { background-color: #fdeaec !important; }
+    html.t-crimson .bg-slate-700 { background-color: #f8d3d6 !important; }
+    html.t-crimson .hover\:bg-slate-700:hover,
+    html.t-crimson .hover\:bg-slate-800:hover,
+    html.t-crimson .hover\:bg-slate-950:hover { background-color: #f8d3d6 !important; }
+    html.t-crimson .border-slate-800, html.t-crimson .border-slate-800\/60 { border-color: #f5cdd1 !important; }
+    html.t-crimson .border-slate-700, html.t-crimson .border-slate-600 { border-color: #e9aeb4 !important; }
+    html.t-crimson .text-slate-100 { color: #450a0a !important; }
+    html.t-crimson .text-slate-200 { color: #5f1114 !important; }
+    html.t-crimson .text-slate-300 { color: #7f1d1d !important; }
+    html.t-crimson .text-slate-400 { color: #9a5b60 !important; }
+    html.t-crimson .text-slate-500, html.t-crimson .text-slate-600 { color: #b0858a !important; }
+    html.t-crimson .placeholder-slate-500::placeholder { color: #b0858a !important; }
+    html.t-crimson .chat-search { background: rgba(255, 244, 245, .95) !important; }
+    html.t-crimson .reactions-bar { background: #fff !important; border-color: #f5cdd1 !important; }
+    html.t-crimson .dm-bubble.theirs { background: #fdeaec !important; color: #450a0a !important; }
+    html.t-crimson .dm-peer:hover, html.t-crimson .dm-peer:active { background: rgba(220, 38, 38, .08) !important; }
+    html.t-crimson .avatar-emoji { background: #fdeaec !important; }
+    html.t-crimson .feed-card { background: rgba(255, 255, 255, .85) !important; border-color: #f5cdd1 !important; }
+    html.t-crimson .feed-card.mine { background: rgba(220, 38, 38, .08) !important; border-color: rgba(220, 38, 38, .35) !important; }
+    html.t-crimson .feed-sub, html.t-crimson .feed-foot-time, html.t-crimson .feed-media-cap { color: #9a5b60 !important; }
+    html.t-crimson .feed-media, html.t-crimson .attach-thumb { border-color: #f5cdd1 !important; background: #fff1f2 !important; }
+    html.t-crimson .attach-box { background: rgba(255, 255, 255, .7) !important; border-color: rgba(154, 91, 96, .35) !important; }
+    html.t-crimson .mood-card { background: rgba(255, 255, 255, .8) !important; border-color: #f5cdd1 !important; }
+    html.t-crimson .mood-btn { background: rgba(253, 234, 236, .8) !important; border-color: #f5cdd1 !important; }
+    html.t-crimson .cmt-box { border-color: #f5cdd1 !important; }
+    html.t-crimson .cmt-head, html.t-crimson .cmt-txt { color: #5f1114 !important; }
+    html.t-crimson .cmt-inp { background: #fdeaec !important; }
+    html.t-crimson .rx-picker { background: rgba(255, 255, 255, .9) !important; border-color: #f5cdd1 !important; }
+    html.t-crimson .rx-pill { background: rgba(220, 38, 38, .1) !important; color: #7f1d1d !important; }
+    html.t-crimson .cal-day.has-ann { background: rgba(220, 38, 38, .12) !important; color: #b91c1c !important; }
+    html.t-crimson .cal-day.today { background: #dc2626 !important; }
+    html.t-crimson ::-webkit-scrollbar-thumb { background: #e9aeb4 !important; }
+
+    /* ---------- Сиреневая: светлая база с фиолетовым ---------- */
+    html.t-lavender { color-scheme: light; }
+    html.t-lavender body { background: #f7f4ff !important; color: #2e1065 !important; }
+    html.t-lavender .bg-slate-950 { background-color: #f7f4ff !important; }
+    html.t-lavender .bg-slate-950\/90 { background-color: rgba(247, 244, 255, .94) !important; }
+    html.t-lavender .bg-slate-950\/10 { background-color: rgba(124, 58, 237, .07) !important; }
+    html.t-lavender .bg-slate-900, html.t-lavender .bg-slate-900\/70 { background-color: #ffffff !important; }
+    html.t-lavender .bg-slate-800,
+    html.t-lavender .bg-slate-800\/40, html.t-lavender .bg-slate-800\/50,
+    html.t-lavender .bg-slate-800\/60, html.t-lavender .bg-slate-800\/70 { background-color: #efe9ff !important; }
+    html.t-lavender .bg-slate-700 { background-color: #ddd0fb !important; }
+    html.t-lavender .hover\:bg-slate-700:hover,
+    html.t-lavender .hover\:bg-slate-800:hover,
+    html.t-lavender .hover\:bg-slate-950:hover { background-color: #ddd0fb !important; }
+    html.t-lavender .border-slate-800, html.t-lavender .border-slate-800\/60 { border-color: #ddd6fb !important; }
+    html.t-lavender .border-slate-700, html.t-lavender .border-slate-600 { border-color: #c4b1f5 !important; }
+    html.t-lavender .text-slate-100 { color: #2e1065 !important; }
+    html.t-lavender .text-slate-200 { color: #3b1a78 !important; }
+    html.t-lavender .text-slate-300 { color: #4c1d95 !important; }
+    html.t-lavender .text-slate-400 { color: #6d5aa8 !important; }
+    html.t-lavender .text-slate-500, html.t-lavender .text-slate-600 { color: #8d7cc0 !important; }
+    html.t-lavender .placeholder-slate-500::placeholder { color: #8d7cc0 !important; }
+    html.t-lavender .chat-search { background: rgba(247, 244, 255, .95) !important; }
+    html.t-lavender .reactions-bar { background: #fff !important; border-color: #ddd6fb !important; }
+    html.t-lavender .dm-bubble.theirs { background: #efe9ff !important; color: #2e1065 !important; }
+    html.t-lavender .dm-peer:hover, html.t-lavender .dm-peer:active { background: rgba(124, 58, 237, .1) !important; }
+    html.t-lavender .avatar-emoji { background: #efe9ff !important; }
+    html.t-lavender .feed-card { background: rgba(255, 255, 255, .85) !important; border-color: #ddd6fb !important; }
+    html.t-lavender .feed-card.mine { background: rgba(124, 58, 237, .1) !important; border-color: rgba(124, 58, 237, .35) !important; }
+    html.t-lavender .feed-sub, html.t-lavender .feed-foot-time, html.t-lavender .feed-media-cap { color: #6d5aa8 !important; }
+    html.t-lavender .feed-media, html.t-lavender .attach-thumb { border-color: #ddd6fb !important; background: #f5f1ff !important; }
+    html.t-lavender .attach-box { background: rgba(255, 255, 255, .7) !important; border-color: rgba(109, 90, 168, .35) !important; }
+    html.t-lavender .mood-card { background: rgba(255, 255, 255, .8) !important; border-color: #ddd6fb !important; }
+    html.t-lavender .mood-btn { background: rgba(239, 233, 255, .8) !important; border-color: #ddd6fb !important; }
+    html.t-lavender .cmt-box { border-color: #ddd6fb !important; }
+    html.t-lavender .cmt-head, html.t-lavender .cmt-txt { color: #3b1a78 !important; }
+    html.t-lavender .cmt-inp { background: #efe9ff !important; }
+    html.t-lavender .rx-picker { background: rgba(255, 255, 255, .9) !important; border-color: #ddd6fb !important; }
+    html.t-lavender .rx-pill { background: rgba(124, 58, 237, .1) !important; color: #4c1d95 !important; }
+    html.t-lavender .cal-day.has-ann { background: rgba(124, 58, 237, .14) !important; color: #6d28d9 !important; }
+    html.t-lavender .cal-day.today { background: #7c3aed !important; }
+    html.t-lavender ::-webkit-scrollbar-thumb { background: #c4b1f5 !important; }
+
+    /* ---------- Общее для новых тем: акцентные «пилюли» и кнопки-действия ---------- */
+    html.t-sky .act-btn.cmt-on, html.t-sky .rx-pill.mine, html.t-sky .rx-pick.on,
+    html.t-crimson .act-btn.cmt-on, html.t-crimson .rx-pill.mine, html.t-crimson .rx-pick.on,
+    html.t-lavender .act-btn.cmt-on, html.t-lavender .rx-pill.mine, html.t-lavender .rx-pick.on {
+      background: rgba(148, 163, 184, .2) !important;
+    }
+    html.t-sky .av-pick.on, html.t-crimson .av-pick.on, html.t-lavender .av-pick.on { box-shadow: 0 0 0 2px currentColor; }
+
+    /* ---------- ЛС: реакции, ответ, пересылка, правка ---------- */
+    .dm-wrap { max-width: 86%; display: flex; flex-direction: column; }
+    .dm-bubble-row.justify-end .dm-wrap { align-items: flex-end; }
+    .dm-act {
+      display: flex; gap: 3px; margin-top: 4px; flex-wrap: wrap;
+    }
+    .dm-bubble-row.justify-end .dm-act { justify-content: flex-end; }
+    .dm-act button {
+      font-size: 10px; font-weight: 800; line-height: 1;
+      padding: 4px 7px; border-radius: 8px;
+      background: rgba(148, 163, 184, .14); color: #94a3b8;
+      transition: background .12s, color .12s;
+    }
+    .dm-act button:hover, .dm-act button:active { background: rgba(148, 163, 184, .3); color: #e2e8f0; }
+    .dm-act .dm-act-del:hover, .dm-act .dm-act-del:active { background: rgba(244, 63, 94, .3); color: #fda4af; }
+    .dm-fwd-mark {
+      display: inline-block; font-size: 9px; font-weight: 800; letter-spacing: .02em;
+      margin-bottom: 3px; padding: 2px 6px; border-radius: 6px;
+      background: rgba(148, 163, 184, .2); color: #cbd5e1;
+    }
+    .dm-edited { font-size: 9px; font-style: italic; opacity: .6; }
+    /* Палитра реакций в ЛС раскрывается прямо под сообщением, у которого
+       нажали ☺, поэтому слот должен встать в ту же сторону, что и пузырь. */
+    .dm-rx-slot { max-width: 86%; }
+    .dm-bubble-row.justify-end .dm-rx-slot { margin-left: auto; }
+    .dm-rx-slot .rx-picker { margin-top: 5px; }
+    .dm-rx-slot .rx-pick { width: 34px; height: 34px; }
+    html.t-sky .dm-act button { background: rgba(144, 185, 216, .16); color: #90b9d8; }
+    html.t-sky .dm-fwd-mark { background: rgba(144, 185, 216, .18); color: #cfe6f8; }
+    html.t-crimson .dm-act button { background: rgba(154, 91, 96, .12); color: #9a5b60; }
+    html.t-crimson .dm-fwd-mark { background: rgba(220, 38, 38, .1); color: #b91c1c; }
+    html.t-lavender .dm-act button { background: rgba(124, 58, 237, .1); color: #6d5aa8; }
+    html.t-lavender .dm-fwd-mark { background: rgba(124, 58, 237, .1); color: #6d28d9; }
+
+    /* ============================================================
+       СТИКЕРЫ И ФОТО/ВИДЕО В ЧАТЕ И ЛС
+       Стикеры лежат файлами в stickers/ — в базу попадает только имя
+       файла, поэтому сообщение со стикером весит ~20 байт, а не мегабайты.
+       ============================================================ */
+    /* Панель включается классом .open, а не .hidden: селекторы одинаковой
+       специфичности, и кто из них позже в коде — тот и победил бы. */
+    .stk-panel { display: none; }
+    .stk-panel.open {
+      display: flex; gap: 7px; overflow-x: auto; overflow-y: hidden;
+      padding: 7px 2px 9px; margin-bottom: 7px;
+      border-radius: 13px; border: 1px solid rgba(148, 163, 184, .22);
+      background: rgba(15, 23, 42, .6);
+      -webkit-overflow-scrolling: touch; scrollbar-width: thin;
+    }
+    .stk-tile {
+      position: relative; flex: 0 0 auto; width: 64px; height: 64px;
+      border-radius: 13px; overflow: hidden; background: rgba(148, 163, 184, .12);
+      cursor: pointer; padding: 0;
+      transition: transform .1s, background .15s;
+    }
+    .stk-tile:active { transform: scale(.92); }
+    .stk-tile img { width: 100%; height: 100%; object-fit: contain; display: block; }
+    /* Видео-стикеры весят по 4–6 МБ: пока не нажал, картинку не грузим. */
+    .stk-tile .stk-badge {
+      position: absolute; right: 2px; bottom: 2px;
+      width: 17px; height: 17px; border-radius: 6px;
+      background: rgba(2, 6, 23, .82); color: #fff;
+      font-size: 9px; line-height: 17px; text-align: center; font-weight: 800;
+      pointer-events: none;
+    }
+    .stk-empty { padding: 14px 10px; font-size: 12px; color: #64748b; }
+
+    /* Стикер внутри сообщения */
+    .msg-sticker {
+      display: block; max-width: 190px; max-height: 190px; width: auto; height: auto;
+      /* min-* обязателен: GIF грузится лениво, и пока он не пришёл, картинка
+         без размера схлопывается в ноль — пузырь сообщения выглядит пустым. */
+      min-width: 110px; min-height: 110px;
+      background: rgba(2, 6, 23, .25);
+      border-radius: 12px; margin: 1px 0 2px; cursor: pointer;
+    }
+    /* Анимированный стикер: он и весит больше, и должен быть заметно крупнее
+       статичного, чтобы «мигание» было видно сразу при скролле. */
+    .msg-sticker.sticker-anim { max-width: 220px; max-height: 220px; min-width: 150px; min-height: 150px; }
+    .stk-cap { font-size: 9px; opacity: .5; margin-top: 2px; }
+
+    /* Фото и видео внутри сообщения чата и ЛС */
+    .msg-media {
+      display: block; width: 100%; max-width: 260px; border-radius: 12px;
+      margin: 1px 0 2px; background: rgba(2, 6, 23, .4);
+    }
+    .msg-media-cap { font-size: 9px; opacity: .5; margin-top: 2px; }
+    .dm-bubble.mine .msg-media { margin-left: auto; }
+
+    html.t-sky .stk-panel.open { background: rgba(11, 41, 71, .55); border-color: rgba(144, 185, 216, .32); }
+    html.t-crimson .stk-panel.open { background: rgba(255, 255, 255, .72); border-color: rgba(154, 91, 96, .32); }
+    html.t-lavender .stk-panel.open { background: rgba(255, 255, 255, .72); border-color: rgba(124, 58, 237, .3); }
+    html.t-sky .msg-media, html.t-crimson .msg-media, html.t-lavender .msg-media { background: rgba(0, 0, 0, .06); }
+  </style>
 </head>
 
 <body class="bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100 antialiased min-h-screen transition-colors">
@@ -962,22 +1308,41 @@
           <button id="chat-edit-close" class="text-slate-400 hover:text-rose-400 font-bold px-2">✕</button>
         </div>
 
-        <form id="chat-form" class="flex gap-2 mt-3 pt-3 pb-safe sticky bottom-0 z-10 bg-slate-950/90 backdrop-blur">
-          <button id="mic-btn" type="button"
-                  class="shrink-0 h-11 w-11 rounded-xl bg-slate-800 hover:bg-slate-700 flex items-center justify-center active:scale-95 transition"
-                  aria-label="Записать голосовое" title="Записать голосовое (до 60 сек)">
-            <svg class="w-5 h-5 text-slate-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 003-3V5.25a3 3 0 00-6 0v7.5a3 3 0 003 3z"/>
-            </svg>
-          </button>
-          <input id="chat-input" type="text" maxlength="500" autocomplete="off"
-                 placeholder="Сообщение… (@ник — упомянуть)"
-                 class="flex-1 min-w-0 rounded-xl bg-slate-800 border border-transparent px-4 py-2.5 text-sm placeholder-slate-500 outline-none focus:border-indigo-500 transition">
-          <button id="chat-send-btn" type="submit" class="shrink-0 h-11 w-11 rounded-xl accent-bg flex items-center justify-center hover:opacity-90 active:scale-95 transition disabled:opacity-40 disabled:pointer-events-none" aria-label="Отправить">
-            <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9-7-9-7v14zm0 0V5"/>
-            </svg>
-          </button>
+        <form id="chat-form" class="mt-3 pt-3 pb-safe sticky bottom-0 z-10 bg-slate-950/90 backdrop-blur">
+          <div id="chat-sticker-panel" class="stk-panel" data-stk-host="chat"></div>
+          <div id="chat-attach" class="attach-box hidden"></div>
+          <div class="flex gap-2">
+            <button id="mic-btn" type="button"
+                    class="shrink-0 h-11 w-11 rounded-xl bg-slate-800 hover:bg-slate-700 flex items-center justify-center active:scale-95 transition"
+                    aria-label="Записать голосовое" title="Записать голосовое (до 60 сек)">
+              <svg class="w-5 h-5 text-slate-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 003-3V5.25a3 3 0 00-6 0v7.5a3 3 0 003 3z"/>
+              </svg>
+            </button>
+            <button id="chat-attach-btn" type="button"
+                    class="shrink-0 h-11 w-11 rounded-xl bg-slate-800 hover:bg-slate-700 flex items-center justify-center active:scale-95 transition"
+                    aria-label="Прикрепить фото или видео" title="Прикрепить фото или видео">
+              <svg class="w-5 h-5 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 012.909 2.909M3.75 21h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v13.5A1.5 1.5 0 003.75 21z"/>
+              </svg>
+            </button>
+            <button id="chat-sticker-btn" type="button"
+                    class="shrink-0 h-11 w-11 rounded-xl bg-slate-800 hover:bg-slate-700 flex items-center justify-center active:scale-95 transition"
+                    aria-label="Стикеры" title="Стикеры">
+              <svg class="w-5 h-5 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.182 15.182a4.5 4.5 0 01-6.364 0M21 12a9 9 0 11-18 0 9 9 0 0118 0zM9.75 9.75h.008v.008H9.75V9.75zm4.5 0h.008v.008h-.008V9.75z"/>
+              </svg>
+            </button>
+            <input id="chat-file" type="file" accept="image/*,video/*,.heic,.heif,.mov,.m4v,.3gp" class="hidden">
+            <input id="chat-input" type="text" maxlength="500" autocomplete="off"
+                   placeholder="Сообщение… (@ник — упомянуть)"
+                   class="flex-1 min-w-0 rounded-xl bg-slate-800 border border-transparent px-4 py-2.5 text-sm placeholder-slate-500 outline-none focus:border-indigo-500 transition">
+            <button id="chat-send-btn" type="submit" class="shrink-0 h-11 w-11 rounded-xl accent-bg flex items-center justify-center hover:opacity-90 active:scale-95 transition disabled:opacity-40 disabled:pointer-events-none" aria-label="Отправить">
+              <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9-7-9-7v14zm0 0V5"/>
+              </svg>
+            </button>
+          </div>
         </form>
         <div id="chat-readonly-notice" class="hidden rounded-xl bg-slate-800/60 border border-slate-700 p-3 mt-3 text-xs text-slate-300 fade-up">
           Ты можешь писать только в своём классе (<span id="chat-readonly-home" class="font-bold accent-text">—</span>).
@@ -1015,7 +1380,8 @@
         <div id="feed-messages" class="chat-scroll space-y-2.5 overflow-y-auto pr-1"></div>
 
         <form id="feed-form" class="mt-3 pt-3 pb-safe sticky bottom-0 z-10 bg-slate-950/90 backdrop-blur">
-          <div id="feed-attach" class="hidden"></div>
+          <div id="feed-sticker-panel" class="stk-panel" data-stk-host="feed"></div>
+          <div id="feed-attach" class="attach-box hidden"></div>
           <div id="feed-poll-box" class="hidden space-y-2 mb-2"></div>
           <div class="flex gap-2">
             <button id="feed-attach-btn" type="button" title="Прикрепить фото или видео"
@@ -1024,11 +1390,17 @@
                 <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v13.5A1.5 1.5 0 003.75 21z"/>
               </svg>
             </button>
+            <button id="feed-sticker-btn" type="button" title="Стикеры"
+                    class="shrink-0 h-11 w-11 rounded-xl bg-slate-800 hover:bg-slate-700 flex items-center justify-center active:scale-95 transition disabled:opacity-40 disabled:pointer-events-none" aria-label="Стикеры">
+              <svg class="w-5 h-5 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.182 15.182a4.5 4.5 0 01-6.364 0M21 12a9 9 0 11-18 0 9 9 0 0118 0zM9.75 9.75h.008v.008H9.75V9.75zm4.5 0h.008v.008h-.008V9.75z"/>
+              </svg>
+            </button>
             <button id="feed-poll-toggle" type="button" title="Добавить голосование"
                     class="shrink-0 h-11 w-11 rounded-xl bg-slate-800 hover:bg-slate-700 flex items-center justify-center active:scale-95 transition disabled:opacity-40 disabled:pointer-events-none" aria-label="Добавить голосование">
               <span class="text-slate-300 text-lg leading-none">📊</span>
             </button>
-            <input id="feed-file" type="file" accept="image/*,video/*" class="hidden">
+            <input id="feed-file" type="file" accept="image/*,video/*,.heic,.heif,.mov,.m4v,.3gp" class="hidden">
             <input id="feed-input" type="text" maxlength="500" autocomplete="off"
                    placeholder="Твоя история в ленте школы…"
                    class="flex-1 min-w-0 rounded-xl bg-slate-800 border border-transparent px-4 py-2.5 text-sm placeholder-slate-500 outline-none focus:border-indigo-500 transition">
@@ -1062,25 +1434,71 @@
     </div>
     <div id="dm-list" class="flex-1 overflow-y-auto p-3 space-y-1"></div>
     <div id="dm-thread" class="hidden flex-1 overflow-y-auto p-3 space-y-1.5"></div>
+    <div id="dm-reply-box" class="hidden mx-3 mb-1 reply-preview flex items-start gap-2">
+      <div class="flex-1 min-w-0">
+        <div class="text-[10px] font-bold accent-text" id="dm-reply-nick"></div>
+        <div class="text-[11px] truncate opacity-80" id="dm-reply-text"></div>
+      </div>
+      <button type="button" id="dm-reply-cancel" class="shrink-0 text-[11px] font-bold opacity-70 hover:opacity-100 px-1.5 rounded bg-slate-800">✕</button>
+    </div>
+    <div id="dm-edit-box" class="hidden mx-3 mb-1 reply-preview flex items-start gap-2">
+      <div class="flex-1 min-w-0">
+        <div class="text-[10px] font-bold accent-text">Редактирование сообщения</div>
+        <div class="text-[11px] truncate opacity-80" id="dm-edit-text"></div>
+      </div>
+      <button type="button" id="dm-edit-cancel" class="shrink-0 text-[11px] font-bold opacity-70 hover:opacity-100 px-1.5 rounded bg-slate-800">✕</button>
+    </div>
     <form id="dm-form" class="hidden gap-2 p-3 pt-2 pb-safe border-t border-slate-800 bg-slate-950">
-      <button id="dm-mic-btn" type="button"
-              class="shrink-0 h-11 w-11 rounded-xl bg-slate-800 hover:bg-slate-700 flex items-center justify-center active:scale-95 transition"
-              aria-label="Записать голосовое" title="Записать голосовое (до 60 сек)">
-        <svg class="w-5 h-5 text-slate-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 003-3V5.25a3 3 0 00-6 0v7.5a3 3 0 003 3z"/>
-        </svg>
-      </button>
-      <input id="dm-input" type="text" maxlength="500" autocomplete="off" placeholder="Сообщение…"
-             class="flex-1 min-w-0 rounded-xl bg-slate-800 border border-transparent px-4 py-2.5 text-sm placeholder-slate-500 outline-none focus:border-indigo-500 transition">
-      <button type="submit" class="shrink-0 h-11 w-11 rounded-xl accent-bg flex items-center justify-center hover:opacity-90 active:scale-95 transition" aria-label="Отправить">
-        <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9-7-9-7v14zm0 0V5"/>
-        </svg>
-      </button>
+      <div id="dm-sticker-panel" class="stk-panel" data-stk-host="dm"></div>
+      <div id="dm-attach" class="attach-box hidden"></div>
+      <div class="flex gap-2">
+        <button id="dm-mic-btn" type="button"
+                class="shrink-0 h-11 w-11 rounded-xl bg-slate-800 hover:bg-slate-700 flex items-center justify-center active:scale-95 transition"
+                aria-label="Записать голосовое" title="Записать голосовое (до 60 сек)">
+          <svg class="w-5 h-5 text-slate-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 003-3V5.25a3 3 0 00-6 0v7.5a3 3 0 003 3z"/>
+          </svg>
+        </button>
+        <button id="dm-attach-btn" type="button"
+                class="shrink-0 h-11 w-11 rounded-xl bg-slate-800 hover:bg-slate-700 flex items-center justify-center active:scale-95 transition"
+                aria-label="Прикрепить фото или видео" title="Прикрепить фото или видео">
+          <svg class="w-5 h-5 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 012.909 2.909M3.75 21h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v13.5A1.5 1.5 0 003.75 21z"/>
+          </svg>
+        </button>
+        <button id="dm-sticker-btn" type="button"
+                class="shrink-0 h-11 w-11 rounded-xl bg-slate-800 hover:bg-slate-700 flex items-center justify-center active:scale-95 transition"
+                aria-label="Стикеры" title="Стикеры">
+          <svg class="w-5 h-5 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.182 15.182a4.5 4.5 0 01-6.364 0M21 12a9 9 0 11-18 0 9 9 0 0118 0zM9.75 9.75h.008v.008H9.75V9.75zm4.5 0h.008v.008h-.008V9.75z"/>
+          </svg>
+        </button>
+        <input id="dm-file" type="file" accept="image/*,video/*,.heic,.heif,.mov,.m4v,.3gp" class="hidden">
+        <input id="dm-input" type="text" maxlength="500" autocomplete="off" placeholder="Сообщение…"
+               class="flex-1 min-w-0 rounded-xl bg-slate-800 border border-transparent px-4 py-2.5 text-sm placeholder-slate-500 outline-none focus:border-indigo-500 transition">
+        <button type="submit" class="shrink-0 h-11 w-11 rounded-xl accent-bg flex items-center justify-center hover:opacity-90 active:scale-95 transition" aria-label="Отправить">
+          <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9-7-9-7v14zm0 0V5"/>
+          </svg>
+        </button>
+      </div>
     </form>
   </div>
 
+  <!-- ======================= ПЕРЕСЫЛКА ЛС ======================= -->
+  <div id="dm-forward-modal" class="hidden fixed inset-0 z-[62] items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+    <div class="w-full max-w-sm rounded-2xl bg-slate-900 border border-slate-800 p-5 shadow-2xl">
+      <h3 class="text-base font-bold">Переслать сообщение</h3>
+      <div id="dm-fwd-preview" class="mt-3 reply-preview text-xs"></div>
+      <div id="dm-fwd-list" class="mt-3 max-h-64 overflow-y-auto space-y-1"></div>
+      <button id="dm-fwd-close" class="mt-4 w-full rounded-xl bg-slate-800 hover:bg-slate-700 py-2.5 text-sm font-bold">Отмена</button>
+    </div>
+  </div>
+
 <!-- ======================= РЕГИСТРАЦИЯ / ВХОД (удалено — входим без регистрации) ======================= -->
+
+  <!-- ======================= ПРОСМОТР СТИКЕРА ======================= -->
+  <div id="sticker-viewer" class="hidden fixed inset-0 z-[70] items-center justify-center"></div>
 
   <!-- ======================= МОДАЛКА НИКА ======================= -->
   <div id="nick-modal" class="hidden fixed inset-0 z-[60] items-center justify-center bg-black/70 backdrop-blur-sm p-4">
@@ -1494,6 +1912,20 @@
   // Потолок по длине строки data:URL. Правило .validate в rules.json режет
   // media.url на 2 800 000 символах — держимся заметно ниже, с запасом на префикс.
   const FEED_VIDEO_MAX_CHARS = 2600000;
+
+  /* ---- Фото и видео в чате и в ЛС ----
+     Потолки ниже, чем у ленты, и это не осторожность вообще. Ветка `chat`
+     читается целиком и одним куском: 50 сообщений с фотками по 200 КБ — это
+     10 МБ, которые Firebase отдаёт каждому, кто открыл чат. В ленте тот же
+     трюк терпим из-за trimFeed() до 200 постов, а в чате подрезать нечего.
+     Видео поэтому здесь заметно меньше ленты. */
+  const CHAT_PHOTO_MAX_PX = 900;
+  const CHAT_PHOTO_MAX_KB = 150;
+  const CHAT_VIDEO_MAX_KB = 600;
+  const CHAT_VIDEO_MAX_SEC = 20;
+  // Правило .validate в rules.json режет media.url на 800 000 символах.
+  const CHAT_VIDEO_MAX_CHARS = 800000;
+
   let avatarImgCache = {}, avatarImgRef = null, avatarImgPath = '';
   let myAvatarImg = '';
   // Повторный вызов ensureAvatarsWatch, если при boot школа ещё не известна
@@ -2735,6 +3167,8 @@
     chatMaxCount = 0;
     clearReply();
     clearEdit();
+    clearChatAttach();
+    closeStickerPanel('chat-sticker-panel');
     typingBeacon = null;
     bindChatRefs();
     paintChatScopeUi();
@@ -2781,8 +3215,20 @@
      zakvez — chyorno-zelyonyy terminal: interfeys sleva, sprava
      kolonka s polzushchimi vverkh "titrami" (kreditsami).
      ============================================================ */
-  const THEMES = ['dark', 'light', 'coder20', 'zakvez'];
-  const THEME_LABELS = { dark: 'Тёмная', light: 'Светлая', coder20: 'coder20', zakvez: 'ZakveZ' };
+  const THEMES = ['dark', 'light', 'coder20', 'zakvez', 'sky', 'crimson', 'lavender'];
+  const THEME_LABELS = {
+    dark: 'Тёмная', light: 'Светлая', coder20: 'coder20', zakvez: 'ZakveZ',
+    sky: 'Голубая', crimson: 'Красно-белая', lavender: 'Лавандовая',
+  };
+  // Темы, у которых фон светлый: для них не нужен класс .dark.
+  const THEME_LIGHT = ['light', 'crimson', 'lavender'];
+  // Свой цвет акцента по умолчанию для новых тем.
+  const THEME_ACCENT = { sky: 'sky', crimson: 'red', lavender: 'purple' };
+  // Цвет системной строки состояния (meta theme-color).
+  const THEME_META = {
+    dark: '#0f172a', light: '#f8fafc', coder20: '#111827', zakvez: '#000000',
+    sky: '#071a30', crimson: '#dc2626', lavender: '#7c3aed',
+  };
   const C20_R = 90;                      // radius obrucha v koordinatah viewBox
   const C20_CIRC = 2 * Math.PI * C20_R;  // dlina ego okruzhnosti
 
@@ -2792,16 +3238,27 @@
     const t = localStorage.getItem(LS.theme);
     return THEMES.indexOf(t) === -1 ? 'dark' : t;
   }
-  // Primenit temu: dark | light | coder20 | zakvez
-  function applyTheme(theme) {
+  // Primenit temu: dark | light | coder20 | zakvez | sky | crimson | lavender
+  function applyTheme(theme, forceAccent) {
     const t = THEMES.indexOf(theme) === -1 ? 'dark' : theme;
     localStorage.setItem(LS.theme, t);
     const root = document.documentElement;
-    root.classList.toggle('dark', t !== 'light');
+    root.classList.toggle('dark', THEME_LIGHT.indexOf(t) === -1);
     root.classList.toggle('coder20', t === 'coder20');
     root.classList.toggle('zakvez', t === 'zakvez');
+    // Новые палитры живут отдельными классами поверх базовых утилит slate.
+    ['sky', 'crimson', 'lavender'].forEach((n) => root.classList.toggle('t-' + n, t === n));
+    // Акцент: запоминаем выбор пользователя, но у новых тем он свой по умолчанию.
+    // forceAccent=true — сброс на «родной» цвет темы (кнопка смены темы).
+    if (forceAccent || !localStorage.getItem(LS.accent)) {
+      const a = THEME_ACCENT[t] || 'indigo';
+      localStorage.setItem(LS.accent, a);
+      root.setAttribute('data-accent', a);
+    } else {
+      root.setAttribute('data-accent', localStorage.getItem(LS.accent));
+    }
     const mc = document.querySelector('meta[name="theme-color"]');
-    if (mc) mc.setAttribute('content', t === 'zakvez' ? '#000000' : (t === 'coder20' ? '#111827' : (t === 'light' ? '#f8fafc' : '#0f172a')));
+    if (mc) mc.setAttribute('content', THEME_META[t] || THEME_META.dark);
     if (t === 'coder20') startCoder20(); else stopCoder20();
     if (t === 'zakvez') mountZakvez();
     return t;
@@ -2985,6 +3442,9 @@
     const target = $('#tab-' + name);
     if (!target) return;
     target.classList.remove('hidden');
+    // Уходим с вкладки — прячем панель стикеров: на следующей она открылась бы
+    // поверх уже другого чата, и стикер ушёл бы не туда.
+    if (name !== 'chat') { closeStickerPanel('chat-sticker-panel'); closeStickerPanel('feed-sticker-panel'); }
     if (name === 'chat') {
       refreshChat();
       markChatRead();
@@ -3391,12 +3851,11 @@
         </div>
       </div>`;
   }
-  // Автор объявления или админ может его удалить / убрать из него опрос.
-  // В старых записях uid не было — их удалить может только админ.
+  // Удалить/поправить объявление может только админ.
+  // Раньше правом автора пользовались и обычные ученики — теперь объявления
+  // создаёт только администрация, поэтому и управляет ими он.
   function canEditAnn(a) {
-    if (isAdmin()) return true;
-    const au = a && a.uid;
-    return !!(au && HubAuth.uid && au === HubAuth.uid);
+    return isAdmin();
   }
   function deleteAnnouncement(key) {
     if (!key) return;
@@ -3412,7 +3871,10 @@
   }
   function paintAnnouncements() {
     const el = $('#tab-announcements');
-    const compose = `
+    // Объявления пишет только администрация. Ученикам вместо формы показываем
+    // короткую подсказку, чтобы не выглядело, что кнопка сломалась.
+    const canPost = isAdmin();
+    const compose = canPost ? `
       <div class="rounded-2xl bg-slate-900 border border-slate-800 p-3 space-y-2 fade-up">
         <textarea id="ann-input" rows="2" maxlength="500" placeholder="Новое объявление..." class="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-xs resize-none outline-none focus:border-indigo-500">${esc(annDraft)}</textarea>
         <div id="ann-poll-box" class="${annPollBoxOpen ? '' : 'hidden'} space-y-2">
@@ -3426,6 +3888,10 @@
           <button id="ann-post" class="flex-1 rounded-xl accent-bg text-white py-2.5 text-sm font-bold hover:opacity-90">📢 Опубликовать</button>
           <button id="ann-poll-toggle" class="rounded-xl bg-slate-800 hover:bg-slate-700 px-3 py-2.5 text-sm font-bold ${annPollDraft.length ? 'accent-bg' : ''}" title="Добавить опрос">📊</button>
         </div>
+      </div>` : `
+      <div class="rounded-2xl bg-slate-900 border border-slate-800 p-3 text-[11px] text-slate-400 fade-up">
+        📢 Объявления публикует администрация школы. Если нужно срочное сообщение —
+        напиши ему в личные сообщения или через «Связь с администрацией» в настройках.
       </div>`;
     let body;
     if (!annCache.length) {
@@ -3462,6 +3928,9 @@
     }));
   }
   function postAnnouncement() {
+    // Страховка от подделки в консоли: даже если форма спрятана, обычный
+    // ученик не должен суметь опубликовать объявление.
+    if (!isAdmin()) { showToast('Объявления публикует только администратор'); return; }
     const text = annDraft.trim();
     if (!text) { showToast('Введите текст объявления'); return; }
     if (!(window.HubAuth && window.HubAuth.ready && window.HubAuth.uid)) { showToast('Авторизация ещё не готова, попробуйте снова'); return; }
@@ -3629,8 +4098,18 @@
     div.setAttribute('data-msg', key);
     div.setAttribute('data-time', String(m.time || 0));
     div.setAttribute('data-nick', mname);
-    div.setAttribute('data-text', ((m.text || '') + (m.voice ? ' голосовое ' : '')).toLowerCase());
+    // В поиск по чату попадает и то, что не видно глазом: «стикер», «фото»,
+    // «видео» — иначе сообщение с вложением нельзя было бы найти поиском.
+    div.setAttribute('data-text', (
+      (m.text || '')
+      + (m.voice ? ' голосовое ' : '')
+      + (stickerFileOk(m.sticker) ? ' стикер ' : '')
+      + (m.media ? ((m.media.kind === 'video' ? ' видео ' : ' фото ')) : '')
+    ).toLowerCase());
     if (m.uid) div.setAttribute('data-uid', m.uid);
+    // Подпись для цитаты ответа и избранного: у стикера и фото нет <p>,
+    // и по нему текст взять неоткуда.
+    div.setAttribute('data-summary', msgSummary(m));
 
     const star = isFav(key) ? '★' : '☆';
 
@@ -3644,15 +4123,19 @@
     }
 
     // Кнопки редактирования/удаления/реакций. Админ видит их всегда и может всё.
+    // Раньше это были блёклые значки 10 px, в которые невозможно было попасть
+    // пальцем, — из-за этого ответ и реакция выглядели как «не работает».
+    // Теперь: ряд мелких иконок в шапке + заметная кнопка «Ответить» под текстом.
     const canWrite = canWriteChat();
     const adminOn = isAdmin();
+    const canReply = canWrite || adminOn;
     const editBtn = ((mine && canWrite) || adminOn)
-      ? `<button class="msg-edit text-[10px] opacity-70 hover:opacity-100 px-1 rounded" title="Редактировать">✎</button>` : '';
+      ? `<button class="msg-edit msg-mini" title="Изменить сообщение">✎</button>` : '';
     const delBtn = ((mine && canWrite) || adminOn || (altMode() && canWrite))
-      ? `<button class="msg-del text-[10px] opacity-70 hover:opacity-100 px-1 rounded" title="Удалить">✕</button>` : '';
-    const reactBtn = (canWrite || adminOn) ? `<button class="msg-react text-[10px] opacity-70 hover:opacity-100 px-1 rounded" title="Реакция">☺</button>` : '';
-    const replyBtn = (canWrite || adminOn) ? `<button class="msg-reply text-[10px] opacity-70 hover:opacity-100 px-1 rounded" title="Ответить">↩</button>` : '';
-    const muteBtn = (adminOn && m.uid) ? `<button class="msg-mute text-[10px] opacity-70 hover:opacity-100 px-1 rounded" title="Модерация (мут)">🔨</button>` : '';
+      ? `<button class="msg-del msg-mini msg-del-x" title="Удалить сообщение">✕</button>` : '';
+    const reactBtn = canReply ? `<button class="msg-react msg-mini" title="Поставить реакцию">☺</button>` : '';
+    const replyBtn = canReply ? `<button class="msg-reply msg-reply-big" title="Ответить на это сообщение">↩ Ответить</button>` : '';
+    const muteBtn = (adminOn && m.uid) ? `<button class="msg-mute msg-mini" title="Модерация (мут)">🔨</button>` : '';
     const adminBadge = (adminOn && m.uid && window.HubAuth && m.uid === HubAuth.uid)
       ? '<span class="text-[10px]" title="Администратор">🛡️</span>' : '';
 
@@ -3676,8 +4159,7 @@
             ${editedMark}
             ${m.flagged ? `<span class="msg-flagmark" title="Помечено фильтром: ${esc(m.flagReason || '')}">⚠</span>` : ''}
             <span class="ml-auto flex items-center gap-0.5">
-              <button class="msg-fav text-[12px] opacity-70 hover:opacity-100 px-1 rounded" title="Избранное">${star}</button>
-              ${replyBtn}
+              <button class="msg-fav msg-mini" title="Избранное">${star}</button>
               ${reactBtn}
               ${muteBtn}
               ${editBtn}
@@ -3685,9 +4167,10 @@
             </span>
           </div>
           ${replyBlock}
-          ${m.voice ? voiceHtml(m.voice, key) : `<p class="text-sm break-words whitespace-pre-wrap">${formatMessageText(m.text || '')}</p>`}
+          ${chatBodyHtml(m, key)}
           ${reactionsHtml(m)}
           <div class="text-[10px] opacity-60 mt-1 text-right">${fmtDate(m.time || Date.now())}</div>
+          ${replyBtn ? `<div class="msg-actrow">${replyBtn}</div>` : ''}
         </div>
       </div>`;
     return div;
@@ -3695,7 +4178,8 @@
 
   function onChatMessage(snap) {
     const m = snap.val();
-    if (!m || (!m.text && !m.voice)) return;
+    // Сообщение может состоять только из стикера или вложения — текста в нём нет.
+    if (!m || (!m.text && !m.voice && !m.sticker && !(m.media && m.media.url))) return;
     const key = snap.key;
     const box = $('#chat-messages');
     if (box.querySelector('[data-msg="' + key + '"]')) return;
@@ -3802,10 +4286,22 @@
   }
 
   /* ---- Ответ на сообщение ---- */
+  // У сообщения может не быть текста (стикер, фото) — тогда в цитате
+  // показываем что там было, иначе ответ выглядит как ответ в пустоту.
+  function msgSummary(m) {
+    if (!m) return '—';
+    // Имя стикера проверяем той же функцией, что и при отрисовке: в цитате
+    // не должно быть «Стикер», если картинка на самом деле не покажется.
+    if (stickerFileOk(m.sticker)) return '🖼 Стикер';
+    if (m.media) return (m.media.kind === 'video' ? '🎬 Видео' : '🖼 Фото');
+    if (m.voice) return '🎤 Голосовое';
+    return String(m.text || '').slice(0, 120) || '—';
+  }
   function setReply(key, nickName, text) {
-    replyTo = { key, nick: nickName, text: text.slice(0, 120) };
+    const t = String(text || '').slice(0, 120) || '—';
+    replyTo = { key, nick: nickName, text: t };
     $('#chat-reply-nick').textContent = nickName;
-    $('#chat-reply-text').textContent = text.slice(0, 120);
+    $('#chat-reply-text').textContent = t;
     $('#chat-reply-box').classList.remove('hidden');
     $('#chat-input').focus();
   }
@@ -4074,7 +4570,8 @@
     e.preventDefault();
     const input = $('#chat-input');
     const text = input.value.trim();
-    if (!text) return;
+    // Текста может не быть вовсе — тогда отправляем только вложение.
+    if (!text && !chatAttach) return;
     if (!canWriteChat()) { showToast(chatRoText()); return; }
     if (!quietGuard()) return;
     if (!nick()) { showToast('Сначала задайте ник'); askNickIfNeeded(); return; }
@@ -4088,6 +4585,9 @@
       const chatPath = curChatPath();
       console.log('sendMessage: путь чата =', chatPath, '| режим =', chatScope, '| класс =', state.sel.clname || state.sel.clid);
       if (editMsg) {
+        // Правка — только про текст: вложение в неё записать нельзя.
+        if (chatAttach) { clearChatAttach(); showToast('Вложение убрано — при правке меняется только текст'); }
+        if (!text) return;
         db.ref(chatPath + '/chat/' + editMsg.key).update({
           text: text,
           edited: true,
@@ -4109,6 +4609,12 @@
         time: Date.now(),
         class: (s && s.clname) || ''
       };
+      // Вложение прикрепляется к тексту: фото без подписи, фото с подписью.
+      if (chatAttach) {
+        msg.media = chatAttach.kind === 'photo'
+          ? { kind: 'photo', url: chatAttach.url, mime: chatAttach.mime, w: chatAttach.w, h: chatAttach.h, kb: chatAttach.kb }
+          : { kind: 'video', url: chatAttach.url, mime: chatAttach.mime, kb: chatAttach.kb, dur: chatAttach.dur };
+      }
       // В общем чате школы подписываем сообщение классом автора, а не тем,
       // классом который сейчас открыт (он может быть чужим).
       if (isSchoolChat()) {
@@ -4121,9 +4627,13 @@
       const pushed = db.ref(chatPath + '/chat').push(msg);
       clearReply();
       input.value = '';
+      clearChatAttach();
       setTimeout(refreshChat, 500);
-      console.log('sendMessage: вызываю flagAfterModeration (new)');
-      flagAfterModeration(text, chatPath + '/chat', pushed.key, isSchoolChat() ? 'school' : 'class');
+      // Модерацию гоняем только по тексту: вложение и стикер она не читает.
+      if (text) {
+        console.log('sendMessage: вызываю flagAfterModeration (new)');
+        flagAfterModeration(text, chatPath + '/chat', pushed.key, isSchoolChat() ? 'school' : 'class');
+      }
     });
   }
 
@@ -4414,6 +4924,8 @@
     dmPeer = null;
     stopVoicePlay();
     cancelVoice();
+    clearDmAttach();
+    closeStickerPanel('dm-sticker-panel');
   }
   // Spisok sobesednikov: odnoklassniki iz /users + te, s kem uzhe byl dialog.
   function loadDmPeers() {
@@ -4446,7 +4958,9 @@
     Object.keys(v).forEach((k) => {
       const m = v[k];
       if (!last || (m.time || 0) > (last.time || 0)) last = Object.assign({ key: k }, m);
-      if (m.from !== HubAuth.uid && !m.read) unread++;
+      // read — старый флаг в теле сообщения, readAt — метка времени прочтения
+      // в отдельном потомке. Учитываем оба, чтобы не сломать старые диалоги.
+      if (m.from !== HubAuth.uid && !m.read && !m.readAt) unread++;
     });
     if (!dmPeers[peerUid]) dmPeers[peerUid] = { uid: peerUid, nick: '', uname: '', last: null, unread: 0 };
     dmPeers[peerUid].last = last;
@@ -4456,10 +4970,16 @@
     paintDmBadge();
     if (dmPeer === peerUid) { paintDmThread(); markDmRead(peerUid); }
   }
+  // Однострочная подпись сообщения: список диалогов, пересылка, цитата ответа.
   function dmPreview(m) {
     if (!m) return 'Нет сообщений';
+    if (m.sticker) return '🖼 Стикер';
+    if (m.media) return (m.media.kind === 'video' ? '🎬 Видео' : '🖼 Фото') +
+      ((m.text || '').trim() ? ' · ' + (m.text || '').trim().slice(0, 60) : '');
+    // Ниже — только текст и голосовое.
     if (m.voice) return '🎤 Голосовое ' + fmtDur(m.voice.dur);
-    return (m.text || '').trim() || '—';
+    const t = (m.text || '').trim() || '—';
+    return (m.fwd ? '↗ ' : '') + t;
   }
   function paintDmList() {
     const box = $('#dm-list');
@@ -4504,6 +5024,11 @@
   }
   function dmBackToList() {
     dmPeer = null;
+    dmClearReply();
+    dmClearEdit();
+    // Незакрытое вложение и раскрытая панель не должны уехать в другой диалог.
+    clearDmAttach();
+    closeStickerPanel('dm-sticker-panel');
     $('#dm-thread').classList.add('hidden');
     $('#dm-form').classList.add('hidden');
     $('#dm-back').classList.add('hidden');
@@ -4514,7 +5039,10 @@
     $('#dm-sub').textContent = dmPeersCount() > 0 ? dmPeersCount() + ' собеседн.' : '';
   }
   function openDmThread(uid) {
+    if (dmPeer !== uid) { clearDmAttach(); closeStickerPanel('dm-sticker-panel'); }
     dmPeer = uid;
+    dmClearReply();
+    dmClearEdit();
     const name = dmNickOf(uid);
     $('#dm-list').classList.add('hidden');
     $('#dm-thread').classList.remove('hidden');
@@ -4537,41 +5065,193 @@
     const v = dmMsgs[dmPeer] || {};
     const keys = Object.keys(v).sort((a, b) => (v[a].time || 0) - (v[b].time || 0));
     if (!keys.length) { box.innerHTML = emptyNote('Сообщений пока нет — напиши первым'); return; }
+    const adminOn = isAdmin();
     box.innerHTML = keys.map((k) => {
       const m = v[k];
       const mine = m.from === me;
-      const body = m.voice ? voiceHtml(m.voice, 'dm:' + dmPeer + ':' + k)
-                           : `<span>${formatMessageText(m.text || '')}</span>`;
-      return `<div class="dm-bubble-row ${mine ? 'justify-end' : 'justify-start'}">
-        <div>
-          <div class="dm-bubble ${mine ? 'mine' : 'theirs'}">${body}</div>
-          <div class="dm-time">${fmtDate(m.time || Date.now())}</div>
+      const body = chatBodyHtml(m, 'dm:' + dmPeer + ':' + k);
+      // Цитата ответа: показываем ник и кусок текста, на который отвечали.
+      const quote = (m.replyTo && (m.replyTo.nick || m.replyTo.text))
+        ? `<div class="dm-fwd-mark">↪ ${esc(m.replyTo.nick || '')}${m.replyTo.text ? ': ' + esc(String(m.replyTo.text).slice(0, 60)) : ''}</div>`
+        : '';
+      // Пометка пересылки: видно, что сообщение прислали из другого диалога.
+      const fwd = m.fwd ? `<div class="dm-fwd-mark">↗ Переслано${m.fwd.fromNick ? ' от ' + esc(m.fwd.fromNick) : ''}</div>` : '';
+      const edited = m.edited ? `<span class="dm-edited">изменено</span> ` : '';
+      // Кнопки доступны автору; админу — на любом сообщении.
+      const act = [];
+      act.push(`<button data-dm-act="rx" data-k="${esc(k)}" title="Реакция">☺</button>`);
+      act.push(`<button data-dm-act="reply" data-k="${esc(k)}" title="Ответить">↩</button>`);
+      act.push(`<button data-dm-act="fwd" data-k="${esc(k)}" title="Переслать">↗</button>`);
+      if (mine || adminOn) act.push(`<button data-dm-act="edit" data-k="${esc(k)}" title="Изменить">✎</button>`);
+      if (mine || adminOn) act.push(`<button class="dm-act-del" data-dm-act="del" data-k="${esc(k)}" title="Удалить">✕</button>`);
+      const read = mine ? `<span class="dm-time">${m.readAt ? '✓✓' : '✓'} ${fmtDate(m.time || Date.now())}</span>` : `<span class="dm-time">${fmtDate(m.time || Date.now())}</span>`;
+      return `<div class="dm-bubble-row ${mine ? 'justify-end' : 'justify-start'}" data-dm-key="${esc(k)}">
+        <div class="dm-wrap">
+          <div class="dm-bubble ${mine ? 'mine' : 'theirs'}">
+            ${fwd}${quote}${body}
+            <div class="dm-time">${edited}${read}</div>
+          </div>
+          ${dmRxListHtml(m, k)}
+          <div class="dm-act">${act.join('')}</div>
         </div>
       </div>`;
     }).join('');
     box.scrollTop = box.scrollHeight;
   }
+  // Пилюли реакций под сообщением ЛС (та же логика группировки, что в ленте).
+  function dmRxListHtml(m, key) {
+    const by = {};
+    Object.keys((m && m.rx) || {}).forEach((uid) => {
+      const e = m.rx[uid];
+      if (!e) return;
+      if (!by[e]) by[e] = [];
+      by[e].push(uid);
+    });
+    const keys = Object.keys(by);
+    if (!keys.length) return '';
+    const me = HubAuth.uid;
+    return `<div class="rx-list">${keys.map((e) => {
+      const us = by[e];
+      const mine = me && us.indexOf(me) >= 0;
+      return `<button class="rx-pill ${mine ? 'mine' : ''}" data-dm-rx="${esc(e)}" data-k="${esc(key)}" title="Реакция ${esc(e)} — ${us.length}">${esc(e)} <span class="n">${us.length}</span></button>`;
+    }).join('')}</div>`;
+  }
+  function dmSetRx(key, emoji) {
+    if (!window.HubAuth || !HubAuth.uid || !dmPeer) return;
+    if (!quietGuard()) return;
+    const me = HubAuth.uid;
+    const peer = dmPeer;
+    const m = (dmMsgs[peer] || {})[key];
+    if (!m) return;
+    // Реакция лежит в отдельном поддереве rx/{uid}, а не в теле сообщения:
+    // иначе пришлось бы перезаписывать всё сообщение и ломать правки.
+    // Пишем в обе копии — свою и собеседника (по mirrorKey), иначе реакция
+    // была бы видна только автору. Правило rx/$r разрешает это обоим.
+    const refs = [db.ref('/dms/' + me + '/' + peer + '/' + key + '/rx/' + me)];
+    if (m.mirrorKey) {
+      refs.push(db.ref('/dms/' + peer + '/' + me + '/' + m.mirrorKey + '/rx/' + me));
+    }
+    db.ref('/dms/' + me + '/' + peer + '/' + key + '/rx/' + me).once('value', (s) => {
+      const mine = s.val() === emoji;
+      const jobs = refs.map((r) => (mine ? r.remove() : r.set(emoji)));
+      Promise.all(jobs).catch(() => showToast('Не получилось поставить реакцию'));
+    }).catch(() => showToast('Не получилось поставить реакцию'));
+  }
+  // Раскрыть палитру реакций под конкретным сообщением ЛС (как в ленте).
+  function toggleDmRxPicker(key, anchorEl) {
+    const box = $('#dm-thread');
+    if (!box) return;
+    const row = anchorEl.closest('.dm-bubble-row');
+    if (!row) return;
+    const old = row.querySelector('.dm-rx-slot');
+    if (old) { old.remove(); return; }
+    box.querySelectorAll('.dm-rx-slot').forEach((n) => n.remove());
+    const cur = ((dmMsgs[dmPeer] || {})[key] || {}).rx || {};
+    const mine = cur[window.HubAuth ? window.HubAuth.uid : ''] || '';
+    const slot = document.createElement('div');
+    slot.className = 'dm-rx-slot';
+    slot.innerHTML = `<div class="rx-picker">${REACTION_EMOJIS.map((e) =>
+      `<button class="rx-pick ${e === mine ? 'on' : ''}" data-dm-rx="${esc(e)}" data-k="${esc(key)}">${e}</button>`).join('')}</div>`;
+    row.appendChild(slot);
+  }
+  // Ответ на сообщение ЛС: цитата уедет вместе с текстом.
+  let dmReplyTo = null;
+  function dmSetReply(key) {
+    const v = dmMsgs[dmPeer] || {};
+    const m = v[key];
+    if (!m) return;
+    // Ответ и правка взаимоисключающие: без сброса правки следующая отправка
+    // молча переписала бы старое сообщение вместо нового.
+    dmClearEdit();
+    const who = (m.from === HubAuth.uid) ? 'Вы' : (m.fromNick || dmNickOf(m.from));
+    dmReplyTo = { key: key, nick: who, text: dmPreview(m) };
+    $('#dm-reply-nick').textContent = 'Ответ для ' + who;
+    $('#dm-reply-text').textContent = dmPreview(m);
+    $('#dm-reply-box').classList.remove('hidden');
+    $('#dm-input').focus();
+  }
+  function dmClearReply() {
+    dmReplyTo = null;
+    $('#dm-reply-box').classList.add('hidden');
+  }
+  // Правка своего сообщения ЛС.
+  let dmEditKey = null;
+  function dmSetEdit(key) {
+    const v = dmMsgs[dmPeer] || {};
+    const m = v[key];
+    if (!m || m.voice) { showToast('Голосовое нельзя изменить'); return; }
+    dmEditKey = key;
+    $('#dm-edit-text').textContent = (m.text || '').slice(0, 120);
+    $('#dm-edit-box').classList.remove('hidden');
+    // Как и в чате, подставляем исходный текст в поле — править с нуля
+    // неудобно. Ответ при этом сбрасываем: сохранится правка, а не цитата.
+    dmClearReply();
+    const inp = $('#dm-input');
+    if (inp) { inp.value = m.text || ''; inp.focus(); inp.setSelectionRange((m.text || '').length, (m.text || '').length); }
+  }
+  function dmClearEdit() {
+    dmEditKey = null;
+    $('#dm-edit-box').classList.add('hidden');
+  }
+  // Изменить сообщение ЛС: правим обе копии (мою и у собеседника).
+  function dmUpdateMsg(key, text) {
+    if (!window.HubAuth || !HubAuth.uid || !dmPeer) return Promise.reject(new Error('Нет диалога'));
+    const me = HubAuth.uid;
+    const v = dmMsgs[dmPeer] || {};
+    const m = v[key];
+    if (!m) return Promise.reject(new Error('Сообщение не найдено'));
+    const upd = { text: text, edited: true };
+    const jobs = [db.ref('/dms/' + me + '/' + dmPeer + '/' + key).update(upd)];
+    // В ветке собеседника ключ другой — он лежит в mirrorKey.
+    if (m.mirrorKey) {
+      jobs.push(db.ref('/dms/' + dmPeer + '/' + me + '/' + m.mirrorKey).update(upd));
+    }
+    return Promise.all(jobs);
+  }
+  // Удалить сообщение ЛС: убираем обе копии.
+  function dmDeleteMsg(key) {
+    if (!window.HubAuth || !HubAuth.uid || !dmPeer) return Promise.reject(new Error('Нет диалога'));
+    const me = HubAuth.uid;
+    const v = dmMsgs[dmPeer] || {};
+    const m = v[key];
+    if (!m) return Promise.resolve();
+    const jobs = [db.ref('/dms/' + me + '/' + dmPeer + '/' + key).remove()];
+    if (m.mirrorKey) jobs.push(db.ref('/dms/' + dmPeer + '/' + me + '/' + m.mirrorKey).remove());
+    return Promise.all(jobs);
+  }
   function markDmRead(uid) {
     if (!window.HubAuth || !HubAuth.uid) return;
     const v = dmMsgs[uid] || {};
     const me = HubAuth.uid;
+    const now = Date.now();
     Object.keys(v).forEach((k) => {
       const m = v[k];
-      if (m.from === me || m.read) return;
-      db.ref('/dms/' + me + '/' + uid + '/' + k).update({ read: true }).catch(() => {});
+      if (m.from === me || m.read || m.readAt) return;
+      // Потомок readAt, а не поле read: у сообщения уже есть поле read,
+      // а в Firebase нельзя держать поле и одноимённого потомка одновременно.
+      // Пишем в обе копии (свою и собеседника по mirrorKey) — тогда автор
+      // увидит ✓✓. Правило dms/$uid/$peer/$key/readAt/$r разрешает это обоим.
+      const jobs = [db.ref('/dms/' + me + '/' + uid + '/' + k + '/readAt').set(now)];
+      if (m.mirrorKey) {
+        jobs.push(db.ref('/dms/' + uid + '/' + me + '/' + m.mirrorKey + '/readAt').set(now));
+      }
+      Promise.all(jobs).catch(() => {});
     });
   }
   // Otpravka: pishem v svoyu vetku i v vetku poluchatelya (po odnomu zaprosu na derevo).
-  function pushDm(rec) {
-    if (!window.HubAuth || !HubAuth.uid || !dmPeer) return Promise.reject(new Error('Нет диалога'));
-    const me = HubAuth.uid;
-    const peer = dmPeer;
+  // peerOverride — dlya peresylki: soobschenie mozhno otpravit ne totoy versie dialoga.
+  function pushDm(rec, peerOverride) {
+    const me = (window.HubAuth && HubAuth.uid) || '';
+    const peer = peerOverride || dmPeer;
+    // При пересылке открытый диалог не нужен — адресат задаётся явно.
+    if (!me || !peer) return Promise.reject(new Error('Нет диалога'));
     const mk = (read) => Object.assign({
       from: me,
       fromNick: nick() || 'Ученик',
       to: peer,
       text: '',
       read: read,
+      readAt: 0,
       time: Date.now(),
     }, rec || {});
     const base = '/dms/';
@@ -4586,21 +5266,116 @@
       });
     });
   }
+  // Пересылка: список, кому можно отправить, и сама отправка.
+  function openDmForward(key) {
+    const v = dmMsgs[dmPeer] || {};
+    const m = v[key];
+    if (!m) return;
+    const modal = $('#dm-forward-modal');
+    if (!modal) return;
+    $('#dm-fwd-preview').innerHTML = m.sticker
+      ? stickerHtml(m.sticker)
+      : (m.voice
+        ? 'Голосовое ' + fmtDur(m.voice.dur)
+        : (m.media ? (m.media.kind === 'video' ? 'Видео' : 'Фото') + ' · ' + (m.media.kb || 0) + ' КБ'
+          : esc(String(m.text || '').slice(0, 300))));
+    const me = HubAuth.uid;
+    const list = Object.keys(dmPeers)
+      .filter((u) => u !== me && u !== dmPeer)
+      .sort((a, b) => (dmNickOf(a) || '').localeCompare(dmNickOf(b) || ''));
+    const box = $('#dm-fwd-list');
+    if (!list.length) {
+      box.innerHTML = emptyNote('Некому переслать — в ЛС пока нет других собеседников');
+    } else {
+      box.innerHTML = list.map((u) => `<button class="dm-peer" data-fwd-uid="${esc(u)}">
+        ${peerAvatarHtml(u, dmNickOf(u), 'sm')}
+        <span class="flex-1 min-w-0">
+          <span class="block font-bold text-sm truncate">${esc(dmNickOf(u))}</span>
+          <span class="block text-[10px] text-slate-500 truncate">${esc((dmPeers[u] && dmPeers[u].uname) ? '@' + dmPeers[u].uname : 'Написать')}</span>
+        </span>
+      </button>`).join('');
+      box.querySelectorAll('[data-fwd-uid]').forEach((b) => b.addEventListener('click', () => {
+        const target = b.dataset.fwdUid;
+        if (!target) return;
+        const rec = {
+          text: m.text || '',
+          voice: m.voice || null,
+          media: m.media || null,
+          sticker: m.sticker || null,
+          fwd: { fromNick: (m.from === me) ? (nick() || 'Ученик') : (m.fromNick || dmNickOf(m.from)) },
+        };
+        if (!rec.text && !rec.voice && !rec.media && !rec.sticker) { closeDmForward(); return; }
+        if (!quietGuard()) return;
+        HubModeration.checkCanSend((err) => {
+          if (err) { showToast(err); return; }
+          if (!quietGuard()) return;
+          // pushDm умеет писать в чужой диалог по адресату, поэтому глобальный
+          // dmPeer трогать не нужно — открытый чат остаётся как был.
+          pushDm(rec, target)
+            .then(() => {
+              showToast('Переслано: ' + dmNickOf(target));
+              closeDmForward();
+              paintDmList();
+            })
+            .catch((e2) => {
+              showToast('Не переслать: ' + ((e2 && e2.message) ? e2.message : 'нет прав'));
+            });
+        });
+      }));
+    }
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  }
+  function closeDmForward() {
+    const modal = $('#dm-forward-modal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }
   function sendDmText(e) {
     e.preventDefault();
     const input = $('#dm-input');
     const text = (input.value || '').trim();
-    if (!text) return;
+    // Текста может не быть — отправляем только вложение.
+    if (!text && !dmAttach) {
+      if (dmEditKey) { input.value = ''; dmClearEdit(); }
+      return;
+    }
     if (!quietGuard()) return;
     HubModeration.checkCanSend((err) => {
       if (err) { showToast(err); return; }
       if (!quietGuard()) return;
-      pushDm({ text: text.slice(0, 500) })
+      // Если открыт режим правки — правим существующее сообщение,
+      // иначе отправляем новое (с цитатой ответа, если она была).
+      if (dmEditKey) {
+        if (dmAttach) { clearDmAttach(); showToast('Вложение убрано — при правке меняется только текст'); }
+        if (!text) return;
+        const key = dmEditKey;
+        dmUpdateMsg(key, text.slice(0, 500))
+          .then(() => {
+            input.value = '';
+            dmClearEdit();
+            showToast('Сообщение изменено');
+          })
+          .catch((e3) => showToast('Не изменить: ' + ((e3 && e3.message) ? e3.message : 'нет прав')));
+        return;
+      }
+      const rec = { text: text.slice(0, 500) };
+      if (dmAttach) {
+        rec.media = dmAttach.kind === 'photo'
+          ? { kind: 'photo', url: dmAttach.url, mime: dmAttach.mime, w: dmAttach.w, h: dmAttach.h, kb: dmAttach.kb }
+          : { kind: 'video', url: dmAttach.url, mime: dmAttach.mime, kb: dmAttach.kb, dur: dmAttach.dur };
+      }
+      if (dmReplyTo) { rec.replyTo = { nick: dmReplyTo.nick, text: String(dmReplyTo.text || '').slice(0, 120) }; }
+      const peerAtSend = dmPeer;
+      pushDm(rec)
         .then((refs) => {
           input.value = '';
+          dmClearReply();
+          clearDmAttach();
           // Ветка отправителя — источник истины для флага; по ней модератор
           // откроет диалог в админке (пути обеих копий кладутся в флаг).
-          flagDm(text, refs.mine.key, refs.peer.key, '/dms/' + window.HubAuth.uid + '/' + dmPeer);
+          if (rec.text) flagDm(rec.text, refs.mine.key, refs.peer.key, '/dms/' + window.HubAuth.uid + '/' + peerAtSend);
         })
         .catch((e2) => showToast('Ошибка: ' + ((e2 && e2.message) ? e2.message : e2)));
     });
@@ -4951,7 +5726,13 @@
     const s = state.sel;
     return `/cities/${s.cid}/schools/${s.sid}/feed`;
   }
-  function followsPath() { return schoolBranch('follows'); }
+  // Подписки живут в ветке ТОЙ ЖЕ школы, из которой открыта лента (feedPath),
+  // иначе переключатель «Подписки» смотрел бы в пустое место.
+  function followsPath() {
+    const s = state.sel;
+    if (s && s.cid && s.sid) return `/cities/${s.cid}/schools/${s.sid}/follows`;
+    return schoolBranch('follows');
+  }
   function followsMap() {
     const me = (window.HubAuth && HubAuth.uid) || '';
     return (followCache && followCache[me]) || {};
@@ -5019,27 +5800,56 @@
     if (!uid || uid === (window.HubAuth && HubAuth.uid)) return false;
     return !!followsMap()[uid];
   }
+  // Подписка: сначала меняем кэш, чтобы кнопка отреагировала сразу,
+  // а при отказе Firebase возвращаем всё как было и говорим почему.
   function toggleFollow(uid) {
     if (!db || !uid || !HubAuth.uid) { showToast('Авторизация ещё не готова'); return false; }
     if (uid === HubAuth.uid) return false;
     const path = followsPath();
     if (!path) { showToast('Сначала выбери школу'); return false; }
     const ref = db.ref(`${path}/${HubAuth.uid}/${uid}`);
-    if (iFollow(uid)) {
-      ref.remove().catch((e) => showToast('Не получилось: ' + ((e && e.message) ? e.message : e)));
-    } else {
-      ref.set(true).catch((e) => showToast('Не получилось: ' + ((e && e.message) ? e.message : e)));
+    const was = iFollow(uid);
+    const now = !was;
+    const me = HubAuth.uid;
+    if (!followCache) followCache = {};
+    if (!followCache[me]) followCache[me] = {};
+    if (now) followCache[me][uid] = true; else delete followCache[me][uid];
+    // Оптимистичное обновление: рисуем сразу, не дожидаясь сети.
+    paintFollowBtn(uid, now);
+    if (feedScope === 'following') paintFeed();
+    const go = now ? ref.set(true) : ref.remove();
+    go.catch((e) => {
+      // Откат: возвращаем прежнее состояние.
+      if (!followCache[me]) followCache[me] = {};
+      if (was) followCache[me][uid] = true; else delete followCache[me][uid];
+      paintFollowBtn(uid, was);
+      if (feedScope === 'following') paintFeed();
+      showToast('Подписка не сохранилась: ' + ((e && e.message) ? e.message : 'нет прав'));
+    });
+    return now;
+  }
+  // Внешний вид кнопки «Подписаться»: и в профиле, и на карточке в ленте.
+  function paintFollowBtn(uid, on) {
+    const b = $('#pu-follow');
+    if (b && b.dataset.uid === uid) {
+      b.textContent = on ? '✓ Вы подписаны' : '+ Подписаться';
+      b.className = on
+        ? 'flex-1 rounded-xl bg-slate-700 text-slate-300 py-2.5 text-sm font-bold'
+        : 'flex-1 rounded-xl accent-bg text-white py-2.5 text-sm font-bold';
     }
-    return !iFollow(uid);
+    // Карточки в ленте перерисовываются не сразу, поэтому обновляем их на месте.
+    $$('[data-follow="' + uid + '"]').forEach((btn) => {
+      if (btn.id === 'pu-follow') return;
+      btn.textContent = on ? '✓ Подписан' : '+ Подписаться';
+      btn.classList.toggle('cmt-on', on);
+    });
   }
   function bindFollowBtn(scope) {
     const b = scope.querySelector('#pu-follow');
     if (!b) return;
     b.addEventListener('click', (e) => {
       e.stopPropagation();
-      const on = toggleFollow(b.dataset.uid);
-      if (on) { b.textContent = '✓ Вы подписаны'; b.className = 'flex-1 rounded-xl bg-slate-700 text-slate-300 py-2.5 text-sm font-bold'; }
-      else { b.textContent = '+ Подписаться'; b.className = 'flex-1 rounded-xl accent-bg text-white py-2.5 text-sm font-bold'; }
+      toggleFollow(b.dataset.uid);
     });
   }
   function feedKeysShown() {
@@ -5060,13 +5870,18 @@
   function kbOf(str) { return Math.round((String(str).length * 3) / 4 / 1024); }
   // Ужимаем картинку через canvas: в базу кладём не оригинал с телефона,
   // а ровно столько, сколько нужно для просмотра.
+  // Если даже минимальное качество не влезает в лимит — уменьшаем картинку
+  // ещё раз (900, 640, 400 px) вместо того, чтобы молча отказывать.
   function shrinkImage(file, maxPx, maxKb) {
+    return shrinkImageStep(file, maxPx, maxKb);
+  }
+  function shrinkImageStep(file, maxPx, maxKb) {
     return new Promise((resolve, reject) => {
       const fr = new FileReader();
       fr.onerror = () => reject(new Error('Не прочитать файл'));
       fr.onload = () => {
         const img = new Image();
-        img.onerror = () => reject(new Error('Это не картинка'));
+        img.onerror = () => reject(new Error('Браузер не смог открыть это изображение'));
         img.onload = () => {
           let w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
           if (!w || !h) { reject(new Error('Пустая картинка')); return; }
@@ -5075,10 +5890,19 @@
           h = Math.max(1, Math.round(h * k));
           const cv = document.createElement('canvas');
           cv.width = w; cv.height = h;
-          cv.getContext('2d').drawImage(img, 0, 0, w, h);
-          let q = 0.82, url = cv.toDataURL('image/jpeg', q);
-          while (kbOf(url) > maxKb && q > 0.35) { q -= 0.1; url = cv.toDataURL('image/jpeg', q); }
-          if (kbOf(url) > maxKb) { reject(new Error('Даже после сжатия слишком тяжело')); return; }
+          const cx = cv.getContext('2d');
+          if (!cx) { reject(new Error('Браузер не умеет обрабатывать фото')); return; }
+          cx.drawImage(img, 0, 0, w, h);
+          let q = 0.82, url = '';
+          try { url = cv.toDataURL('image/jpeg', q); }
+          catch (e) { reject(new Error('Браузер не смог обработать фото')); return; }
+          while (kbOf(url) > maxKb && q > 0.3) { q -= 0.1; url = cv.toDataURL('image/jpeg', q); }
+          if (kbOf(url) > maxKb) {
+            // Не влезает — пробуем ещё меньше.
+            if (maxPx > 420) { shrinkImageStep(file, Math.round(maxPx * 0.6), maxKb).then(resolve, reject); return; }
+            reject(new Error('Фото слишком большое даже после сжатия'));
+            return;
+          }
           resolve({ kind: 'photo', url: url, mime: 'image/jpeg', w: w, h: h, kb: kbOf(url) });
         };
         img.src = fr.result;
@@ -5086,10 +5910,15 @@
       fr.readAsDataURL(file);
     });
   }
-  function readVideo(file) {
+  // Потолки приходят аргументами, потому что видео читается и для ленты
+  // (2 МБ / 20 сек), и для чата с ЛС (600 КБ / 20 сек).
+  function readVideo(file, maxKb, maxSec, maxChars) {
+    const limKb = maxKb || FEED_VIDEO_MAX_KB;
+    const limSec = maxSec || FEED_VIDEO_MAX_SEC;
+    const limChars = maxChars || FEED_VIDEO_MAX_CHARS;
     return new Promise((resolve, reject) => {
-      if (file.size > FEED_VIDEO_MAX_KB * 1024) {
-        reject(new Error(`Ролик больше ${FEED_VIDEO_MAX_KB / 1000} МБ — сократи или выбери фото`));
+      if (file.size > limKb * 1024) {
+        reject(new Error(`Ролик больше ${Math.round(limKb / 100) / 10} МБ — сократи или выбери фото`));
         return;
       }
       const fr = new FileReader();
@@ -5099,12 +5928,12 @@
         const probe = document.createElement('video');
         probe.preload = 'metadata';
         const done = (dur) => {
-          if (dur > FEED_VIDEO_MAX_SEC) {
-            reject(new Error(`Ролик длиннее ${FEED_VIDEO_MAX_SEC} сек — возьми короткий отрывок`));
+          if (dur > limSec) {
+            reject(new Error(`Ролик длиннее ${limSec} сек — возьми короткий отрывок`));
             return;
           }
           const kb = kbOf(url);
-          if (kb > FEED_VIDEO_MAX_KB || url.length > FEED_VIDEO_MAX_CHARS) { reject(new Error('Ролик слишком тяжёлый')); return; }
+          if (kb > limKb || url.length > limChars) { reject(new Error('Ролик слишком тяжёлый')); return; }
           resolve({ kind: 'video', url: url, mime: file.type || 'video/mp4', kb: kb, dur: Math.round(dur || 0) });
         };
         probe.onloadedmetadata = () => done(probe.duration);
@@ -5114,20 +5943,50 @@
       fr.readAsDataURL(file);
     });
   }
+  // Телефоны часто отдают файл с пустым file.type (фото из галереи, из «Файлов»,
+  // из облака, а также HEIC). Раньше такая проверка молча отбрасывала нормальные
+  // снимки, поэтому ориентируемся ещё и на расширение, а на спорных случаях
+  // пробуем прочитать файл как картинку.
+  const PHOTO_EXT = /\.(jpe?g|png|webp|gif|bmp|heic|heif|avif)$/i;
+  const VIDEO_EXT = /\.(mp4|webm|mov|m4v|3gp|ogv)$/i;
+  function fileLooksLikePhoto(file) {
+    if (/^image\//.test(file.type)) return true;
+    if (VIDEO_EXT.test(file.name || '')) return false;
+    if (PHOTO_EXT.test(file.name || '')) return true;
+    if (file.type === 'application/octet-stream' || !file.type) return true;
+    return false;
+  }
+  function fileLooksLikeVideo(file) {
+    return /^video\//.test(file.type) || VIDEO_EXT.test(file.name || '');
+  }
   function onFeedFile(file) {
     if (!file) return;
-    if (!/^image\//.test(file.type) && !/^video\//.test(file.type)) {
+    const looksPhoto = fileLooksLikePhoto(file);
+    const looksVideo = !looksPhoto && fileLooksLikeVideo(file);
+    if (!looksPhoto && !looksVideo) {
       showToast('Можно прикрепить только фото или видео');
       return;
     }
-    const p = /^image\//.test(file.type)
+    const p = looksPhoto
       ? shrinkImage(file, FEED_PHOTO_MAX_PX, FEED_PHOTO_MAX_KB)
       : readVideo(file);
     p.then((m) => {
       feedAttach = m;
       paintFeedAttach();
       showToast(m.kind === 'photo' ? `Фото готово, ${m.kb} КБ` : `Ролик готов, ${m.kb} КБ`);
-    }).catch((e) => showToast((e && e.message) ? e.message : 'Файл не подошёл'));
+    }).catch((e) => {
+      // Не вышло как фото — пробуем как видео: на Android камера иногда
+      // отдаёт ролик с пустым file.type, и photo-ветка его не распознала.
+      const msg = (e && e.message) ? e.message : 'Файл не подошёл';
+      if (looksPhoto) {
+        readVideo(file).then((m) => {
+          feedAttach = m; paintFeedAttach();
+          showToast(`Ролик готов, ${m.kb} КБ`);
+        }).catch(() => showToast(msg));
+        return;
+      }
+      showToast(msg);
+    });
   }
   function clearFeedAttach() { feedAttach = null; paintFeedAttach(); }
   function paintFeedAttach() {
@@ -5162,6 +6021,279 @@
     }
     return `<img class="feed-media" src="${esc(m.url)}" alt="фото" loading="lazy">
       <div class="feed-media-cap">Фото · ${m.kb || 0} КБ</div>`;
+  }
+
+  /* ============================================================
+     ФОТО И ВИДЕО В ЧАТЕ И ЛС
+     Те же триггеры, что в ленте: прикрепить → сжать → показать
+     превью → отправить вместе с текстом кнопкой «Отправить».
+     Медиа едет одним полем `media` рядом с пустым `text`.
+     ============================================================ */
+  let chatAttach = null;
+  let dmAttach = null;
+
+  // Общая обработка файла для чата и ЛС. Потолки у них одинаковые и
+  // намеренно ниже, чем в ленте: в ленте сообщения читают по одному,
+  // а чат забирают целиком — одна большая картинка там дорого стоит.
+  function onChatLikeFile(file, isDm) {
+    if (!file) return;
+    const looksPhoto = fileLooksLikePhoto(file);
+    const looksVideo = !looksPhoto && fileLooksLikeVideo(file);
+    if (!looksPhoto && !looksVideo) { showToast('Можно прикрепить только фото или видео'); return; }
+    const asVideo = () => readVideo(file, CHAT_VIDEO_MAX_KB, CHAT_VIDEO_MAX_SEC, CHAT_VIDEO_MAX_CHARS);
+    const p = looksPhoto ? shrinkImage(file, CHAT_PHOTO_MAX_PX, CHAT_PHOTO_MAX_KB) : asVideo();
+    const put = (m) => {
+      if (isDm) { dmAttach = m; paintDmAttach(); }
+      else { chatAttach = m; paintChatAttach(); }
+      showToast(m.kind === 'photo' ? 'Фото прикреплено' : 'Видео прикреплено');
+    };
+    p.then(put).catch((e) => {
+      const msg = (e && e.message) ? e.message : 'Файл не подошёл';
+      // На Android камера иногда отдаёт ролик с пустым file.type —
+      // пробуем прочитать его как видео, прежде чем сдаться.
+      if (!looksPhoto) { showToast(msg); return; }
+      asVideo().then(put).catch(() => showToast(msg));
+    });
+  }
+  function onChatFile(file) { onChatLikeFile(file, false); }
+  function onDmFile(file) { onChatLikeFile(file, true); }
+
+  function attachLimitText(m) {
+    if (m.kind === 'photo') return 'сжато до ' + m.w + 'px, чтобы чат не распухал';
+    return 'потолок — ' + (CHAT_VIDEO_MAX_KB / 1000) + ' МБ и ' + CHAT_VIDEO_MAX_SEC + ' сек';
+  }
+  // Превью вложения. Общая функция, чтобы чат и ЛС выглядели одинаково.
+  function paintAttachBox(hostId, m, onClear) {
+    const box = document.getElementById(hostId);
+    if (!box) return;
+    if (!m) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+    box.classList.remove('hidden');
+    box.innerHTML = `
+      <div class="attach-thumb">${m.kind === 'photo'
+        ? '<img src="' + esc(m.url) + '" alt="">'
+        : '<video src="' + esc(m.url) + '" muted playsinline></video>'}</div>
+      <div class="attach-info">
+        <div class="font-bold text-slate-200 truncate">${esc(
+          m.kind === 'photo'
+            ? 'Фото ' + m.w + '×' + m.h + ' · ' + m.kb + ' КБ'
+            : 'Видео ' + m.dur + ' сек · ' + m.kb + ' КБ')}</div>
+        <div class="text-[10px] text-slate-500">${esc(attachLimitText(m))}</div>
+      </div>
+      <button type="button" class="attach-x" data-attach-x title="Убрать">✕</button>`;
+    const x = box.querySelector('[data-attach-x]');
+    if (x) x.addEventListener('click', onClear);
+  }
+  function paintChatAttach() { paintAttachBox('chat-attach', chatAttach, clearChatAttach); }
+  function paintDmAttach() { paintAttachBox('dm-attach', dmAttach, clearDmAttach); }
+  function clearChatAttach() { chatAttach = null; paintChatAttach(); }
+  function clearDmAttach() { dmAttach = null; paintDmAttach(); }
+
+  // Отправка стикера в ленту. Стикер — это картинка, а не файл из галереи,
+  // поэтому в media она не идёт: в базу кладётся только имя файла.
+  function sendFeedSticker(file) {
+    if (!canPostFeed()) { showToast('Лента доступна только ученикам этой школы'); return; }
+    if (QUIET_BLOCKS_FEED && !quietGuard()) return;
+    if (!nick()) { showToast('Сначала задайте ник'); askNickIfNeeded(); return; }
+    if (!HubAuth.uid || !HubAuth.ready) { showToast('Авторизация ещё не готова'); return; }
+    const payload = {
+      uid: HubAuth.uid,
+      nick: nick(),
+      text: '',
+      sticker: file,
+      time: Date.now(),
+      cls: homeNameShort(),
+    };
+    const key = db.ref(feedPath()).push().key;
+    db.ref(feedPath() + '/' + key).set(payload)
+      .then(() => { trimFeed(); showToast('Стикер опубликован'); })
+      .catch((e) => showToast('Не отправилось: ' + errText(e)));
+  }
+
+  // Тело сообщения чата, ЛС и просмотра диалога в админке: фото, стикер,
+  // голосовое и текст. Порядок постоянный, чтобы сообщение не «прыгало».
+  function chatBodyHtml(m, voiceKey) {
+    let out = '';
+    if (m.media && m.media.url) out += chatMediaHtml(m.media);
+    if (m.sticker) out += stickerHtml(m.sticker);
+    if (m.voice) out += voiceHtml(m.voice, voiceKey);
+    if (m.text) out += '<p class="text-sm break-words whitespace-pre-wrap">' + formatMessageText(m.text) + '</p>';
+    if (!out) out = '<p class="text-sm opacity-50 italic">—</p>';
+    return out;
+  }
+  function chatMediaHtml(m) {
+    if (!m || !m.url) return '';
+    if (m.kind === 'video') {
+      return '<video class="msg-media" src="' + esc(m.url) + '" controls playsinline preload="metadata"></video>' +
+        '<div class="msg-media-cap">Видео · ' + (m.kb || 0) + ' КБ' + (m.dur ? ' · ' + m.dur + ' сек' : '') + '</div>';
+    }
+    return '<img class="msg-media" src="' + esc(m.url) + '" alt="фото" loading="lazy">' +
+      '<div class="msg-media-cap">Фото · ' + (m.kb || 0) + ' КБ</div>';
+  }
+  // В базу кладётся только имя файла. Проверяем его целиком: никаких «..»,
+  // никаких «/» и никакого чужого расширения — путь до файла собираем мы,
+  // а не берём из базы.
+  function stickerFileOk(f) {
+    const s = String(f || '');
+    if (!s || s.length > 80) return false;
+    if (!/^[A-Za-z0-9._-]+$/.test(s)) return false;
+    if (s.indexOf('..') !== -1) return false;
+    return /\.(webp|gif|png|jpg|jpeg)$/i.test(s);
+  }
+  // Путь к файлу стикера. Пустая строка означает «показывать нечего».
+  function stickerSrc(f) {
+    return stickerFileOk(f) ? 'stickers/' + f : '';
+  }
+  function stickerHtml(file) {
+    const s = stickerSrc(file);
+    if (!s) return '';
+    // Анимированный (GIF) и неподвижный (webp) рисуются одинаково — <img>
+    // сам проигрывает GIF. Различаются только размером.
+    //
+    // lazy — только для GIF: он весит 4–6 МБ, и подгружать все пять в каждом
+    // открытом чате незачем. Обычный webp весит 5 КБ, его грузим сразу,
+    // иначе сообщение на секунду выглядит пустым.
+    const isAnim = /\.gif$/i.test(s);
+    return '<img class="msg-sticker' + (isAnim ? ' sticker-anim' : '') + '" src="' + esc(s) +
+      '" alt="стикер"' + (isAnim ? ' loading="lazy"' : '') + ' data-sticker-view="' + esc(file) + '">';
+  }
+  // Общий обработчик тапа по стикеру: показываем крупно.
+  function openStickerViewer(file) {
+    const src = stickerSrc(file);
+    if (!src) return;
+    const ov = document.getElementById('sticker-viewer');
+    if (!ov) return;
+    // И GIF, и анимированный WebP браузер проигрывает сам в <img>.
+    // <video> тут дал бы пустый кадр: GIF им не воспроизводится.
+    ov.innerHTML = '<div class="absolute inset-0 bg-black/85" data-sticker-close></div>' +
+      '<div class="relative z-10 max-w-full max-h-full p-4 flex items-center justify-center">' +
+      '<img src="' + esc(src) + '" alt="" class="max-w-full max-h-[80vh] object-contain rounded-2xl">' +
+      '</div><button type="button" data-sticker-close class="absolute top-4 right-5 z-20 text-white text-3xl font-bold">✕</button>';
+    ov.classList.remove('hidden');
+    ov.classList.add('flex');
+    ov.querySelectorAll('[data-sticker-close]').forEach((b) => b.addEventListener('click', closeStickerViewer));
+  }
+  function closeStickerViewer() {
+    const ov = document.getElementById('sticker-viewer');
+    if (!ov) return;
+    ov.classList.add('hidden');
+    ov.classList.remove('flex');
+    ov.innerHTML = '';
+  }
+
+  /* ============================================================
+     СТИКЕРЫ
+     Файлы лежат в stickers/ и отдаются как статика, в базу попадает
+     только имя файла. Список берём из stickers/manifest.json, а если
+     его нет (или страница открыта с диска) — из запасного массива.
+     ============================================================ */
+  const STICKER_FALLBACK = [
+    { f: '1.webp', gif: false }, { f: '2.webp', gif: false }, { f: '3.webp', gif: false },
+    { f: '4.webp', gif: false }, { f: '5.webp', gif: false }, { f: '6.webp', gif: false },
+    { f: '7.webp', gif: false }, { f: '8.webp', gif: false }, { f: '9.webp', gif: false },
+    { f: '10.webp', gif: false }, { f: '11.webp', gif: false }, { f: '12.webp', gif: false },
+    { f: '24.webp', gif: false },
+    { f: 'v1.gif', gif: true }, { f: 'v2.gif', gif: true }, { f: 'v3.gif', gif: true },
+    { f: 'v4.gif', gif: true }, { f: 'v5.gif', gif: true },
+  ];
+  let STICKERS = STICKER_FALLBACK.slice();
+  let stickersManifestTried = false;
+
+  // Загрузка списка стикеров. Один раз за сессию; ошибка не критична — остаётся
+  // встроенный список, поэтому кнопка «Стикеры» работает всегда.
+  function loadStickersManifest() {
+    if (stickersManifestTried) return;
+    stickersManifestTried = true;
+    fetch('stickers/manifest.json', { cache: 'no-cache' })
+      .then((r) => (r && r.ok) ? r.json() : null)
+      .then((j) => {
+        if (!j || !Array.isArray(j.stickers)) return;
+        const list = [];
+        j.stickers.forEach((x) => {
+          if (!x || !stickerFileOk(x.f)) return;
+          list.push({ f: x.f, gif: !!x.gif || /\.gif$/i.test(x.f) });
+        });
+        if (!list.length) return;
+        STICKERS = list;
+        // Перерисовываем панели, если их уже открывали.
+        ['chat-sticker-panel', 'dm-sticker-panel', 'feed-sticker-panel'].forEach((id) => {
+          const p = document.getElementById(id);
+          if (p && p.classList.contains('open')) paintStickerPanel(id);
+        });
+      })
+      .catch(() => { /* манифеста нет — работает STICKER_FALLBACK */ });
+  }
+  function paintStickerPanel(hostId) {
+    const box = document.getElementById(hostId);
+    if (!box) return;
+    if (!STICKERS.length) {
+      box.innerHTML = '<div class="stk-empty">Стикеров пока нет. Положите файлы в папку stickers/ и впишите их в stickers/manifest.json.</div>';
+      return;
+    }
+    // lazy обязателен: пять GIF-стикеров весят 27 МБ, и без лени
+    // открытие панели съедало бы столько трафика на ровном месте.
+    box.innerHTML = STICKERS.map((s) =>
+      '<button type="button" class="stk-tile" data-stk="' + esc(s.f) + '" title="' + esc(s.f) + '">' +
+        '<img src="stickers/' + esc(s.f) + '" alt="' + esc(s.f) + '" loading="lazy" draggable="false">' +
+        (s.gif ? '<span class="stk-badge">GIF</span>' : '') +
+      '</button>').join('');
+    box.querySelectorAll('[data-stk]').forEach((b) => b.addEventListener('click', () => {
+      sendStickerTo(b.closest('[data-stk-host]').getAttribute('data-stk-host'), b.getAttribute('data-stk'));
+    }));
+  }
+  // Открыть/закрыть панель. Одновременно открыта только одна: на телефоне
+  // три раскрытые полосы стикеров не помещаются на экран.
+  function toggleStickerPanel(hostId) {
+    const box = document.getElementById(hostId);
+    if (!box) return;
+    const wantOpen = !box.classList.contains('open');
+    ['chat-sticker-panel', 'dm-sticker-panel', 'feed-sticker-panel'].forEach((id) => {
+      const p = document.getElementById(id);
+      if (p) p.classList.remove('open');
+    });
+    if (!wantOpen) return;
+    paintStickerPanel(hostId);
+    const p2 = document.getElementById(hostId);
+    if (p2) p2.classList.add('open');
+  }
+  function closeStickerPanel(hostId) {
+    const p = document.getElementById(hostId);
+    if (p) p.classList.remove('open');
+  }
+  // Отправка стикера. Текста в сообщении нет вообще: правила `.validate`
+  // разрешают пустой `text`, если рядом лежит `sticker`.
+  function sendStickerTo(host, file) {
+    if (!stickerFileOk(file)) { showToast('Такой стикер не найден в папке stickers'); return; }
+    if (host === 'feed') { closeStickerPanel('feed-sticker-panel'); sendFeedSticker(file); return; }
+    if (!quietGuard()) return;
+    if (!nick()) { showToast('Сначала задайте ник'); askNickIfNeeded(); return; }
+    if (!HubAuth.uid || !HubAuth.ready) { showToast('Авторизация ещё не готова'); return; }
+    // Проверка бана — та же, что у обычного текста: стикером обойти мут нельзя.
+    HubModeration.checkCanSend((err) => {
+      if (err) { showToast(err); return; }
+      if (!quietGuard()) return;   // тишина могла наступить, пока ждали проверку
+      if (host === 'dm') {
+        if (!dmPeer) { showToast('Сначала открой диалог'); return; }
+        pushDm({ sticker: file, text: '' })
+          .then(() => closeStickerPanel('dm-sticker-panel'))
+          .catch((e) => showToast('Ошибка: ' + errText(e)));
+        return;
+      }
+      if (!canWriteChat()) { showToast(chatRoText()); return; }
+      const s = state.sel;
+      const msg = {
+        uid: HubAuth.uid,
+        deviceId: deviceId(),
+        nick: nick(),
+        text: '',
+        sticker: file,
+        time: Date.now(),
+        class: (s && s.clname) || '',
+      };
+      if (isSchoolChat()) { msg.class = homeNameShort() || msg.class; msg.scope = 'school'; }
+      db.ref(curChatPath() + '/chat').push(msg)
+        .then(() => { closeStickerPanel('chat-sticker-panel'); setTimeout(refreshChat, 500); })
+        .catch((e) => showToast('Ошибка: ' + errText(e)));
+    });
   }
 
   /* ---- Лайки, реакции, комментарии, опросы ---- */
@@ -5201,18 +6333,37 @@
     return `<div class="rx-list">${keys.map((e) => {
       const us = by[e];
       const mine = me && us.indexOf(me) >= 0;
-      return `<button class="rx-pill ${mine ? 'mine' : ''}" data-rx="${esc(e)}" data-key="${esc(m.__key)}" title="${esc(us.length + ' ' + pluralMood(us.length))}">${esc(e)} <span class="n">${us.length}</span></button>`;
+      return `<button class="rx-pill ${mine ? 'mine' : ''}" data-rx="${esc(e)}" data-key="${esc(m.__key)}" title="Реакция ${esc(e)} — ${us.length}">${esc(e)} <span class="n">${us.length}</span></button>`;
     }).join('')}</div>`;
   }
+  // Варианты опроса всегда храним массивом. Если в базе лежит объект
+  // (так записали старые посты), приводим к массиву — иначе .map упадёт
+  // и сломает отрисовку ВСЕЙ ленты, а не только опроса.
+  function pollOptsOf(p) {
+    if (!p) return [];
+    if (Array.isArray(p.opts)) return p.opts.map((o) => String(o));
+    if (p.opts && typeof p.opts === 'object') {
+      return Object.keys(p.opts).sort()
+        .map((i) => String(p.opts[i] == null ? '' : p.opts[i]))
+        .filter((s) => s.trim() !== '');
+    }
+    return [];
+  }
   function feedPollHtml(m, k) {
+    // Голосование не должно ронять отрисовку всей ленты: если в нём что-то
+    // неожиданное, просто покажем пост без блока опроса.
+    try { return feedPollHtmlSafe(m, k); } catch (e) { return ''; }
+  }
+  function feedPollHtmlSafe(m, k) {
     const p = m.poll;
-    if (!p || !p.opts || p.opts.length < 2) return '';
+    const opts = pollOptsOf(p);
+    if (!p || opts.length < 2) return '';
     const votes = p.votes || {};
     const total = Object.keys(votes).length;
-    const counts = p.opts.map((_, i) => Object.keys(votes).filter((u) => Number(votes[u]) === i).length);
+    const counts = opts.map((_, i) => Object.keys(votes).filter((u) => Number(votes[u]) === i).length);
     const mine = votes[HubAuth.uid];
     const canDel = canDeleteFeedPost(m.uid);
-    const rows = p.opts.map((o, i) => {
+    const rows = opts.map((o, i) => {
       const pct = total ? Math.round((counts[i] / total) * 100) : 0;
       const sel = mine !== undefined && Number(mine) === i;
       return `<button class="poll-opt w-full text-left rounded-lg px-2.5 py-1.5 border ${sel ? 'accent-border bg-slate-800/70' : 'border-slate-700 bg-slate-800/40'}" data-fvote="${esc(k)}" data-opt="${i}">
@@ -5355,7 +6506,8 @@
           </div>
           ${mv ? `<span class="mood-hist-i" title="Настроение: ${moodLabel(mv)}">${moodFace(mv)}</span>` : ''}
         </div>
-        <div class="feed-txt">${esc(m.text || '')}</div>
+        ${m.text ? `<div class="feed-txt">${esc(m.text)}</div>` : ''}
+        ${stickerHtml(m.sticker)}
         ${feedMediaHtml(m.media)}
         ${feedPollHtml(m, k)}
         ${feedRxListHtml(m)}
@@ -5410,6 +6562,7 @@
     if (!HubAuth.uid || !HubAuth.ready) { showToast('Авторизация ещё не готова'); return; }
     input.value = '';
     clearFeedAttach();
+    paintFeedPollDraft();
     const payload = {
       uid: HubAuth.uid,
       nick: nick(),
@@ -5419,17 +6572,44 @@
     };
     if (media) payload.media = media;
     const opts = feedPollDraft.map((s) => (s || '').trim()).filter(Boolean).slice(0, 4);
-    if (opts.length >= 2) payload.poll = { q: feedPollDraftQ.trim() || 'Голосование', opts: opts, votes: {} };
+    const pollQ = (feedPollDraftQ || '').trim() || 'Голосование';
+    // Сначала сам пост: так он точно появится в ленте, даже если голосование
+    // потом не запишется. Раньше всё слалось одним запросом, и любой отказ
+    // правил на poll не давал опубликовать даже обычный текст с фото.
     const key = db.ref(feedPath()).push().key;
-    db.ref(feedPath() + '/' + key).set(payload).then(() => {
+    const postRef = db.ref(feedPath() + '/' + key);
+    postRef.set(payload).then(() => {
       feedPollDraft = []; feedPollDraftQ = ''; paintFeedPollDraft();
       if (text) flagAfterModeration(text, feedPath(), key, 'feed');
       trimFeed();
+      if (opts.length >= 2) {
+        // Голосование — вторым запросом. Не сработало: пост останется, голосование просто не добавится.
+        return postRef.update({ poll: { q: pollQ, opts: opts } })
+          .catch((e2) => showToast('Пост опубликован, а голосование не прикрепилось: ' + errText(e2)));
+      }
+      return null;
     }).catch((err) => {
       input.value = text;
       feedAttach = media; paintFeedAttach();
-      showToast('Не отправилось: ' + ((err && err.message) ? err.message : err));
+      // Вложение или текст могли не пройти проверку размера — пробуем ещё раз без медиа.
+      if (media) {
+        const lite = Object.assign({}, payload);
+        delete lite.media;
+        postRef.set(lite).then(() => {
+          showToast('Фото не прикрепилось (слишком большое) — пост опубликован без него');
+          if (text) flagAfterModeration(text, feedPath(), key, 'feed');
+          trimFeed();
+        }).catch((e3) => showToast('Не отправилось: ' + errText(e3)));
+        return;
+      }
+      showToast('Не отправилось: ' + errText(err));
     });
+  }
+  function errText(e) {
+    if (!e) return 'ошибка';
+    if (e.code === 'PERMISSION_DENIED' || /permission/i.test(String(e.message || ''))) return 'не хватает прав';
+    if (/too big|exceed|size/i.test(String(e.message || ''))) return 'слишком большой размер';
+    return e.message || String(e);
   }
   function deleteFeedPost(key) {
     if (!key) return;
@@ -5465,10 +6645,26 @@
     }
     const sb = $('#feed-send-btn');
     if (sb) sb.disabled = blocked;
+    // Кнопки скрепки и голосования НЕ блокируем: на телефоне серая
+    // disabled-кнопка выглядит как поломка, и непонятно, что делать.
+    // Вместо этого оставляем их активными, а причину объясняет подсказка
+    // и сам обработчик (см. feedAttachClick / feedPollToggle).
+    const why = !ok ? 'Лента доступна только ученикам этой школы'
+      : (quiet && QUIET_BLOCKS_FEED) ? 'Сейчас тихий час — постить нельзя'
+      : '';
     const ab = $('#feed-attach-btn');
-    if (ab) ab.disabled = blocked;
+    if (ab) { ab.classList.toggle('opacity-40', !!why); ab.title = why || 'Прикрепить фото или видео'; ab.dataset.why = why; }
     const pb = $('#feed-poll-toggle');
-    if (pb) pb.disabled = blocked;
+    if (pb) { pb.classList.toggle('opacity-40', !!why); pb.title = why || 'Добавить голосование'; pb.dataset.why = why; }
+    const sb2 = $('#feed-sticker-btn');
+    if (sb2) { sb2.classList.toggle('opacity-40', !!why); sb2.title = why || 'Стикеры'; sb2.dataset.why = why; }
+  }
+  // Клик по скрепке/голосованию, когда писать нельзя: объясняем причину.
+  function feedActionBlocked(btn) {
+    const why = (btn && btn.dataset.why) || '';
+    if (!why) return false;
+    showToast(why);
+    return true;
   }
   // Не даём ленте расти бесконечно: режем хвост, как только порог пройден.
   function trimFeed(keep) {
@@ -5712,8 +6908,8 @@
   function renderSettingsTab() {
     const el = $('#tab-settings');
     const on = altMode();
-    const theme = localStorage.getItem(LS.theme) || 'dark';
-    const accent = localStorage.getItem(LS.accent) || 'indigo';
+    const theme = curTheme();
+    const accent = localStorage.getItem(LS.accent) || (THEME_ACCENT[curTheme()] || 'indigo');
     const isAdminNow = isAdmin();
     const n = nick() || 'Ученик';
     const s = state.sel;
@@ -5860,28 +7056,32 @@
 
       <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
         <div class="font-bold text-sm mb-1">Тема оформления</div>
-        <p class="text-[11px] text-slate-500 mb-3">Светлая, тёмная, coder20 или ZakveZ</p>
+        <p class="text-[11px] text-slate-500 mb-3">Тёмная, светлая, coder20, ZakveZ, голубая, красно-белая или лавандовая</p>
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          <button id="theme-light" class="px-3 py-2.5 rounded-xl border text-xs font-bold transition ${theme === 'light' ? 'accent-bg border-transparent text-white' : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'}">☀️ Светлая</button>
-          <button id="theme-dark" class="px-3 py-2.5 rounded-xl border text-xs font-bold transition ${theme === 'dark' ? 'accent-bg border-transparent text-white' : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'}">🌙 Тёмная</button>
-          <button id="theme-coder" class="px-3 py-2.5 rounded-xl border text-xs font-bold transition ${theme === 'coder20' ? 'accent-bg border-transparent text-white' : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'}">◴ coder20</button>
-          <button id="theme-zakvez" class="px-3 py-2.5 rounded-xl border text-xs font-bold transition ${theme === 'zakvez' ? 'accent-bg border-transparent text-white' : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'}">♥ ZakveZ</button>
+          ${[
+            ['dark', '🌙 Тёмная'], ['light', '☀️ Светлая'], ['coder20', '◴ coder20'], ['zakvez', '♥ ZakveZ'],
+            ['sky', '🩵 Голубая'], ['crimson', '❤️ Красно-белая'], ['lavender', '🪻 Лавандовая'],
+          ].map(([tk, tl]) => `<button data-theme-set="${tk}" class="px-3 py-2.5 rounded-xl border text-xs font-bold transition ${theme === tk ? 'accent-bg border-transparent text-white' : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'}">${tl}</button>`).join('')}
         </div>
         <p class="text-[10px] text-slate-600 mt-2.5 leading-snug">В теме coder20 интерфейс становится серым и уезжает влево, а в освободившемся месте справа появляется круглый циферблат с временем и датой, силуэт и плеер.</p>
         <p class="text-[10px] text-slate-600 mt-1.5 leading-snug">В теме ZakveZ интерфейс становится чёрно-зелёным как в терминале, а справа идут кинематографические титры.</p>
+        <p class="text-[10px] text-slate-600 mt-1.5 leading-snug">«Голубая» — тёмно-синяя палитра, «Красно-белая» и «Лавандовая» — светлые. У каждой свой цвет акцента по умолчанию, но его можно поменять ниже.</p>
       </div>
 
-      ${theme === 'light' || theme === 'dark' ? `
+      ${theme === 'zakvez' ? '' : `
       <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 fade-up">
         <div class="font-bold text-sm mb-3">Цвет акцента</div>
         <div class="flex flex-wrap gap-3 justify-center">
-          ${['indigo:#6366f1','blue:#3b82f6','emerald:#10b981','rose:#f43f5e','amber:#f59e0b','violet:#8b5cf6'].map((pair) => {
-            const [key, color] = pair.split(':');
-            return `<span class="accent-dot ${accent === key ? 'active' : ''}" data-accent="${key}" style="background:${color}"></span>`;
-          }).join('')}
+          ${[
+            ['indigo', '#6366f1'], ['blue', '#3b82f6'], ['emerald', '#10b981'], ['rose', '#f43f5e'],
+            ['amber', '#f59e0b'], ['violet', '#8b5cf6'], ['sky', '#0ea5e9'], ['cyan', '#06b6d4'],
+            ['teal', '#14b8a6'], ['green', '#22c55e'], ['lime', '#84cc16'], ['yellow', '#eab308'],
+            ['orange', '#f97316'], ['red', '#ef4444'], ['pink', '#ec4899'], ['fuchsia', '#d946ef'],
+            ['purple', '#a855f7'], ['slate', '#64748b'],
+          ].map(([key, color]) => `<span class="accent-dot ${accent === key ? 'active' : ''}" data-accent="${key}" style="background:${color}"></span>`).join('')}
         </div>
       </div>
-      ` : ''}
+      `}
 
       <button id="fav-open" class="w-full rounded-xl bg-slate-800 hover:bg-slate-700 py-3 text-sm font-bold fade-up">⭐ Избранные сообщения</button>
       <button id="export-chat" class="w-full rounded-xl bg-slate-800 hover:bg-slate-700 py-3 text-sm font-bold fade-up">📥 Скачать чат в TXT</button>
@@ -5935,10 +7135,16 @@
         }).catch((e) => showToast('Ошибка: ' + ((e && e.message) ? e.message : e)));
       });
     }
-    $('#theme-light').addEventListener('click', () => { applyTheme('light'); renderSettingsTab(); showToast('Тема: ' + THEME_LABELS.light); });
-    $('#theme-dark').addEventListener('click', () => { applyTheme('dark'); renderSettingsTab(); showToast('Тема: ' + THEME_LABELS.dark); });
-    $('#theme-coder').addEventListener('click', () => { applyTheme('coder20'); renderSettingsTab(); showToast('Тема: ' + THEME_LABELS.coder20); });
-    $('#theme-zakvez').addEventListener('click', () => { applyTheme('zakvez'); renderSettingsTab(); showToast('Тема: ' + THEME_LABELS.zakvez); });
+    // Кнопки тем рисуются из массива, поэтому вешаем обработчик на каждую.
+    // У sky/crimson/lavender есть «родной» акцент — переключаясь на них,
+    // подставляем его, иначе тёмно-синяя тема осталась бы с зелёными кнопками.
+    // Остальные темы сохраняют выбранный пользователем цвет.
+    $$('[data-theme-set]').forEach((b) => b.addEventListener('click', () => {
+      const want = b.dataset.themeSet;
+      const t = applyTheme(want, !!THEME_ACCENT[want]);
+      renderSettingsTab();
+      showToast('Тема: ' + (THEME_LABELS[t] || t));
+    }));
     $$('.accent-dot').forEach((d) => d.addEventListener('click', () => {
       const key = d.dataset.accent;
       localStorage.setItem(LS.accent, key);
@@ -6524,6 +7730,54 @@
     });
   }
 
+  /* ---- Удаление аккаунта администратором ----
+     Полностью стереть данные из Firebase нельзя: анонимный uid восстановится
+     при следующем входе, а чужие сообщения увидят все. Поэтому удаление
+     означает «отключить»: ставим метку /deletedUsers/{uid}, убираем
+     профиль, роли, настройки и личные сообщения. При входе приложение
+     видит метку и выкидывает пользователя на экран входа. */
+  function deleteUserAccount(uid) {
+    if (!isAdmin()) { showToast('Нет прав администратора'); return; }
+    if (!uid) { showToast('Нет UID'); return; }
+    if (uid === (window.HubAuth && HubAuth.uid)) { showToast('Нельзя удалить свой аккаунт'); return; }
+    if (HARDCODE_ADMIN_UIDS.indexOf(uid) !== -1) { showToast('Нельзя удалить главного админа'); return; }
+    askConfirm('Удалить аккаунт? Он потеряет доступ к приложению, а профиль, '
+      + 'сообщения и настройки будут стёрты. Действие необратимо.',
+      () => doDeleteUserAccount(uid), 'Удалить');
+  }
+  function doDeleteUserAccount(uid) {
+    const jobs = [];
+    // 1. Пометка «удалён» — именно её приложение проверяет при входе.
+    jobs.push(db.ref('/deletedUsers/' + uid).set({
+      by: (window.HubAuth && HubAuth.uid) || '',
+      byNick: nick() || 'Админ',
+      at: Date.now(),
+    }).catch(() => null));
+    // 2. Личные сообщения: обе стороны диалогов.
+    jobs.push(db.ref('/dms/' + uid).remove().catch(() => null));
+    jobs.push(db.ref('/moods/' + uid).remove().catch(() => null));
+    jobs.push(db.ref('/admin_messages/' + uid).remove().catch(() => null));
+    jobs.push(db.ref('/warnings/' + uid).remove().catch(() => null));
+    // 3. Роли и профиль. @ник читаем ДО удаления /users — потом его уже не достать.
+    const uname = (dmUsers && dmUsers[uid] && dmUsers[uid].uname) || '';
+    return db.ref('/users/' + uid).once('value')
+      .then((s) => {
+        const un = (s.val() && s.val().uname) || uname;
+        if (un) jobs.push(db.ref('/unames/' + un).remove().catch(() => null));
+      }).catch(() => null)
+      .then(() => {
+        jobs.push(db.ref('/roles/' + uid).remove().catch(() => null));
+        jobs.push(db.ref('/roles_meta/' + uid).remove().catch(() => null));
+        jobs.push(db.ref('/users/' + uid).remove().catch(() => null));
+      })
+      .then(() => Promise.all(jobs))
+      .then(() => {
+        showToast('Аккаунт удалён');
+        renderAdminPage('people');
+      })
+      .catch((e) => showToast('Не удалось удалить: ' + ((e && e.message) ? e.message : 'нет прав')));
+  }
+
   function renderAdminPeople(body) {
     const me = window.HubAuth && HubAuth.uid;
     body.innerHTML = `
@@ -6534,6 +7788,14 @@
           <button data-act="grantAdminForm" class="shrink-0 rounded-lg accent-bg text-white px-3 py-2 text-xs font-bold">Выдать</button>
         </div>
         <p class="text-[10px] text-slate-500 mt-1.5">Можно вставить UID напрямую или ввести ник — UID найдётся по базе. Выдать/снять можно и из списка ниже.</p>
+      </div>
+      <div class="rounded-2xl bg-slate-900 border border-rose-500/30 p-4 mt-4">
+        <div class="font-bold text-sm mb-2">🗑 Удалить аккаунт</div>
+        <div class="flex gap-2">
+          <input id="del-user-input" placeholder="UID или ник пользователя" class="${aInput('flex-1 min-w-0')}">
+          <button data-act="delUserForm" class="shrink-0 rounded-lg bg-rose-600 text-white px-3 py-2 text-xs font-bold">Удалить</button>
+        </div>
+        <p class="text-[10px] text-slate-500 mt-1.5">Аккаунт теряет доступ к приложению: профиль, личные сообщения, настройки и роль удаляются, а @ник освобождается. Главного админа и себя удалить нельзя.</p>
       </div>
       <div class="mt-4">
         <div class="font-bold text-sm mb-2">Текущие администраторы</div>
@@ -6600,6 +7862,9 @@
           else if (selfFl) actions = '<span class="text-[10px] text-slate-600">это вы</span>';
           else if (u.role === 'admin') actions = `<button data-act="revokeAdmin" data-uid="${esc(u.uid)}" class="rounded-lg bg-rose-600/80 hover:bg-rose-600 px-2.5 py-1.5 text-[11px] font-semibold">Снять админа</button>`;
           else actions = `<button data-act="grantAdmin" data-uid="${esc(u.uid)}" data-nick="${esc(u.nick)}" class="rounded-lg bg-emerald-600/80 hover:bg-emerald-600 px-2.5 py-1.5 text-[11px] font-semibold">Выдать админа</button>`;
+          // Кнопка удаления — всем, кроме себя и главного админа.
+          const delBtn = (main || selfFl) ? '' :
+            `<button data-act="delUser" data-uid="${esc(u.uid)}" data-nick="${esc(u.nick)}" class="rounded-lg bg-rose-900/80 hover:bg-rose-700 px-2.5 py-1.5 text-[11px] font-semibold">Удалить аккаунт</button>`;
           return `
           <div class="row rounded-xl bg-slate-900 border border-slate-800 p-3 flex items-center gap-2 flex-wrap fade-up">
             ${avatarHtml(u.nick || '?', 'sm', (u.avatar || 'letter'), avatarImgOf(u.uid))}
@@ -6608,7 +7873,7 @@
             ${u.bio ? `<span class="text-[10px] text-slate-500 truncate max-w-[160px]">${esc(u.bio)}</span>` : ''}
             <span class="text-[10px] text-slate-500">UID: ${esc(u.uid).slice(0, 14)}…</span>
             ${roleLabel(u.role)}
-            <span class="flex gap-1.5 ml-auto">${actions}</span>
+            <span class="flex gap-1.5 ml-auto">${actions}${delBtn}</span>
           </div>`;
         }).join('');
       }
@@ -6968,7 +8233,8 @@
                 <span class="text-xs font-bold">${esc(nick2)}${verifyBadge(uid)}${scopeBadge} <span class="text-[10px] text-slate-500">${esc(locText)}</span></span>
                 <span class="text-[10px] text-slate-500">${fmtDate(f.m.time)}</span>
               </div>
-              <p class="text-sm mt-1 break-words">${esc(f.m.text || '')}</p>
+              ${f.m.text ? `<p class="text-sm mt-1 break-words">${esc(f.m.text)}</p>` : ''}
+              ${stickerHtml(f.m.sticker)}${chatMediaHtml(f.m.media)}
               <div class="text-[11px] mt-1 ${st.cls}">${uid ? 'UID: ' + esc(uid).slice(0, 14) + '…' : 'UID не определён'} · ${esc(st.label)}</div>
               <div class="flex gap-1.5 mt-2 flex-wrap">
                 ${f.m.scope === 'dm'
@@ -7205,8 +8471,11 @@
         const authorNick = (authorUid && nickOf(authorUid)) || m.fromNick || m.nick || 'Участник';
         const st = authorUid ? HubModeration.statusOf(bans[authorUid] || null) : { label: 'не определён', cls: 'text-slate-500' };
         const dis = authorUid ? '' : ' opacity-40 pointer-events-none';
-        const body = m.voice ? `<audio controls preload="none" class="max-w-[220px]" src="${esc(m.voice.url || '')}"></audio>`
-                             : `<span class="break-words">${esc(m.text || '')}</span>`;
+        // Модератор должен видеть вложение так же, как его видит собеседник,
+        // иначе он решает по «пустому» сообщению.
+        const body = m.voice
+          ? `<audio controls preload="none" class="max-w-[220px]" src="${esc(m.voice.url || '')}"></audio>`
+          : (chatBodyHtml(m, 'adm:' + uid + ':' + peer + ':' + m.__key));
         return `<div class="rounded-2xl bg-slate-900 border border-slate-800 px-3 py-2">
           <div class="text-[10px] text-slate-500">${esc(authorNick)} · ${fmtDate(m.time)}</div>
           <div class="text-sm mt-1">${body}</div>
@@ -7417,6 +8686,28 @@
       // ---- Выдача/снятие админ-прав ----
       if (act === 'grantAdmin') { grantAdmin(t.dataset.uid, t.dataset.nick || t.dataset.uid); }
       if (act === 'revokeAdmin') { revokeAdmin(t.dataset.uid); }
+      // ---- Удаление аккаунта ----
+      if (act === 'delUser') { deleteUserAccount(t.dataset.uid); }
+      if (act === 'delUserForm') {
+        const inp = $('#del-user-input');
+        const v = inp ? inp.value.trim() : '';
+        if (!v) { showToast('Введите UID или ник'); return; }
+        const looksUid = /^[A-Za-z0-9_-]{15,}$/.test(v);
+        db.ref('/users').once('value').then((sn) => {
+          const us = sn.val() || {};
+          if (looksUid) {
+            if (us[v]) { if (inp) inp.value = ''; deleteUserAccount(v); return; }
+            showToast('Пользователь с таким UID не найден');
+            return;
+          }
+          const matches = Object.keys(us).filter((uid) =>
+            us[uid] && us[uid].nick && us[uid].nick.toLowerCase() === v.toLowerCase());
+          if (matches.length === 1) { if (inp) inp.value = ''; deleteUserAccount(matches[0]); return; }
+          if (matches.length > 1) { showToast('Найдено несколько ников — введите UID'); return; }
+          showToast('Ник не найден');
+        }).catch((e) => showToast('Ошибка: ' + ((e && e.message) ? e.message : e)));
+        return;
+      }
       if (act === 'grantAdminForm') {
         const inp = $('#grant-admin-input');
         const v = inp ? inp.value.trim() : '';
@@ -7469,7 +8760,10 @@
   const feedAttachBtn = $('#feed-attach-btn');
   const feedFile = $('#feed-file');
   if (feedAttachBtn && feedFile) {
-    feedAttachBtn.addEventListener('click', () => feedFile.click());
+    feedAttachBtn.addEventListener('click', () => {
+      if (feedActionBlocked(feedAttachBtn)) return;
+      feedFile.click();
+    });
     feedFile.addEventListener('change', () => {
       const f = feedFile.files && feedFile.files[0];
       feedFile.value = '';
@@ -7478,9 +8772,61 @@
   }
   const feedPollToggle = $('#feed-poll-toggle');
   if (feedPollToggle) feedPollToggle.addEventListener('click', () => {
+    if (feedActionBlocked(feedPollToggle)) return;
     feedPollOpen = !feedPollOpen;
     if (!feedPollOpen) { feedPollDraft = []; feedPollDraftQ = ''; }
     paintFeedPollDraft();
+  });
+
+  /* ---- Стикеры: вкладка у поля ввода в чате, в ЛС и в ленте ---- */
+  // Список стикеров подгружаем один раз за сессию: пока манифест не пришёл,
+  // кнопка уже работает на встроенном списке.
+  loadStickersManifest();
+  [['chat-sticker-btn', 'chat-sticker-panel'],
+   ['dm-sticker-btn', 'dm-sticker-panel'],
+   ['feed-sticker-btn', 'feed-sticker-panel']].forEach((pair) => {
+    const btn = document.getElementById(pair[0]);
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+      if (pair[0] === 'feed-sticker-btn' && feedActionBlocked(btn)) return;
+      if (pair[0] === 'chat-sticker-btn' && !canWriteChat()) { showToast(chatRoText()); return; }
+      toggleStickerPanel(pair[1]);
+    });
+  });
+
+  /* ---- Фото и видео в чате и в ЛС ---- */
+  // Тот же путь, что в ленте: выбрал файл → сжалось → превью → «Отправить».
+  [['chat-attach-btn', 'chat-file', false],
+   ['dm-attach-btn', 'dm-file', true]].forEach((t) => {
+    const btn = document.getElementById(t[0]);
+    const inp = document.getElementById(t[1]);
+    if (!btn || !inp) return;
+    btn.addEventListener('click', () => {
+      if (!canWriteChat() && t[0] === 'chat-attach-btn') { showToast(chatRoText()); return; }
+      inp.click();
+    });
+    inp.addEventListener('change', () => {
+      const f = inp.files && inp.files[0];
+      inp.value = '';
+      onChatLikeFile(f, t[2]);
+    });
+  });
+
+  // Тап по стикеру в сообщении — показать крупно. Делегированный слушатель на
+  // документ: сообщения перерисовываются постоянно, подписка на каждый раз
+  // означала бы утечку обработчиков.
+  document.addEventListener('click', (ev) => {
+    const st = ev.target.closest ? ev.target.closest('[data-sticker-view]') : null;
+    if (st) { openStickerViewer(st.getAttribute('data-sticker-view')); return; }
+  });
+  // Клавиша Esc закрывает открытое поверх ввода: сначала панель стикеров,
+  // а если её нет — просмотрщик стикера.
+  document.addEventListener('keydown', (ev) => {
+    if (ev.key !== 'Escape') return;
+    const panels = ['chat-sticker-panel', 'dm-sticker-panel', 'feed-sticker-panel']
+      .filter((id) => { const p = document.getElementById(id); return p && p.classList.contains('open'); });
+    if (panels.length) { panels.forEach(closeStickerPanel); return; }
+    closeStickerViewer();
   });
   // Клики по постам (лайк, комментарии, реакции, подписка, удаление) и
   // отправка комментариев — один делегированный слушатель, чтобы новые
@@ -7527,16 +8873,14 @@
 
     const fav = e.target.closest('.msg-fav');
     if (fav) {
-      const p = wrap.querySelector('p');
-      toggleFav({ key, nick: wrap.getAttribute('data-nick'), text: p ? p.textContent : '', time: parseInt(wrap.getAttribute('data-time') || '0', 10) });
+      toggleFav({ key, nick: wrap.getAttribute('data-nick'), text: wrap.getAttribute('data-summary') || '', time: parseInt(wrap.getAttribute('data-time') || '0', 10) });
       return;
     }
 
     const reply = e.target.closest('.msg-reply');
     if (reply) {
       const nk = wrap.getAttribute('data-nick') || '?';
-      const p = wrap.querySelector('p');
-      setReply(key, nk, p ? p.textContent : '');
+      setReply(key, nk, wrap.getAttribute('data-summary') || '');
       return;
     }
 
@@ -7623,9 +8967,42 @@
   $('#dm-back').addEventListener('click', dmBackToList);
   $('#dm-form').addEventListener('submit', sendDmText);
   $('#dm-search').addEventListener('input', paintDmList);
+  $('#dm-reply-cancel').addEventListener('click', dmClearReply);
+  $('#dm-edit-cancel').addEventListener('click', () => {
+    const i = $('#dm-input');
+    if (i) i.value = '';
+    dmClearEdit();
+  });
+  $('#dm-fwd-close').addEventListener('click', closeDmForward);
+  // Кнопки под сообщениями ЛС: реакция / ответ / пересылка / правка / удаление.
+  $('#dm-thread').addEventListener('click', (e) => {
+    // Нажали на уже поставленную реакцию — меняем её или снимаем.
+    const pill = e.target.closest('.rx-pill[data-dm-rx]');
+    if (pill) { dmSetRx(pill.dataset.k, pill.dataset.dmRx); return; }
+    const pick = e.target.closest('.rx-pick[data-dm-rx]');
+    if (pick) { dmSetRx(pick.dataset.k, pick.dataset.dmRx); return; }
+    const btn = e.target.closest('[data-dm-act]');
+    if (!btn) return;
+    const k = btn.dataset.k;
+    if (!k) return;
+    const act = btn.dataset.dmAct;
+    if (act === 'rx') { toggleDmRxPicker(k, btn); return; }
+    if (act === 'reply') { dmSetReply(k); return; }
+    if (act === 'fwd') { openDmForward(k); return; }
+    if (act === 'edit') { dmSetEdit(k); return; }
+    if (act === 'del') {
+      askConfirm('Удалить сообщение?', () => {
+        dmDeleteMsg(k)
+          .then(() => showToast('Сообщение удалено'))
+          .catch((err) => showToast('Не удалить: ' + ((err && err.message) ? err.message : 'нет прав')));
+      }, 'Удалить');
+    }
+  });
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
     if (recState) { cancelVoice(); return; }
+    const fwd = $('#dm-forward-modal');
+    if (fwd && !fwd.classList.contains('hidden')) { closeDmForward(); return; }
     const p = $('#dm-panel');
     if (p && !p.classList.contains('hidden')) { if (dmPeer) dmBackToList(); else closeDmPanel(); }
   });
@@ -7666,6 +9043,9 @@
     let appReady = false;
     const goApp = () => {
       if (appReady) return;
+      // Удалённый администратором аккаунт не должен попасть в приложение,
+      // даже если сработал аварийный таймаут в 7 секунд.
+      if (accountDeleted) return;
       appReady = true;
       const s = state.sel;
       if (s && s.cid && s.sid && s.clid) showMainScreen();
@@ -7675,20 +9055,49 @@
     ensureAccount(goApp);
     setTimeout(goApp, 7000);
     HubAuth.start(() => {
-      startPresence();
-      ensureProfile();
-      checkWarnings();
-      loadHomeClass();
-      pickUpAdminRole();
-      pickUpRolesCache();
-      loadUsersMeta();
-      // Настроения (живое зеркало) + среднее по классу.
-      ensureMoodsWatch();
-      // Загруженные аватарки школы.
-      ensureAvatarsWatch();
-      // Регистрация/вход ждал авторизации: продолжаем, когда uid известен.
-      accountAuthReady();
+      // Аккаунт, удалённый администратором, больше не работает:
+      // показываем заглушку вместо приложения.
+      checkDeletedAccount(HubAuth.uid).then((gone) => {
+        if (gone) { blockDeletedAccount(); return; }
+        startPresence();
+        ensureProfile();
+        checkWarnings();
+        loadHomeClass();
+        pickUpAdminRole();
+        pickUpRolesCache();
+        loadUsersMeta();
+        // Настроения (живое зеркало) + среднее по классу.
+        ensureMoodsWatch();
+        // Загруженные аватарки школы.
+        ensureAvatarsWatch();
+        // Регистрация/вход ждал авторизации: продолжаем, когда uid известен.
+        accountAuthReady();
+      });
     });
+  }
+
+  /* ---- Удалённый аккаунт ----
+     Админ мог стереть пользователя. Метка лежит в /deletedUsers/{uid}.
+     Если она есть — аккаунт больше не имеет доступа к приложению.
+     Выйти из анонимной сессии специально НЕ выходим: после выхода Firebase
+     завёл бы нового анонимного пользователя, и удаление перестало бы
+     что-то значить. Вместо этого приложение просто закрывается заглушкой. */
+  let accountDeleted = false;
+  function accountIsDeleted() { return accountDeleted; }
+  function checkDeletedAccount(uid) {
+    if (!uid) return Promise.resolve(false);
+    return db.ref('/deletedUsers/' + uid).once('value')
+      .then((s) => { accountDeleted = !!(s && s.exists()); return accountDeleted; })
+      .catch(() => false);
+  }
+  function blockDeletedAccount() {
+    accountDeleted = true;
+    const auth = $('#auth-screen');
+    const box = $('#select-list');
+    const main = $('#main-screen');
+    if (main) main.classList.add('hidden');
+    if (auth) auth.classList.remove('hidden');
+    if (box) box.innerHTML = '<div class="text-center py-10 px-4 text-rose-300 text-sm">Аккаунт удалён администратором. Обратись к администратору школы, если это ошибка.</div>';
   }
   document.addEventListener('DOMContentLoaded', start);
 
